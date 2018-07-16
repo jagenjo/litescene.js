@@ -254,7 +254,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	if(this.primitive == gl.POINTS)
 	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.query.macros["USE_POINTS"] = "";
+		//RI.query.macros["USE_POINTS"] = "";
 	}
 
 	instances.push(RI);

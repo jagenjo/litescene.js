@@ -44,6 +44,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Formats",
         "LS.GLSLCode",
         "LS.GUI",
+        "LS.GraphCode",
         "LS.Input",
         "LS.InteractiveController",
         "LS.Knob",
@@ -68,16 +69,17 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.ResourcesManager",
         "LS.Scene",
         "LS.SceneNode",
+        "LS.ShaderBlock",
         "LS.ShaderCode",
         "LS.ShaderGraph",
         "LS.ShaderMaterial",
-        "LS.ShaderQuery",
-        "LS.ShadersManager",
+        "LS.Shaders",
         "LS.SpatialContainer",
         "LS.StandardMaterial",
         "LS.Tween",
         "LS.UnityMaterial",
         "LS.WBin",
+        "LS.oldStandardMaterial",
         "LSQ"
     ],
     "modules": [
@@ -87,7 +89,7 @@ YUI.add("yuidoc-meta", function(Y) {
         {
             "displayName": "LS",
             "name": "LS",
-            "description": "LS is the global scope for the global functions and containers of LiteScene"
+            "description": "LS is the global scope for the global functions and containers of LiteScene\n\n///@INFO: BASE"
         }
     ],
     "elements": []

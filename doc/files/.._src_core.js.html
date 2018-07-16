@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -175,6 +177,7 @@ if( typeof(GL) === &quot;undefined&quot; )
 /**
 * LS is the global scope for the global functions and containers of LiteScene
 *
+///@INFO: BASE
 * @class  LS
 * @module LS
 */
@@ -192,10 +195,12 @@ var LS = {
 	Physics: null,
 	ShadersManager: null,
 	Formats: null,
+	Tween: null,
 
 	//containers
 	Classes: {}, //maps classes name like &quot;Prefab&quot; or &quot;Animation&quot; to its namespace &quot;LS.Prefab&quot;. Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
+	ResourceClasses_by_extension: {},
 	Globals: {}, //global scope to share info among scripts
 
 	/**
@@ -422,22 +427,7 @@ var LS = {
 				j--; 
 				num++;
 			}
-			
-
-			/*
-			//this is a slow way but we dont care, this is used very rarely
-			var info = node.serialize();
-			info = { components: info.components }; //just want the components
-			for(var j = 0; j &lt; info.components.length; ++j)
-			{
-				var compo_info = info.components[j];
-				if(compo_info[0] == old_class_name)
-					compo_info[0] = new_class_name;
-			}
-			//now force the node to be reloaded
-			node.removeAllComponents();
-			node.configure( info );
-			*/
+		
 		}
 
 		return num;
@@ -455,6 +445,8 @@ var LS = {
 		this.ResourceClasses[ class_name ] = resourceClass;
 		this.Classes[ class_name ] = resourceClass;
 		resourceClass.is_resource = true;
+		if( resourceClass.EXTENSION ) //used in GRAPH.json
+			this.ResourceClasses_by_extension[ resourceClass.EXTENSION.toLowerCase() ] = resourceClass;
 
 		//some validation here? maybe...
 	},
@@ -1078,7 +1070,7 @@ var LS = {
 
 	log: function()
 	{
-		console.log.call( console, arguments );
+		console.log.apply( console, arguments );
 	},
 
 	stringToValue: function( v )

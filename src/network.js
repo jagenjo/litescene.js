@@ -110,6 +110,10 @@ var Network = {
 						request.error(err);
 				}
 			}
+			else if(request.dataType == "blob")
+			{
+				response.name = LS.ResourcesManager.getFilename(url);
+			}
 
 			//call callback
 			if(LS.catch_errors)
@@ -198,13 +202,13 @@ var Network = {
 	},
 
 	/**
-	* retrieve a file from url (you can bind LEvents to done and fail)
+	* retrieve a file from url (you can bind LEvents to done and fail) as a ArrayBuffer or Blob
 	* @method requestFile
 	* @param {string} url
 	* @param {object} params form params
 	* @param {function} callback( file )
 	*/
-	requestFile: function( url, form_data, callback, callback_error )
+	requestFile: function( url, form_data, callback, callback_error, as_blob )
 	{
 		if(typeof(form_data) == "function")
 		{
@@ -212,7 +216,7 @@ var Network = {
 			callback = form_data;
 			form_data = null;
 		}
-		return LS.Network.request({url:url, data: form_data, success: callback, error: callback_error });
+		return LS.Network.request({ url:url, dataType: as_blob ? "blob" : "binary", data: form_data, success: callback, error: callback_error });
 	},
 
 	/**

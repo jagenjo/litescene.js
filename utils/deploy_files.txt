@@ -17,7 +17,7 @@
 ../src/materials/shaderMaterial.js
 ../src/materials/standardMaterial.js
 ../src/materials/surfaceMaterial.js
-#../src/materials/newStandardMaterial.js
+../src/materials/graphMaterial.js
 
 ../src/componentContainer.js
 ../src/compositePattern.js
@@ -28,12 +28,14 @@
 ../src/resources/pack.js
 ../src/resources/prefab.js
 ../src/resources/shaderCode.js
+../src/resources/graphCode.js
 
 ../src/graph/scene.js
 ../src/graph/logic.js
 ../src/graph/fx.js
 ../src/graph/actions.js
 ../src/graph/helpers.js
+../src/graph/shader.js
 
 ../src/helpers/path.js
 ../src/helpers/FXstack.js

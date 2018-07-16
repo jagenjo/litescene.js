@@ -100,7 +100,14 @@ SurfaceMaterial.prototype.computeCode = function()
 	*/
 
 	this.surf_code = uniforms_code + "\n" + this._code;
-	var final_code = LS.SurfaceMaterial.code_template.replace( /{{}}/gi, this.surf_code );
+
+	var context = {
+		fs_out: this.surf_code
+	};
+
+	var final_code = LS.ShaderCode.replaceCode( LS.SurfaceMaterial.code_template, context );
+	//var final_code = LS.SurfaceMaterial.code_template.replace( /{{}}/gi, this.surf_code );
+
 	if(!this._shadercode)
 		this._shadercode = new LS.ShaderCode();
 	this._shadercode.code = final_code;
@@ -412,6 +419,7 @@ uniform float u_point_size;\n\
 \n\
 //camera\n\
 uniform vec3 u_camera_eye;\n\
+{{vs_out}}\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
@@ -419,6 +427,7 @@ void main() {\n\
 	v_uvs = a_coord;\n\
   \n\
   //deforms\n\
+  {{vs_local}}\n\
   applyMorphing( vertex4, v_normal );\n\
   applySkinning( vertex4, v_normal );\n\
 	\n\
@@ -429,6 +438,7 @@ void main() {\n\
   \n\
 	//normal\n\
 	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+    {{vs_global}}\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \n\
@@ -453,7 +463,7 @@ uniform vec4 u_material_color;\n\
 \n\
 #pragma snippet \"perturbNormal\"\n\
 \n\
-{{}}\n\
+{{fs_out}}\n\
 \n\
 void main() {\n\
 	Input IN = getInput();\n\
@@ -502,6 +512,7 @@ uniform float u_point_size;\n\
 \n\
 //camera\n\
 uniform vec3 u_camera_eye;\n\
+{{vs_out}}\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
@@ -509,6 +520,7 @@ void main() {\n\
 	v_uvs = a_coord;\n\
   \n\
   //deforms\n\
+  {{vs_local}}\n\
   applyMorphing( vertex4, v_normal );\n\
   applySkinning( vertex4, v_normal );\n\
 	\n\
@@ -519,6 +531,7 @@ void main() {\n\
   \n\
 	//normal\n\
 	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+    {{vs_global}}\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \\shadow.fs\n\
@@ -542,7 +555,7 @@ uniform mat3 u_texture_matrix;\n\
 #pragma snippet \"perturbNormal\"\n\
 #define SHADOWMAP\n\
 \n\
-{{}}\n\
+{{fs_out}}\n\
 \n\
 void main() {\n\
   Input IN = getInput();\n\

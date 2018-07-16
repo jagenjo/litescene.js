@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -159,7 +161,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_materials_material.js.html#l5"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:5</code></a>
+            Defined in: <a href="../files/.._src_materials_material.js.html#l4"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:4</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -197,7 +199,7 @@ The rendering of a material is handled by the material itself, if not provided t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l5"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:5</code></a>
+        <a href="../files/.._src_materials_material.js.html#l4"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:4</code></a>
         </p>
 
 
@@ -277,6 +279,10 @@ The rendering of a material is handled by the material itself, if not provided t
                             </li>
                             <li class="index-item method">
                                 <a href="#method_getProperty">getProperty</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getResources">getResources</a>
 
                             </li>
                             <li class="index-item method">
@@ -425,7 +431,7 @@ The rendering of a material is handled by the material itself, if not provided t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l312"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:312</code></a>
+        <a href="../files/.._src_materials_material.js.html#l281"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:281</code></a>
         </p>
 
 
@@ -471,7 +477,7 @@ The rendering of a material is handled by the material itself, if not provided t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l271"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:271</code></a>
+        <a href="../files/.._src_materials_material.js.html#l240"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:240</code></a>
         </p>
 
 
@@ -531,7 +537,7 @@ The rendering of a material is handled by the material itself, if not provided t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l781"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:781</code></a>
+        <a href="../files/.._src_materials_material.js.html#l738"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:738</code></a>
         </p>
 
 
@@ -604,7 +610,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_graphMaterial.js.html#l143"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:143</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l161"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:161</code></a>
         </p>
 
 
@@ -647,7 +653,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l355"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:355</code></a>
+        <a href="../files/.._src_materials_material.js.html#l324"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:324</code></a>
         </p>
 
 
@@ -690,7 +696,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l387"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:387</code></a>
+        <a href="../files/.._src_materials_material.js.html#l356"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:356</code></a>
         </p>
 
 
@@ -733,7 +739,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_graphMaterial.js.html#l189"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:189</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l207"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:207</code></a>
         </p>
 
 
@@ -776,7 +782,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l374"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:374</code></a>
+        <a href="../files/.._src_materials_material.js.html#l343"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:343</code></a>
         </p>
 
 
@@ -825,7 +831,71 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l652"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:652</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l97"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:97</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Collects all the resources needed by this material (textures)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">resources</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>object where all the resources are stored</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Texture</span>:
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getResources" class="method item">
+    <h3 class="name"><code>getResources</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>resources</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Texture</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_materials_material.js.html#l621"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:621</code></a>
         </p>
 
 
@@ -889,7 +959,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l586"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:586</code></a>
+        <a href="../files/.._src_materials_material.js.html#l555"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:555</code></a>
         </p>
 
 
@@ -947,7 +1017,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l505"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:505</code></a>
+        <a href="../files/.._src_materials_material.js.html#l474"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:474</code></a>
         </p>
 
 
@@ -996,7 +1066,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l612"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:612</code></a>
+        <a href="../files/.._src_materials_material.js.html#l581"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:581</code></a>
         </p>
 
 
@@ -1060,7 +1130,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l325"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:325</code></a>
+        <a href="../files/.._src_materials_material.js.html#l294"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:294</code></a>
         </p>
 
 
@@ -1117,7 +1187,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l694"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:694</code></a>
+        <a href="../files/.._src_materials_material.js.html#l663"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:663</code></a>
         </p>
 
 
@@ -1157,7 +1227,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_graphMaterial.js.html#l168"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:168</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l186"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:186</code></a>
         </p>
 
 
@@ -1221,7 +1291,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l671"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:671</code></a>
+        <a href="../files/.._src_materials_material.js.html#l640"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:640</code></a>
         </p>
 
 
@@ -1284,7 +1354,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l706"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:706</code></a>
+        <a href="../files/.._src_materials_material.js.html#l675"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:675</code></a>
         </p>
 
 
@@ -1335,7 +1405,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l287"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:287</code></a>
+        <a href="../files/.._src_materials_material.js.html#l256"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:256</code></a>
         </p>
 
 
@@ -1381,7 +1451,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_graphMaterial.js.html#l212"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:212</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l230"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:230</code></a>
         </p>
 
 
@@ -1438,7 +1508,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_graphMaterial.js.html#l251"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:251</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l269"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:269</code></a>
         </p>
 
 
@@ -1508,7 +1578,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l516"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:516</code></a>
+        <a href="../files/.._src_materials_material.js.html#l485"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:485</code></a>
         </p>
 
 
@@ -1585,7 +1655,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l637"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:637</code></a>
+        <a href="../files/.._src_materials_material.js.html#l606"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:606</code></a>
         </p>
 
 
@@ -1656,7 +1726,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l565"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:565</code></a>
+        <a href="../files/.._src_materials_material.js.html#l534"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:534</code></a>
         </p>
 
 
@@ -1727,7 +1797,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l25"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:25</code></a>
+        <a href="../files/.._src_materials_material.js.html#l24"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:24</code></a>
         </p>
 
 
@@ -1753,7 +1823,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l153"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:153</code></a>
+        <a href="../files/.._src_materials_material.js.html#l152"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:152</code></a>
         </p>
 
 
@@ -1779,7 +1849,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l76"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:76</code></a>
+        <a href="../files/.._src_materials_material.js.html#l75"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:75</code></a>
         </p>
 
 
@@ -1805,7 +1875,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l96"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:96</code></a>
+        <a href="../files/.._src_materials_material.js.html#l95"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:95</code></a>
         </p>
 
 
@@ -1831,7 +1901,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l160"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:160</code></a>
+        <a href="../files/.._src_materials_material.js.html#l159"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:159</code></a>
         </p>
 
 
@@ -1848,7 +1918,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
 </div>
 <div id="property_query" class="property item">
     <h3 class="name"><code>query</code></h3>
-    <span class="type"><a href="../classes/LS.ShaderQuery.html" class="crosslink">LS.ShaderQuery</a></span>
+    <span class="type">LS.ShaderQuery</span>
 
 
 
@@ -1857,7 +1927,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l68"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:68</code></a>
+        <a href="../files/.._src_materials_material.js.html#l67"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:67</code></a>
         </p>
 
 
@@ -1883,7 +1953,7 @@ This will be gone in the future in order to use the new ShaderMaterial rendering
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l33"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:33</code></a>
+        <a href="../files/.._src_materials_material.js.html#l32"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:32</code></a>
         </p>
 
 
@@ -1909,7 +1979,7 @@ This will be gone in the future in order to use the new ShaderMaterial rendering
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l107"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:107</code></a>
+        <a href="../files/.._src_materials_material.js.html#l106"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:106</code></a>
         </p>
 
 
@@ -1935,7 +2005,7 @@ This will be gone in the future in order to use the new ShaderMaterial rendering
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l122"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:122</code></a>
+        <a href="../files/.._src_materials_material.js.html#l121"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:121</code></a>
         </p>
 
 
@@ -1960,7 +2030,7 @@ This will be gone in the future in order to use the new ShaderMaterial rendering
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l41"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:41</code></a>
+        <a href="../files/.._src_materials_material.js.html#l40"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:40</code></a>
         </p>
 
 
@@ -1986,7 +2056,7 @@ TODO: render states should be moved to render passes defined by the shadercode i
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l169"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:169</code></a>
+        <a href="../files/.._src_materials_material.js.html#l168"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:168</code></a>
         </p>
 
 
@@ -2012,7 +2082,7 @@ TODO: render states should be moved to render passes defined by the shadercode i
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l60"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:60</code></a>
+        <a href="../files/.._src_materials_material.js.html#l59"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:59</code></a>
         </p>
 
 
@@ -2038,7 +2108,7 @@ contains info about the samplers for every texture channel</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l52"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:52</code></a>
+        <a href="../files/.._src_materials_material.js.html#l51"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:51</code></a>
         </p>
 
 

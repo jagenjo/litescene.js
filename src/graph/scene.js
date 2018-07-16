@@ -9,7 +9,6 @@ if(typeof(LiteGraph) != "undefined")
 		this._scene = null;
 	}
 
-
 	LGraphScene.title = "Scene";
 	LGraphScene.desc = "Scene";
 
@@ -31,7 +30,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphScene.prototype.onAdded = function( graph )
 	{
-		this.bindEvents( this.graph.getScene() );
+		this.bindEvents( this.graph.getScene ? this.graph.getScene() : LS.GlobalScene );
 	}
 
 	LGraphScene.prototype.onRemoved = function()
@@ -41,7 +40,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphScene.prototype.onConnectionsChange = function()
 	{
-		this.bindEvents( this.graph.getScene() );
+		this.bindEvents( this.graph.getScene ? this.graph.getScene() : LS.GlobalScene );
 	}
 
 	//bind events attached to this component
@@ -73,7 +72,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphScene.prototype.onExecute = function()
 	{
-		var scene = this.graph.getScene();
+		var scene = this.graph.getScene ? this.graph.getScene() : LS.GlobalScene;
 
 		//read inputs
 		if(this.inputs)
@@ -117,11 +116,8 @@ if(typeof(LiteGraph) != "undefined")
 
 	global.LGraphSceneNode = function()
 	{
-		this.properties = {node_id:""};
+		this.properties = { node_id: "" };
 		this.size = [100,20];
-
-		this.addInput("node_id", "string", { locked: true });
-
 		this._node = null;
 	}
 
@@ -143,6 +139,9 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		var node_id = null;
 
+		if(!this.graph)
+			return null;
+
 		//first check input
 		if(this.inputs && this.inputs[0])
 			node_id = this.getInputData(0);
@@ -153,8 +152,15 @@ if(typeof(LiteGraph) != "undefined")
 		if(	!node_id && this.properties.node_id )
 			node_id = this.properties.node_id;
 
+		if( node_id == "@" )
+		{
+			if( this.graph._scenenode )
+				return this.graph._scenenode;
+			return null;
+		}
+
 		//get node from scene
-		var scene = this.graph.getScene();
+		var scene = this.graph && this.graph.getScene ? this.graph.getScene() : LS.GlobalScene;
 		if(!scene)
 			return;
 
@@ -178,7 +184,7 @@ if(typeof(LiteGraph) != "undefined")
 		//read inputs
 		if(this.inputs) //there must be inputs always but just in case
 		{
-			for(var i = 1; i < this.inputs.length; ++i)
+			for(var i = 0; i < this.inputs.length; ++i)
 			{
 				var input = this.inputs[i];
 				if( input.type === LiteGraph.ACTION )
@@ -188,11 +194,12 @@ if(typeof(LiteGraph) != "undefined")
 					continue;
 				switch( input.name )
 				{
+					case "UID": this.properties.node_id = v; break;
+					case "SceneNode": this.properties.node_id = v ? v.uid : null; if(v) node = v; break;
 					case "Transform": node.transform.copyFrom(v); break;
 					case "Material": node.material = v;	break;
 					case "Visible": node.flags.visible = v; break;
 					default:
-
 						break;
 				}
 			}
@@ -210,6 +217,9 @@ if(typeof(LiteGraph) != "undefined")
 				case "SceneNode": this.setOutputData( i, node ); break;
 				case "Material": this.setOutputData( i, node.getMaterial() ); break;
 				case "Transform": this.setOutputData( i, node.transform ); break;
+				case "Name": this.setOutputData( i, node.name ); break;
+				case "Children": this.setOutputData( i, node.children ); break;
+				case "UID": this.setOutputData( i, node.uid ); break;
 				case "Mesh": this.setOutputData(i, node.getMesh()); break;
 				case "Visible": this.setOutputData(i, node.flags.visible ); break;
 				default:
@@ -299,13 +309,13 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetInputs = function()
 	{
-		var result = [["Visible","boolean"],["Material","Material"]];
+		var result = [["Visible","boolean"],["UID","string"],["SceneNode","SceneNode"],["Material","Material"]];
 		return this.getComponents(result);
 	}
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["SceneNode","SceneNode"],["Visible","boolean"],["Material","Material"],["on_clicked",LiteGraph.EVENT]];
+		var result = [["SceneNode","SceneNode"],["Visible","boolean"],["Material","Material"],["Name","string"],["UID","string"],["Children","scenenode[]"],["on_clicked",LiteGraph.EVENT]];
 		return this.getComponents(result);
 	}
 
@@ -692,10 +702,13 @@ if(typeof(LiteGraph) != "undefined")
 				case "Rotation": transform.setRotation(v); break;
 				case "Scale": transform.setScale(v); break;
 				case "Matrix": transform.fromMatrix(v); break;
+				case "Mult.Matrix": transform.applyTransformMatrix(v); break;
 				case "Translate": transform.translate(v); break;
 				case "Translate Global": transform.translateGlobal(v); break;
 				case "Rotate": quat.multiply( transform._rotation, transform._rotation, v ); transform._must_update = true; break;
+				case "RotateX": transform.rotateX(v); break;
 				case "RotateY": transform.rotateY(v); break;
+				case "RotateZ": transform.rotateZ(v); break;
 			}
 		}
 
@@ -730,7 +743,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTransform.prototype.onGetInputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"],["Translate","vec3"],["Translate Global","vec3"],["Rotate","quat"],["RotateY","number"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"],["Mult.Matrix","mat4"],["Translate","vec3"],["Translate Global","vec3"],["Rotate","quat"],["RotateX","number"],["RotateY","number"],["RotateZ","number"]];
 	}
 
 	LGraphTransform.prototype.onGetOutputs = function()

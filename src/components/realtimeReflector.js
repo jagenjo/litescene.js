@@ -78,17 +78,6 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 
 	var cameras = LS.Renderer._visible_cameras;
 
-	//to be sure we are not using this texture during the rendering to avoid
-	//rendering to and reading of same texture
-	/*
-	var mat = this._root.getMaterial();
-	if(mat)
-		mat.setTexture( Material.ENVIRONMENT_TEXTURE, null );
-	mat.fillUniforms( LS.Renderer._current_scene ); //otherwise the samplers wont be updated
-	//gl.activeTexture(gl.TEXTURE0 + LS.Renderer.ENVIRONMENT_TEXTURE_SLOT);
-	//gl.bindTexture( gl.TEXTURE_2D, null );
-	//gl.bindTexture( gl.TEXTURE_CUBE_MAP, null );
-	*/
 	LS.Renderer.clearSamplers();
 
 	for(var i = 0; i < cameras.length; i++)
@@ -197,15 +186,6 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 	render_settings.layers = old_layers;
 	delete render_settings.brightness_factor;
 	delete render_settings.colorclip_factor;
-
-	/*
-	if(mat)
-	{
-		var sampler = mat.setTexture( Material.ENVIRONMENT_TEXTURE, ":reflection_" + camera.uid );
-		sampler.uvs = Material.COORDS_FLIPPED_SCREEN;
-		mat.fillUniforms( LS.Renderer._current_scene ); //otherwise the samplers wont be updated
-	}
-	*/
 
 	//make it visible again
 	this._root.flags.visible = visible;

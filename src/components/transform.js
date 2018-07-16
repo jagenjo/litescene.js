@@ -954,13 +954,17 @@ Transform.prototype.translateGlobal = function(x,y,z)
 * @method rotate
 * @param {number} angle_in_deg 
 * @param {vec3} axis
+* @param {boolean} is_global tells if the axis is in global coordinates or local coordinates
 */
 Transform.prototype.rotate = (function(){
 
 	var temp = quat.create();
+	var temp_axis = quat.create();
 
-	return function(angle_in_deg, axis)
+	return function(angle_in_deg, axis, is_global )
 	{
+		if( is_global ) //convert global vector to local
+			axis = this.globalVectorToLocal( axis, temp_axis );
 		quat.setAxisAngle( temp, axis, angle_in_deg * 0.0174532925 );
 		quat.multiply( this._rotation, this._rotation, temp );
 		this._must_update = true;

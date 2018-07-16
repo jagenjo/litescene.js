@@ -168,6 +168,8 @@ StandardMaterial.prototype.prepare = function( scene )
 	this.fillUniforms( scene ); //update uniforms
 }
 
+//options vec4: channel, degamma, transform, contrast
+
 StandardMaterial.FLAGS = {
 	COLOR_TEXTURE: 1<<1,
 	OPACITY_TEXTURE: 1<<2,
@@ -203,6 +205,7 @@ StandardMaterial.shader_codes = {};
 
 //returns the LS.ShaderCode required to render
 //here we cannot filter by light pass because this is done before applying shaderblocks
+//in the StandardMaterial we cache versions of the ShaderCode according to the settings
 StandardMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
 	var FLAGS = StandardMaterial.FLAGS;
@@ -261,13 +264,13 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 
 	//generate code
 	var code = {
-		vs: "",
+		vs_local: "",
 		fs: "",
 		fs_shadows: ""
 	};
 
 	if( code_flags & FLAGS.DISPLACEMENT_TEXTURE )
-		code.vs += "	vertex4.xyz += v_normal * texture2D( displacement_texture, v_uvs ).x * u_displacementmap_factor;\n";	
+		code.vs_local += "	vertex4.xyz += v_normal * texture2D( displacement_texture, v_uvs ).x * u_displacementmap_factor;\n";	
 
 	//uvs
 	code.fs += "vec2 uv0 = (vec3(IN.uv,1.0) * u_texture_matrix).xy;\n";
@@ -342,10 +345,13 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	if( StandardMaterial.onShaderCode )
 		StandardMaterial.onShaderCode( code, this, code_flags );
 
+	shader_code.code = ShaderCode.replaceCode( final_code, code );
+	/*
 	shader_code.code = final_code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
 		v = v.replace( /[\{\}]/g, "" );
 		return code[v] || "";
 	});
+	*/
 
 	LS.StandardMaterial.shader_codes[ code_flags ] = shader_code;
 	return shader_code;
@@ -625,6 +631,9 @@ uniform float u_point_size;\n\
 \n\
 //camera\n\
 uniform vec3 u_camera_eye;\n\
+uniform vec2 u_camera_planes;\n\
+\n\
+#pragma event \"vs_functions\"\n\
 \n\
 //special cases\n\
 {{vs_out}}\n\
@@ -635,11 +644,10 @@ void main() {\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
 	\n\
-	{{vs}}\n\
 	//local deforms\n\
+	{{vs_local}}\n\
 	applyMorphing( vertex4, v_normal );\n\
 	applySkinning( vertex4, v_normal );\n\
-	{{vs_local_deform}}\n\
 	\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
@@ -653,11 +661,13 @@ void main() {\n\
 		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	#endif\n\
 	//world deform\n\
-	{{vs_deform}}\n\
+	{{vs_global}}\n\
+	\n\
+	#pragma event \"vs_final_pass\"\n\
 	\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 	gl_PointSize = u_point_size;\n\
-	#pragma shaderblock \"modifyFinalVertexPosition\"\n\
+	#pragma event \"vs_final\"\n\
 }\n\
 \n\
 \\color.fs\n\
@@ -740,6 +750,8 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 	o.Reflectivity *= max(0.0, pow( 1.0 - clamp(0.0, dot(IN.viewDir,o.Normal),1.0), u_reflection_info.y ));\n\
 }\n\
 \n\
+#pragma event \"fs_functions\"\n\
+\n\
 {{fs_out}}\n\
 \n\
 void main() {\n\
@@ -763,6 +775,7 @@ void main() {\n\
 		final_color.xyz += specular * LIGHT.Color * FINALLIGHT.Shadow;\n\
 	#endif\n\
 	final_color = applyReflection( IN, o, final_color );\n\
+	#pragma event \"fs_final_pass\"\n\
 	{{fs_encode}}\n\
 	#ifdef DRAW_BUFFERS\n\
 	  gl_FragData[0] = final_color;\n\
@@ -771,6 +784,7 @@ void main() {\n\
 	#else\n\
 	  gl_FragColor = final_color;\n\
 	#endif\n\
+	#pragma event \"fs_final\"\n\
 }\n\
 \\shadow.vs\n\
 \n\
@@ -820,11 +834,10 @@ void main() {\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
   \n\
-	{{vs}}\n\
   //deforms\n\
+  {{vs_local}}\n\
   applyMorphing( vertex4, v_normal );\n\
   applySkinning( vertex4, v_normal );\n\
-  {{vs_local_deform}}\n\
 	\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
@@ -837,7 +850,7 @@ void main() {\n\
 	#else\n\
 		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	#endif\n\
-  {{vs_deform}}\n\
+  {{vs_global}}\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \\shadow.fs\n\
@@ -921,17 +934,18 @@ uniform vec3 u_camera_eye;\n\
 \n\
 {{vs_out}}\n\
 \n\
+#pragma event \"vs_functions\"\n\
+\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
   \n\
-	{{vs}}\n\
   //deforms\n\
+  {{vs_local}}\n\
   applyMorphing( vertex4, v_normal );\n\
   applySkinning( vertex4, v_normal );\n\
-  {{vs_local_deform}}\n\
 	\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
@@ -944,8 +958,9 @@ void main() {\n\
 	#else\n\
 		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	#endif\n\
-  {{vs_deform}}\n\
+  {{vs_global}}\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+	#pragma event \"vs_final\"\n\
 }\n\
 \\picking.fs\n\
 	precision mediump float;\n\
@@ -957,7 +972,7 @@ void main() {\n\
 
 
 /* example to inject code in the standardMaterial without having to edit it
-//hooks are vs_out (out of main), vs_local_deformer (vertex4 to deform vertices localy), vs_deformer (v_pos to deform final position), fs_out (out of main), fs_encode (final_color before being written)
+//hooks are vs_out (out of main), vs_local (vertex4 to deform vertices localy), vs_global (v_pos to deform final position), fs_out (out of main), fs_encode (final_color before being written)
 this.onStart = function()
 {
   LS.StandardMaterial.onShaderCode = function(code,mat)

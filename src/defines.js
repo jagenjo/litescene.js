@@ -4,13 +4,13 @@ if(typeof(GL) == "undefined")
 
 //blending mode
 var Blend = {
-	AUTOMATIC: "automatic",
-	NORMAL: "normal",
-	ALPHA: "alpha",
-	ADD: "add",
-	MULTIPLY: "multiply",
-	SCREEN: "screen",
-	CUSTOM: "custom"
+	AUTOMATIC: 1,
+	NORMAL: 2,
+	ALPHA: 3,
+	ADD: 4,
+	MULTIPLY: 5,
+	SCREEN: 6,
+	CUSTOM: 7
 }
 
 LS.Blend = Blend;

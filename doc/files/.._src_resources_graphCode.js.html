@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Components.Skybox</title>
+    <title>../src/resources/graphCode.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -156,216 +156,208 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.Components.Skybox Class</h1>
-<div class="box meta">
-
-
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_components_skybox.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;skybox.js:1</code></a>
-        </div>
-
-            Module: <a href="../modules/LS.html">LS</a>
-
-</div>
-
-
-<div class="box intro">
-    <p>Skybox allows to render a cubemap or polar image as a background for the 3D scene</p>
-
-</div>
-
-    <div class="constructor">
-        <h2>Constructor</h2>
-<div id="method_LS.Components.Skybox" class="method item">
-    <h3 class="name"><code>LS.Components.Skybox</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>object</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_components_skybox.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;skybox.js:1</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>[optional] to configure from</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
-    </div>
-
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
-
-            <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
-    </ul>
-
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
-
-                <div class="index-section methods">
-                    <h3>Methods</h3>
-
-                    <ul class="index-list methods">
-                            <li class="index-item method">
-                                <a href="#method_configure">configure</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_serialize">serialize</a>
-
-                            </li>
-                    </ul>
-                </div>
-
-
-
-        </div>
-
-            <div id="methods" class="api-class-tabpanel">
-                <h2 class="off-left">Methods</h2>
-
-<div id="method_configure" class="method item">
-    <h3 class="name"><code>configure</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>object</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_components_skinnedMeshRenderer.js.html#l80"><code>..&#x2F;src&#x2F;components&#x2F;skinnedMeshRenderer.js:80</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Configure from a serialized object</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>with the serialized info</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
-<div id="method_serialize" class="method item">
-    <h3 class="name"><code>serialize</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_components_skinnedMeshRenderer.js.html#l103"><code>..&#x2F;src&#x2F;components&#x2F;skinnedMeshRenderer.js:103</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Serialize the object</p>
-
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>object with the serialized info</p>
-
-            </div>
-        </div>
-
-
-</div>
-            </div>
-
-
-
-    </div>
+<h1 class="file-heading">File: ../src/resources/graphCode.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+/**
+* This is a class to contain the code from a graph, it doesnt execute the graph (this is done in GraphComponent)
+* It is here so different GraphComponent can share the same Graph structure and it can be stored in a JSON
+* 
+* @class GraphCode
+* @constructor
+*/
+
+function GraphCode( data )
+{
+	this._data = { &quot;object_class&quot;:&quot;GraphCode&quot; };
+	this._modified = false;
+
+	//graph?
+	this._graph = new LiteGraph.LGraph();
+	this._graph._graphcode = this; //double link
+	this.extra = {
+		type: GraphCode.LOGIC_GRAPH
+	}
+	this._version = 0;
+
+	if(data)
+		this.setData( data, true );
+}
+
+GraphCode.LOGIC_GRAPH = 1;
+GraphCode.SHADER_GRAPH = 2;
+
+GraphCode.EXTENSION = &quot;GRAPH.json&quot;;
+GraphCode.hasPreview = false; //should this resource use a preview image?
+
+Object.defineProperty( GraphCode.prototype, &quot;graph&quot;, {
+	enumerable: false,
+	get: function() {
+		return this._graph;
+	},
+	set: function(v) {
+		console.error(&quot;graph cannot be set manually&quot;);
+	}
+});
+
+Object.defineProperty( GraphCode.prototype, &quot;data&quot;, {
+	enumerable: false,
+	get: function() {
+		return this.getData();
+	},
+	set: function(v) {
+		this.setData( v );
+	}
+});
+
+Object.defineProperty( GraphCode.prototype, &quot;version&quot;, {
+	enumerable: false,
+	get: function() {
+		return this._version;
+	},
+	set: function(v) {
+		console.error(&quot;version cannot be set manually&quot;);
+	}
+});
+
+Object.defineProperty( GraphCode.prototype, &quot;type&quot;, {
+	enumerable: false,
+	get: function() {
+		return this.extra.type;
+	},
+	set: function(v) {
+		this.extra.type = v;
+	}
+});
+
+//used when storing/retrieving the resource
+GraphCode.prototype.setData = function( data, skip_modified_flag )
+{
+	if(!data)
+	{
+		this._data = null;
+		return;
+	}
+
+	if(LS.catch_exceptions)
+		try
+		{
+			if(data.constructor === String)
+				this._data = JSON.parse( data );
+			else
+				this._data = JSON.parse( JSON.stringify( data ) ); //clone...
+		}
+		catch (err)
+		{
+			console.error(&quot;error in graph data&quot;);
+			return;
+		}
+	else
+	{
+		if(data.constructor === String)
+			this._data = JSON.parse( data );
+		else
+			this._data = JSON.parse( JSON.stringify( data ) ); //clone...
+	}
+
+	this._graph.configure( this._data );
+	if( this._data.extra )
+		this.extra = this._data.extra;
+
+	if(!skip_modified_flag)
+	{
+		this._version++;
+		this._modified = true;
+	}
+}
+
+GraphCode.prototype.getData = function()
+{
+	var data = this.graph.serialize();
+	data.object_class = &quot;GraphCode&quot;;
+	data.extra = this.extra;
+	return data;
+}
+
+GraphCode.prototype.getDataToStore = function(){
+	return JSON.stringify( this.getData() );
+}
+
+GraphCode.prototype.getCategory = function()
+{
+	return &quot;Graph&quot;;
+}
+
+//sends changes in this graphcode to all nodes  using this graph
+GraphCode.prototype.propagate = function()
+{
+	var filename = this.fullpath || this.filename;
+
+	if( this.type == GraphCode.LOGIC_GRAPH )
+	{
+		var components = LS.GlobalScene.findNodeComponents( LS.Components.GraphComponent );
+		for(var i = 0; i &lt; components.length; ++i)
+		{
+			var comp = components[i];
+			if(comp.filename != this.filename )
+				continue;
+			comp.graphcode = this;
+		}
+	}
+}
+
+//used in materials
+GraphCode.prototype.getShaderCode = function()
+{
+	if( this._shader_code &amp;&amp; this._code_version == this._graph._version )
+		return this._shader_code;
+
+	if(!this._shader_code)
+		this._shader_code = new LS.ShaderCode();
+
+	var final_code = LS.SurfaceMaterial.code_template;
+
+	var context = { uniforms: [] };
+	var graph_code = &quot;&quot;;
+
+	var nodes = this._graph._nodes_in_order;
+	for(var i = 0; i &lt; nodes.length; ++i)
+	{
+		var node = nodes[i];
+		if( node.onGetCode )
+			graph_code += node.onGetCode( &quot;glsl&quot;, context );
+	}
+
+	var uniforms_code = &quot;&quot;;
+	for(var i = 0; i &lt; context.uniforms.length; ++i)
+	{
+		var uniform = context.uniforms[i];
+		uniforms_code += &quot;uniform &quot; + uniform.type + &quot; &quot; + uniform.link_name + &quot;;\n&quot;;
+	}
+
+	var surface_code = &quot;void surf( in Input IN, inout SurfaceOutput o ) {\n\
+	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
+	o.Normal = IN.worldNormal;\n\
+	o.Emission = vec3(0.0);\n\
+	o.Specular = 1.0;\n\
+	o.Gloss = 40.0;\n\
+	o.Reflectivity = max(0.0, 0.5 - dot(IN.viewDir,o.Normal));\n\
+	o.Alpha = IN.color.a;\n&quot;;
+
+	var context = {
+		fs_out: uniforms_code + &quot;\n\n&quot; + surface_code + &quot;\n&quot; + graph_code + &quot;\n}\n&quot;
+	};
+
+	this._shader_code.code = LS.ShaderCode.replaceCode( final_code, context );
+	this._code_version = this._graph._version;
+	return this._shader_code;
+}
+
+LS.GraphCode = GraphCode;
+LS.registerResourceClass( GraphCode );
+
+    </pre>
 </div>
                     </div>
                 </div>

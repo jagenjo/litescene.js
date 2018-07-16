@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -159,7 +161,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_render_renderer.js.html#l3"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:3</code></a>
+            Defined in: <a href="../files/.._src_render_renderer.js.html#l4"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:4</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -189,7 +191,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l3"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:3</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l4"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:4</code></a>
         </p>
 
 
@@ -270,10 +272,6 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_renderColorMultiPassLightingInstance">renderColorMultiPassLightingInstance</a>
-
-                            </li>
-                            <li class="index-item method">
                                 <a href="#method_renderFrame">renderFrame</a>
 
                             </li>
@@ -291,14 +289,6 @@
                             </li>
                             <li class="index-item method">
                                 <a href="#method_renderMaterialPreview">renderMaterialPreview</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_renderPickingInstance">renderPickingInstance</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_renderShadowPassInstance">renderShadowPassInstance</a>
 
                             </li>
                             <li class="index-item method">
@@ -353,7 +343,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1637"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1637</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1443"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1443</code></a>
         </p>
 
 
@@ -444,7 +434,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1681"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1681</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1488"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1488</code></a>
         </p>
 
 
@@ -521,7 +511,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l453"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:453</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l464"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:464</code></a>
         </p>
 
 
@@ -587,7 +577,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l381"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:381</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l389"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:389</code></a>
         </p>
 
 
@@ -650,7 +640,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1660"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1660</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1466"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1466</code></a>
         </p>
 
 
@@ -706,7 +696,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1129"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1129</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l939"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:939</code></a>
         </p>
 
 
@@ -779,7 +769,7 @@ Do not reuse the query, they change between rendering passes (shadows, reflectio
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1584"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1584</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1390"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1390</code></a>
         </p>
 
 
@@ -859,7 +849,7 @@ Do not reuse the query, they change between rendering passes (shadows, reflectio
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l442"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:442</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l453"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:453</code></a>
         </p>
 
 
@@ -911,7 +901,7 @@ Do not reuse the query, they change between rendering passes (shadows, reflectio
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l718"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:718</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l734"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:734</code></a>
         </p>
 
 
@@ -992,7 +982,7 @@ It is used by the multipass lighting to iterate</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1218"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1218</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1019"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1019</code></a>
         </p>
 
 
@@ -1071,7 +1061,7 @@ Warning: rendering order is computed here, so it is shared among all the cameras
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1622"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1622</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1428"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1428</code></a>
         </p>
 
 
@@ -1142,7 +1132,7 @@ Warning: rendering order is computed here, so it is shared among all the cameras
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l182"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:182</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l186"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:186</code></a>
         </p>
 
 
@@ -1198,87 +1188,6 @@ If you want to change the rendering pipeline, do not overwrite this function, tr
 
 
 </div>
-<div id="method_renderColorMultiPassLightingInstance" class="method item">
-    <h3 class="name"><code>renderColorMultiPassLightingInstance</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>instance</code>
-                </li>
-                <li class="arg">
-                        <code>render_settings</code>
-                </li>
-                <li class="arg">
-                        <code>lights</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_render_renderer.js.html#l801"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:801</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Renders the RenderInstance taking into account all the lights that affect it and doing a render for every light
-This function it is not as fast as I would like but enables lots of interesting features</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">instance</code>
-                        <span class="type">RenderInstance</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">render_settings</code>
-                        <span class="type">RenderSettings</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">lights</code>
-                        <span class="type">Array</span>
-
-
-                    <div class="param-description">
-                        <p>array containing al the lights affecting this RI</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
 <div id="method_renderFrame" class="method item">
     <h3 class="name"><code>renderFrame</code></h3>
 
@@ -1306,7 +1215,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l329"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:329</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l337"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:337</code></a>
         </p>
 
 
@@ -1383,7 +1292,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l300"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:300</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l308"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:308</code></a>
         </p>
 
 
@@ -1449,7 +1358,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l541"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:541</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l552"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:552</code></a>
         </p>
 
 
@@ -1519,7 +1428,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1408"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1408</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1211"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1211</code></a>
         </p>
 
 
@@ -1604,7 +1513,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1499"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1499</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1305"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1305</code></a>
         </p>
 
 
@@ -1678,138 +1587,6 @@ This function it is not as fast as I would like but enables lots of interesting 
 
 
 </div>
-<div id="method_renderPickingInstance" class="method item">
-    <h3 class="name"><code>renderPickingInstance</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>instance</code>
-                </li>
-                <li class="arg">
-                        <code>render_settings</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_render_renderer.js.html#l973"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:973</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Render instance into the picking buffer</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">instance</code>
-                        <span class="type">RenderInstance</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">render_settings</code>
-                        <span class="type">RenderSettings</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
-<div id="method_renderShadowPassInstance" class="method item">
-    <h3 class="name"><code>renderShadowPassInstance</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>instance</code>
-                </li>
-                <li class="arg">
-                        <code>render_settings</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_render_renderer.js.html#l929"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:929</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Renders this RenderInstance into the shadowmap</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">instance</code>
-                        <span class="type">RenderInstance</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">render_settings</code>
-                        <span class="type">RenderSettings</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
 <div id="method_renderToCubemap" class="method item">
     <h3 class="name"><code>renderToCubemap</code></h3>
 
@@ -1849,7 +1626,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1446"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1446</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1249"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1249</code></a>
         </p>
 
 
@@ -1964,7 +1741,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l510"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:510</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l521"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:521</code></a>
         </p>
 
 
@@ -2017,7 +1794,7 @@ This function it is not as fast as I would like but enables lots of interesting 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderer.js.html#l1611"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1611</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1417"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1417</code></a>
         </p>
 
 

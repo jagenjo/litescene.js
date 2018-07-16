@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -210,6 +212,7 @@ CameraController.PAN_XZ = 11; //pans only in the XZ plane
 CameraController.CHANGE_DISTANCE = 15; //scales the center from eye to center
 CameraController.WALK = 16; //moves forward or backward
 CameraController.ELEVATE = 17; //moves forward or backward
+CameraController.FOV = 18; //changes zoom (FOV)
 
 
 CameraController.icon = &quot;mini-icon-cameracontroller.png&quot;;
@@ -228,7 +231,9 @@ CameraController.mode_values = {
 	};
 
 CameraController.wheel_values = { 
+		&quot;None&quot;: CameraController.NONE,
 		&quot;Change Distance&quot;: CameraController.CHANGE_DISTANCE,
+		&quot;FOV&quot;: CameraController.FOV,
 		&quot;Walk&quot;: CameraController.WALK,
 		&quot;Elevate&quot;: CameraController.ELEVATE
 };
@@ -409,7 +414,7 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 	else if(mode == CameraController.ROTATE || mode == CameraController.ROTATE_HORIZONTAL )
 	{
 		var top = LS.TOP; //cam.getLocalVector(LS.TOP);
-		cam.rotate(-mouse_event.deltax * this.rot_speed * 0.2,top);
+		cam.rotate( -mouse_event.deltax * this.rot_speed * 0.2, top );
 		cam.updateMatrices();
 
 		if( mode == CameraController.ROTATE )
@@ -422,7 +427,7 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
-				node.transform.rotate(-mouse_event.deltay * this.rot_speed,LS.RIGHT);
+				node.transform.rotate( -mouse_event.deltay * this.rot_speed * 0.2, LS.RIGHT );
 				cam.updateMatrices();
 			}
 		}
@@ -508,8 +513,19 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	if(mouse_event.eventType == &quot;mousewheel&quot;)
 	{
 		var wheel = mouse_event.wheel &gt; 0 ? 1 : -1;
-		cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed );
-		cam.updateMatrices();
+
+		switch( this.mouse_wheel_action )
+		{
+			case CameraController.CHANGE_DISTANCE: 
+				cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed );
+				cam.updateMatrices();
+				break;
+			case CameraController.FOV: 
+				cam.fov = cam.fov - wheel;
+				cam.updateMatrices();
+				break;
+		}
+
 		node.scene.requestFrame();
 		return;
 	}
