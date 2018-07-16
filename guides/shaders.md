@@ -30,11 +30,18 @@ The subfile to contain this calls should be called ```\js```
 
 this.createUniform("Scale","u_tex_scale","number",1, {min:0, max:1}); //create a uniform for the shader
 this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} ); //create a sampler (texture) for the shader
-this.createProperty("Node",null, LS.TYPES.NODE ); //create a property not meant to be send to the shader (to use with onPrepare)
+this.createProperty("Node",null, LS.TYPES.NODE ); //create a property not meant to be send to the shader (to use with onPrepare or onRenderInstance)
 this.render_state.depth_test = false; //the flags to use when rendering
 ```
 
 This function will be called once the shader is assigned to the material.
+
+The valid types for uniforms are:
+- number for float
+- vec2,vec3,vec4 
+- color for vec3
+- texture, cubemap
+
 
 ## RenderState ##
 
@@ -135,6 +142,24 @@ this.onPrepare = function( scene )
 }
 ```
 
+## onRenderInstance
+
+Sometimes you need to compute and pass something to the shader per render call (like the inverse of the viewmatrix or the inverse of the model).
+In those cases you can define the ```onRenderInstance``` method on the material which gets a reference to the ```LS.RenderInstance``` that is about to be rendered.
+
+```js
+
+var imodel = mat4.create();
+
+this.onRenderInstance = function( instance )
+{
+  var camera = LS.Renderer._current_camera;
+  var node = instance.node;
+  //...
+  instance.uniforms["u_imodel"] = mat4.invert( imodel, instance.matrix );
+}
+```
+
 ## Pragmas
 
 You can use some special pragmas designed to allow the user to include external code, this is helpful to reuse GLSL code between different ShaderCodes.
@@ -182,6 +207,15 @@ To create a snippet:
 ```javascript
 	LS.ShadersManager.registerSnippet("mysnippet", "//code...");
 ```
+
+### pragma event
+
+Another way to include shader code inside this material is by emiting events while compiling the shader, to do that you can define events inside the source, that will be replaced by the code inside enabled shader blocks listening to that event.
+
+```c++
+	#pragma snippet "fs_encode"
+```
+
 
 ## Structs
 
