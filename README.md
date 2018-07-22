@@ -13,6 +13,9 @@ It comes with a realistic rendering pipeline and some interesting components to 
 
  It uses its own low-level library called [litegl.js](https://github.com/jagenjo/litegl.js)
 
+![litescene-screenshot.png](litescene-screenshot.png "LiteScene")
+
+
 ### WebGLStudio ###
 
 Litescene has been created to work together with [WebGLStudio](https://webglstudio.org), an open source online 3D editor.
