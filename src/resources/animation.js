@@ -1443,7 +1443,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 		if(this._type_index == Track.QUAT )
 		{
-			quat.slerp( result, a_value, b_value, t );
+			quat.slerp( result, b_value, a_value, t );
 			quat.normalize( result, result ); //is necesary?
 		}
 		else if(this._type_index == Track.TRANS10 )

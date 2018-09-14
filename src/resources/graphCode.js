@@ -146,9 +146,9 @@ GraphCode.prototype.propagate = function()
 }
 
 //used in materials
-GraphCode.prototype.getShaderCode = function()
+GraphCode.prototype.getShaderCode = function( as_string )
 {
-	if( this._shader_code && this._code_version == this._graph._version )
+	if( this._shader_code && this._code_version == this._graph._version && !as_string )
 		return this._shader_code;
 
 	if(!this._shader_code)
@@ -180,12 +180,15 @@ GraphCode.prototype.getShaderCode = function()
 	o.Emission = vec3(0.0);\n\
 	o.Specular = 1.0;\n\
 	o.Gloss = 40.0;\n\
-	o.Reflectivity = max(0.0, 0.5 - dot(IN.viewDir,o.Normal));\n\
+	o.Reflectivity = 0.0;\n\
 	o.Alpha = IN.color.a;\n";
 
 	var context = {
 		fs_out: uniforms_code + "\n\n" + surface_code + "\n" + graph_code + "\n}\n"
 	};
+
+	if( as_string )
+		return context.fs_out;
 
 	this._shader_code.code = LS.ShaderCode.replaceCode( final_code, context );
 	this._code_version = this._graph._version;

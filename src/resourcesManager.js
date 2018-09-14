@@ -1379,8 +1379,11 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 	//WBIN?
 	if(data.constructor == ArrayBuffer)
 	{
-		if(!data.length) //empty file?
+		if(!data.byteLength) //empty file?
+		{
+			console.warn("Empty WBin?");
 			return null;
+		}
 
 		resource = WBin.load(data);
 		if(callback)

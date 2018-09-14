@@ -238,20 +238,33 @@ ReflectionProbe.prototype.updateIrradiance = function()
 	cubemap.copyTo( downscale_cubemap );
 	
 	//blur
+	var temp_texture = GL.Texture.getTemporary( downscale_cubemap.width, downscale_cubemap.height, downscale_cubemap );
+
+	var origin = downscale_cubemap;
+	var destination = temp_texture;
+
 	for(var i = 0; i < 8; ++i)
-		downscale_cubemap.applyBlur( i,i,1 );
+	{
+		origin.applyBlur( i,i,1, destination );
+		var tmp = origin;
+		origin = destination;
+		destination = tmp;
+	}
+	destination = origin;
 
 	//downscale again
 	var irradiance_cubemap = this._irradiance_texture;
 	if(!irradiance_cubemap || irradiance_cubemap.type != type)
 		irradiance_cubemap = this._irradiance_texture = new GL.Texture( 4, 4, { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
-	downscale_cubemap.copyTo( irradiance_cubemap );
+	destination.copyTo( irradiance_cubemap );
 
 	//blur again
 	for(var i = 0; i < 4; ++i)
 		irradiance_cubemap.applyBlur( i,i,1 );
 
 	this.assignCubemaps();
+
+	GL.Texture.releaseTemporary( temp_texture );
 
 	return irradiance_cubemap;
 }
@@ -354,6 +367,32 @@ ReflectionProbe.objectToCubemap = function( data, out, high_precision )
 	return out;
 }
 
+/*
+ReflectionProbe.cubemapToIrradiance = function( origin_cubemap, destination_cubemap )
+{
+	var iterations = Math.log(origin_cubemap.width) / Math.log(2);
+
+	var width = origin_cubemap.width;
+	var temp_textures = [];
+	var origin = origin_cubemap;
+	var dest = null;
+	for( var i = 0; i < iterations; ++i)
+	{
+		width = width >> 1;
+		if(width <= 8)
+			break;
+		var temp = GL.Texture.getTemporary( width, width, destination_cubemap );
+		temp_textures.push( temp );
+		origin.applyBlur(0.5,0.5,1, temp);
+		origin = temp;
+	}
+
+	temp.copyTo( destination_cubemap );
+	for(var i = 0; i < temp_textures.length; ++i)
+		GL.Texture.releaseTemporary( temp_textures[i] );
+}
+*/
+
 ReflectionProbe.visualize_helpers = true;
 ReflectionProbe.visualize_irradiance = false;
 ReflectionProbe.helper_size = 1;
@@ -414,7 +453,7 @@ IrradianceCache.prototype.recompute = function()
 	LS.GlobalScene.info.textures.irradiance = null;
 
 	var final_cubemap_size = IrradianceCache.final_cubemap_size;
-	var texture_size = IrradianceCache.capture_cubemap_size;
+	var texture_size = IrradianceCache.capture_cubemap_size; //default is 64
 	var texture_settings = { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
 	var texture = this._temp_cubemap;
 	if( !texture || texture.width != texture_size || texture.height != texture_size || texture.type != texture_settings.type )
@@ -466,13 +505,12 @@ IrradianceCache.prototype.captureIrradiance = function( position, output_cubemap
 {
 	LS.Renderer.clearSamplers();
 
-	var texture = this._temp_cubemap;
-
 	//render all the scene inside the cubemap
-	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
+	LS.Renderer.renderToCubemap( position, 0, this._temp_cubemap, render_settings, this.near, this.far, this.background_color );
 
 	//downsample
-	texture.copyTo( output_cubemap );
+	//ReflectionProbe.cubemapToIrradiance( this._temp_cubemap, output_cubemap );
+	this._temp_cubemap.copyTo( output_cubemap );
 }
 
 IrradianceCache.prototype.encodeCacheInTexture = function()

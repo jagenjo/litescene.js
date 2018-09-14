@@ -60,6 +60,7 @@
                                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
                                 <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
+                                <li><a href="../classes/LS.Components.MorphDeformer.html">LS.Components.MorphDeformer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
                                 <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
                                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
@@ -109,7 +110,6 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
-                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
@@ -440,7 +440,13 @@ WBin.load = function( data_array, skip_classname, filename )
 					break;
 			case &quot;WideObject&quot;: 
 							lump_data = new Uint16Array( (new Uint8Array( lump_data )).buffer ); //no break
-			case &quot;Object&quot;:	lump_final = JSON.parse( WBin.TypedArrayToString( lump_data ) ); break;
+			case &quot;Object&quot;:	
+				var str = WBin.TypedArrayToString( lump_data );
+				if(str)
+					lump_final = JSON.parse( str ); 
+				else
+					console.warn(&quot;WBIN: lump \&quot;&quot;+ lump.name +&quot;\&quot; string is empty, skipping.&quot;);
+				break;
 			case &quot;ArrayBuffer&quot;: lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
 				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment

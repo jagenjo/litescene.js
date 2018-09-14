@@ -10,20 +10,16 @@
 */
 
 //passes
-var COLOR_PASS = 1;
-var SHADOW_PASS = 2;
-var PICKING_PASS = 3;
+var COLOR_PASS = LS.COLOR_PASS = { name: "color", id: 1 };
+var SHADOW_PASS = LS.SHADOW_PASS = { name: "shadow", id: 2 };
+var PICKING_PASS = LS.PICKING_PASS = { name: "picking", id: 3 };
 
 var Renderer = {
 
 	default_render_settings: new LS.RenderSettings(), //overwritten by the global info or the editor one
 	default_material: new LS.StandardMaterial(), //used for objects without material
 
-	render_passes: {}, //used to specify the render function for every kind of render pass (color, shadow, picking, etc)
-	renderPassFunction: null, //function to call when rendering instances
-
 	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
-
 	default_point_size: 1, //point size in pixels (could be overwritte by render instances)
 
 	_global_viewport: vec4.create(), //the viewport we have available to render the full frame (including subviewports), usually is the 0,0,gl.canvas.width,gl.canvas.height
@@ -34,7 +30,7 @@ var Renderer = {
 	_current_render_settings: null,
 	_current_camera: null,
 	_current_target: null, //texture where the image is being rendered
-	_current_pass: null,
+	_current_pass: COLOR_PASS, //object containing info about the pass
 	_global_textures: {}, //used to speed up fetching global textures
 	_global_shader_blocks: [], //used to add extra shaderblocks to all objects in the scene (it gets reseted every frame)
 	_global_shader_blocks_flags: 0, 
@@ -122,11 +118,6 @@ var Renderer = {
 		if(global.enableWebGLCanvas && !gl.canvas.canvas2DtoWebGL_enabled)
 			global.enableWebGLCanvas( gl.canvas );
 
-		//there are different render passes, they have different render functions
-		this.registerRenderPass( "color", { id: COLOR_PASS, render_instance: this.renderColorPassInstance } );
-		this.registerRenderPass( "shadow", { id: SHADOW_PASS, render_instance: this.renderShadowPassInstance } );
-		this.registerRenderPass( "picking", { id: PICKING_PASS, render_instance: this.renderPickingPassInstance } );
-
 		// we use fixed slots to avoid changing texture slots all the time
 		// from more common to less (to avoid overlappings with material textures)
 		// the last slot is reserved for litegl binding stuff
@@ -164,7 +155,6 @@ var Renderer = {
 	reset: function()
 	{
 	},
-
 
 	//used to clear the state
 	resetState: function()
@@ -222,6 +212,8 @@ var Renderer = {
 		this._global_shader_blocks_flags = 0;
 		for(var i in this._global_textures)
 			this._global_textures[i] = null;
+		if(!this._current_pass)
+			this._current_pass = COLOR_PASS;
 
 
 		//to restore from a possible exception (not fully tested, remove if problem)
@@ -292,10 +284,8 @@ var Renderer = {
 
 		//profiling must go here
 		this._frame_cpu_time = getTime() - start_time;
-		if( LS.Draw )
-		{
+		if( LS.Draw ) //developers may decide not to include LS.Draw
 			this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
-		}
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger( scene, "afterRender", render_settings ); 
@@ -590,9 +580,11 @@ var Renderer = {
 		//reset again!
 		this.resetGLState( render_settings );
 
+		/*
 		var render_instance_func = pass.render_instance;
 		if(!render_instance_func)
 			return 0;
+		*/
 
 		var render_instances = instances || this._visible_instances;
 
@@ -610,9 +602,9 @@ var Renderer = {
 			instance._is_visible = false;
 
 			//hidden nodes
-			if( pass.id == SHADOW_PASS && !(instance.material.flags.cast_shadows) )
+			if( pass == SHADOW_PASS && !(instance.material.flags.cast_shadows) )
 				continue;
-			if( pass.id == PICKING_PASS && node_flags.selectable === false )
+			if( pass == PICKING_PASS && node_flags.selectable === false )
 				continue;
 			if( (layers_filter & instance.layers) === 0 )
 				continue;
@@ -625,7 +617,7 @@ var Renderer = {
 			if(!instance.material) //in case something went wrong...
 				continue;
 
-			var material = instance.material;
+			var material = camera.overwrite_material || instance.material;
 
 			if(material.opacity <= 0) //TODO: remove this, do it somewhere else
 				continue;
@@ -642,7 +634,7 @@ var Renderer = {
 			if(camera_index_flag) //shadowmap cameras dont have an index
 				instance._camera_visibility |= camera_index_flag;
 
-			//if material supports instancing WIP
+			//TODO: if material supports instancing WIP
 			/*
 			if( instancing_supported && material._allows_instancing && !instance._shader_blocks.length )
 			{
@@ -681,9 +673,14 @@ var Renderer = {
 
 				this._rendered_instances += 1;
 
-				//choose the appropiate render pass
-				//TODO: KILL THIS AND REPLACE BY CALLING MATERIAL.renderInstance
-				render_instance_func.call( this, instance, render_settings, pass ); //by default calls renderColorInstance but it could call renderShadowPassInstance
+				var material = camera.overwrite_material || instance.material;
+
+				if( pass == PICKING_PASS && material.renderPickingInstance )
+					material.renderPickingInstance( instance, render_settings, pass );
+				else if( material.renderInstance )
+					material.renderInstance( instance, render_settings, pass );
+				else
+					continue;
 
 				//some instances do a post render action
 				if(instance.onPostRender)
@@ -772,45 +769,6 @@ var Renderer = {
 		}
 
 		return result;
-	},
-
-	//this function is in charge of rendering the regular color pass (used also for reflections)
-	renderColorPassInstance: function( instance, render_settings, pass )
-	{
-		//render instance
-		var renderered = false;
-		if( instance.material && instance.material.renderInstance )
-			renderered = instance.material.renderInstance( instance, render_settings, pass );
-
-		//render using default system (slower but it works)
-		if(!renderered)
-			return;
-	},
-
-	//this function is in charge of rendering an instance in the shadowmap
-	renderShadowPassInstance: function( instance, render_settings, pass )
-	{
-		//render instance
-		var renderered = false;
-		if( instance.material && instance.material.renderInstance )
-			renderered = instance.material.renderInstance( instance, render_settings, pass );
-
-		//render using default system (slower but it works)
-		if(!renderered)
-			return;
-	},
-
-	//this function is in charge of rendering an instance in the shadowmap
-	renderPickingPassInstance: function( instance, render_settings, pass )
-	{
-		//render instance
-		var renderered = false;
-		if( instance.material && instance.material.renderPickingInstance )
-			renderered = instance.material.renderPickingInstance( instance, render_settings, pass );
-
-		//render using default system (slower but it works)
-		if(!renderered)
-			return;
 	},
 
 	regenerateShadowmaps: function( scene, render_settings )
@@ -930,34 +888,10 @@ var Renderer = {
 
 				//sRGB textures must specified ON CREATION, so no
 				//if(sampler.anisotropic != null && gl.extensions.EXT_sRGB )
-
 				//sampler._must_update = false;
 			}
 		}
 	},
-
-	/**
-	* Update the scene shader query according to the render pass
-	* Do not reuse the query, they change between rendering passes (shadows, reflections, etc)
-	*
-	* @method fillSceneShaderQuery
-	* @param {Scene} scene
-	* @param {RenderSettings} render_settings
-	*/
-	/*
-	fillSceneShaderQuery: function( scene, render_settings )
-	{
-		var query = new LS.ShaderQuery();
-
-		if(this._current_renderframe && this._current_renderframe.use_extra_texture && gl.extensions["WEBGL_draw_buffers"])
-			query.setMacro("USE_DRAW_BUFFERS");
-
-		//so components can add stuff (like Fog, etc)
-		LEvent.trigger( scene, "fillSceneQuery", query );
-
-		scene._query = query;
-	},
-	*/
 
 	//Called at the beginning of renderInstances (once per renderFrame)
 	//DO NOT CACHE, parameters can change between render passes
@@ -971,9 +905,6 @@ var Renderer = {
 			u_viewport: gl.viewport_data
 		};
 
-		if( this._current_pass.id == COLOR_PASS && render_settings.linear_pipeline )
-			uniforms.u_gamma = 2.2;
-
 		scene._uniforms = uniforms;
 		scene._samplers = scene._samplers || [];
 		scene._samplers.length = 0;
@@ -982,7 +913,7 @@ var Renderer = {
 		this._global_textures.environment = null;
 		this._global_textures.irradiance = null;
 
-		//fetch globals
+		//fetch global textures
 		for(var i in scene.info.textures)
 		{
 			var texture = LS.getTexture( scene.info.textures[i] );
@@ -1141,27 +1072,6 @@ var Renderer = {
 			if(!queue)
 				continue;
 			queue.add( instance );
-
-			//node & mesh constant information
-			//DEPRECATED
-			//var query = instance.query;
-
-			/* deprecated
-			var buffers = instance.vertex_buffers;
-			if(!("normals" in buffers))
-				query.macros.NO_NORMALS = "";
-			if(!("coords" in buffers))
-				query.macros.NO_COORDS = "";
-			if(("coords1" in buffers))
-				query.macros.USE_COORDS1_STREAM = "";
-			if(("colors" in buffers)) //particles
-				query.macros.USE_COLOR_STREAM = "";
-			if(("tangents" in buffers))
-				query.macros.USE_TANGENT_STREAM = "";
-			*/
-			//deprecated?
-			//if(("colors" in instance.mesh.vertexBuffers)) //particles
-			//	query.macros.USE_COLOR_STREAM = "";
 
 			instance._camera_visibility = 0|0;
 		}
@@ -1415,32 +1325,6 @@ var Renderer = {
 	},
 
 	/**
-	* Sets the render pass to use, this allow to change between "color","shadow","picking",etc
-	*
-	* @method setRenderPass
-	* @param {String} name name of the render pass as in render_passes
-	*/
-	setRenderPass: function( name )
-	{
-		this._current_pass = this.render_passes[ name ] || this.render_passes[ "color" ];
-	},
-
-	/**
-	* Register a render pass to be used during the rendering
-	*
-	* @method registerRenderPass
-	* @param {String} name name of the render pass as in render_passes
-	* @param {Object} info render pass info, { render_instance: Function( instance, render_settings ) }
-	*/
-	registerRenderPass: function( name, info )
-	{
-		info.name = name;
-		this.render_passes[ name ] = info;
-		if(!this._current_pass)
-			this._current_pass = info;
-	},
-
-	/**
 	* Adds a new RenderQueue to the Renderer.
 	*
 	* @method addRenderQueue
@@ -1462,6 +1346,13 @@ var Renderer = {
 			for(var i in options)
 				queue[i] = options[i];
 	},
+
+	setRenderPass: function( pass )
+	{
+		if(!pass)
+			pass = COLOR_PASS;
+		this._current_pass = pass;
+	},
 	
 	/**
 	* Enables a ShaderBlock ONLY DURING THIS FRAME
@@ -1482,7 +1373,7 @@ var Renderer = {
 		//add uniforms to renderer uniforms?
 		if(uniforms)
 			for(var i in uniforms)
-				this._renderer_uniforms[i] = uniforms[i];
+				this._render_uniforms[i] = uniforms[i];
 	},
 
 	/**
@@ -1491,9 +1382,10 @@ var Renderer = {
 	* @method blit
 	* @param {GL.Texture} source
 	* @param {GL.Texture} destination
-	* @param {GL.Shader} shader [optional]
+	* @param {GL.Shader} shader [optional] shader to apply, it must use the GL.Shader.QUAD_VERTEX_SHADER as vertex shader
+	* @param {Object} uniforms [optional] uniforms for the shader
 	*/
-	blit: function( source, destination, shader )
+	blit: function( source, destination, shader, uniforms )
 	{
 		if(!source || !destination)
 			throw("data missing in blit");
@@ -1501,7 +1393,7 @@ var Renderer = {
 		if(source != destination)
 		{
 			destination.drawTo( function(){
-				source.toViewport( shader);
+				source.toViewport( shader, uniforms );
 			});
 			return;
 		}
@@ -1511,7 +1403,7 @@ var Renderer = {
 
 		var temp = GL.Texture.getTemporary( source.width, source.height, source );
 		source.copyTo( temp );
-		temp.copyTo( source, shader );
+		temp.copyTo( source, shader, uniforms );
 		GL.Texture.releaseTemporary( temp );
 	}
 };

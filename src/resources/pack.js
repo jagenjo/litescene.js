@@ -160,6 +160,32 @@ Pack.prototype.addResources = function( resource_names, mark_them )
 }
 
 /**
+* Adds a resource to the prefab
+* @method addResource
+* @param {String} filename filename of the resource
+**/
+Pack.prototype.addResource = function( filename )
+{
+	filename = LS.ResourcesManager.cleanFullpath( filename );
+	var index = this.resource_names.indexOf(filename);
+	if(index == -1)
+		this.resource_names.push( filename );
+}
+
+/**
+* Remove a resource to the prefab
+* @method removeResource
+* @param {String} filename filename of the resource
+**/
+Pack.prototype.removeResource = function(filename)
+{
+	filename = LS.ResourcesManager.cleanFullpath( filename );
+	var index = this.resource_names.indexOf(filename);
+	if(index != -1)
+		this.resource_names.splice( index, 1 );
+}
+
+/**
 * to create a WBin containing all the resource and metadata
 * @method Pack.createWBin
 * @param {String} fullpath for the pack

@@ -751,7 +751,7 @@ Light.prototype.generateShadowmap = function (render_settings)
 		}
 	}
 
-	LS.Renderer.setRenderPass("shadow");
+	LS.Renderer.setRenderPass( SHADOW_PASS );
 	LS.Renderer._current_light = this;
 
 	//render the scene inside the texture
@@ -783,7 +783,7 @@ Light.prototype.generateShadowmap = function (render_settings)
 		LS.Renderer._current_target = null;
 	}
 
-	LS.Renderer.setRenderPass("color");
+	LS.Renderer.setRenderPass( COLOR_PASS );
 	LS.Renderer._current_light = null;
 }
 

@@ -184,6 +184,17 @@
                 "LS.Components": 1
             }
         },
+        "../src/components/morphDeformer.js": {
+            "name": "../src/components/morphDeformer.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.MorphDeformer": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS.Components": 1
+            }
+        },
         "../src/components/nodeManipulator.js": {
             "name": "../src/components/nodeManipulator.js",
             "modules": {},
@@ -576,15 +587,6 @@
             "fors": {},
             "namespaces": {}
         },
-        "../src/resources/shaderGraph.js": {
-            "name": "../src/resources/shaderGraph.js",
-            "modules": {},
-            "classes": {
-                "LS.ShaderGraph": 1
-            },
-            "fors": {},
-            "namespaces": {}
-        },
         "../src/utils/lscript.js": {
             "name": "../src/utils/lscript.js",
             "modules": {},
@@ -812,6 +814,7 @@
                 "LS.Components.LightFX": 1,
                 "LS.Components.LinesRenderer": 1,
                 "LS.Components.MeshRenderer": 1,
+                "LS.Components.MorphDeformer": 1,
                 "LS.Components.NodeManipulator": 1,
                 "LS.Particle": 1,
                 "LS.Components.ParticlesEmissor": 1,
@@ -849,7 +852,6 @@
                 "LS.Prefab": 1,
                 "LS.Resource": 1,
                 "LS.ShaderCode": 1,
-                "LS.ShaderGraph": 1,
                 "LS.LScript": 1,
                 "LS.WBin": 1,
                 "LS.BaseComponent": 1,
@@ -1289,6 +1291,28 @@
             "file": "../src/components/meshRenderer.js",
             "line": 2,
             "description": "Renders one mesh, it allows to configure the rendering primitive, the submesh (range of mesh) and a level of detail mesh",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ]
+        },
+        "LS.Components.MorphDeformer": {
+            "name": "LS.Components.MorphDeformer",
+            "shortname": "LS.Components.MorphDeformer",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "module": "LS",
+            "namespace": "LS.Components",
+            "file": "../src/components/morphDeformer.js",
+            "line": 3,
+            "description": "It complements a MeshRenderer to add Morph Targets (Blend Shapes) to deform meshes.\nMorph Targets of a mesh must have the same topology and number of vertex, otherwise it won't work.",
             "is_constructor": 1,
             "params": [
                 {
@@ -1974,21 +1998,6 @@
             "file": "../src/resources/shaderCode.js",
             "line": 1,
             "description": "ShaderCode is a resource containing all the code associated to a shader\nIt is used to define special ways to render scene objects, having full control of the rendering algorithm\nHaving a special class helps to parse the data in advance and share it between different materials",
-            "is_constructor": 1
-        },
-        "LS.ShaderGraph": {
-            "name": "LS.ShaderGraph",
-            "shortname": "ShaderGraph",
-            "classitems": [],
-            "plugins": [],
-            "extensions": [],
-            "plugin_for": [],
-            "extension_for": [],
-            "module": "LS",
-            "namespace": "LS",
-            "file": "../src/resources/shaderGraph.js",
-            "line": 2,
-            "description": "ShaderGraph is a resource containing a graph that generates the code associated to a shader\nIt is used to define special ways to render scene objects, having full control of the rendering algorithm",
             "is_constructor": 1
         },
         "LS.LScript": {
@@ -4016,40 +4025,7 @@
         },
         {
             "file": "../src/components/meshRenderer.js",
-            "line": 13,
-            "description": "The name of the mesh to render",
-            "itemtype": "property",
-            "name": "mesh",
-            "type": "String",
-            "default": "null;",
-            "class": "LS.Components.MeshRenderer",
-            "namespace": "LS.Components"
-        },
-        {
-            "file": "../src/components/meshRenderer.js",
-            "line": 19,
-            "description": "The name of the mesh to render in case the mesh is far away, this mesh is also used for collision testing if using raycast to RenderInstances",
-            "itemtype": "property",
-            "name": "lod_mesh",
-            "type": "String",
-            "default": "null;",
-            "class": "LS.Components.MeshRenderer",
-            "namespace": "LS.Components"
-        },
-        {
-            "file": "../src/components/meshRenderer.js",
-            "line": 25,
-            "description": "The id of the submesh group to render, if the id is -1 then all the mesh is rendered.",
-            "itemtype": "property",
-            "name": "submesh_id",
-            "type": "Number",
-            "default": "-1;",
-            "class": "LS.Components.MeshRenderer",
-            "namespace": "LS.Components"
-        },
-        {
-            "file": "../src/components/meshRenderer.js",
-            "line": 33,
+            "line": 48,
             "description": "The GL primitive to use when rendering this mesh (gl.POINTS, gl.TRIANGLES, etc), -1 is default, it also supports the option 10 which means Wireframe",
             "itemtype": "property",
             "name": "primitive",
@@ -4060,7 +4036,51 @@
         },
         {
             "file": "../src/components/meshRenderer.js",
-            "line": 167,
+            "line": 65,
+            "description": "The material to apply to this render, if not provided the one in the node will be used",
+            "itemtype": "property",
+            "name": "material",
+            "type": "String",
+            "default": "-1;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 79,
+            "description": "The name of the mesh to render",
+            "itemtype": "property",
+            "name": "mesh",
+            "type": "String",
+            "default": "null;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 93,
+            "description": "The name of the mesh to render in case the mesh is far away, this mesh is also used for collision testing if using raycast to RenderInstances",
+            "itemtype": "property",
+            "name": "lod_mesh",
+            "type": "String",
+            "default": "null;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 107,
+            "description": "The id of the submesh group to render, if the id is -1 then all the mesh is rendered.",
+            "itemtype": "property",
+            "name": "submesh_id",
+            "type": "Number",
+            "default": "-1;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 175,
             "description": "Configure from a serialized object",
             "itemtype": "method",
             "name": "configure",
@@ -4076,7 +4096,7 @@
         },
         {
             "file": "../src/components/meshRenderer.js",
-            "line": 191,
+            "line": 199,
             "description": "Serialize the object",
             "itemtype": "method",
             "name": "serialize",
@@ -4085,6 +4105,124 @@
                 "type": "Object"
             },
             "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 15,
+            "description": "The mode used to apply the morph targets, could be using the CPU, the GPU using uniforms( limited by the browser/driver) or using Textures (more expensive). Leave it as automatic so the system knows the best case.",
+            "itemtype": "property",
+            "name": "mode  MorphDeformer.AUTOMATIC, MorphDeformer.CPU, MorphDeformer.STREAMS, MorphDeformer.TEXTURES",
+            "type": "Number",
+            "default": "MorphDeformer.AUTOMATIC;",
+            "class": "LS.Components.MorphDeformer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 22,
+            "description": "An array with every morph targets info in the form of { mesh: mesh_name, weight: number }",
+            "itemtype": "property",
+            "name": "morph_targets",
+            "type": "Array",
+            "default": "[];",
+            "class": "LS.Components.MorphDeformer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 80,
+            "description": "Sets the weight for all the",
+            "itemtype": "method",
+            "name": "clearWeights",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "with the serialized info",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Components.MorphDeformer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 524,
+            "description": "returns the index of the morph target that uses this mesh",
+            "itemtype": "method",
+            "name": "getMorphIndex",
+            "params": [
+                {
+                    "name": "mesh_name",
+                    "description": "the name (filename) of the mesh in the morph target",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "the index",
+                "type": "Number"
+            },
+            "class": "LS.Components.MorphDeformer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 538,
+            "description": "sets the mesh for a morph target",
+            "itemtype": "method",
+            "name": "setMorphMesh",
+            "params": [
+                {
+                    "name": "index",
+                    "description": "the index of the morph target",
+                    "type": "Number"
+                },
+                {
+                    "name": "mesh",
+                    "description": "the mesh resource",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Components.MorphDeformer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 551,
+            "description": "sets the weight for a morph target",
+            "itemtype": "method",
+            "name": "setMorphWeight",
+            "params": [
+                {
+                    "name": "index",
+                    "description": "the index of the morph target",
+                    "type": "Number"
+                },
+                {
+                    "name": "weight",
+                    "description": "the weight",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Components.MorphDeformer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 647,
+            "description": "Returns the base mesh on which the morph targets will be applied",
+            "itemtype": "method",
+            "name": "getBaseMesh",
+            "class": "LS.Components.MorphDeformer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/morphDeformer.js",
+            "line": 663,
+            "description": "Removes innecesary morph targets and removes data from mesh that is already in the base mesh",
+            "itemtype": "method",
+            "name": "optimizeMorphTargets",
+            "class": "LS.Components.MorphDeformer",
             "namespace": "LS.Components"
         },
         {
@@ -6206,7 +6344,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 545,
+            "line": 534,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -6226,7 +6364,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 622,
+            "line": 611,
             "description": "Takes an input texture and applies the ShaderMaterial, the result is shown on the viewport or stored in the output_texture\nThe ShaderCode must contain a \"fx\" method.\nSimilar to the method BlitTexture in Unity",
             "itemtype": "method",
             "name": "applyToTexture",
@@ -6247,7 +6385,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 665,
+            "line": 654,
             "description": "Makes one shader variable (uniform) public so it can be assigned from the engine (or edited from the editor)",
             "itemtype": "method",
             "name": "createUniform",
@@ -6283,7 +6421,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 727,
+            "line": 716,
             "description": "Similar to createUniform but for textures, it helps specifying sampler options",
             "itemtype": "method",
             "name": "createSampler",
@@ -6314,7 +6452,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 786,
+            "line": 775,
             "description": "Creates a property for this material, this property wont be passed to the shader but can be used from source code.\nYou must used this function if you want the data to be stored when serializing or changing the ShaderCode",
             "itemtype": "method",
             "name": "createProperty",
@@ -6345,7 +6483,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 829,
+            "line": 818,
             "description": "Event used to inform if one resource has changed its name",
             "itemtype": "method",
             "name": "onResourceRenamed",
@@ -7809,7 +7947,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 186,
+            "line": 176,
             "description": "Renders the current scene to the screen\nMany steps are involved, from gathering info from the scene tree, generating shadowmaps, setup FBOs, render every camera\nIf you want to change the rendering pipeline, do not overwrite this function, try to understand it first, otherwise you will miss lots of features",
             "itemtype": "method",
             "name": "render",
@@ -7837,7 +7975,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 308,
+            "line": 298,
             "description": "Calls renderFrame of every camera in the cameras list (triggering the appropiate events)",
             "itemtype": "method",
             "name": "renderFrameCameras",
@@ -7858,7 +7996,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 337,
+            "line": 327,
             "description": "renders the view from one camera to the current viewport (could be the screen or a texture)",
             "itemtype": "method",
             "name": "renderFrame",
@@ -7884,7 +8022,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 389,
+            "line": 379,
             "description": "Sets camera as the current camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw",
             "itemtype": "method",
             "name": "enableCamera",
@@ -7905,7 +8043,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 453,
+            "line": 443,
             "description": "Returns the camera active",
             "itemtype": "method",
             "name": "getCurrentCamera",
@@ -7918,7 +8056,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 464,
+            "line": 454,
             "description": "clear color using camera info ( background color, viewport scissors, clear depth, etc )",
             "itemtype": "method",
             "name": "clearBuffer",
@@ -7939,7 +8077,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 521,
+            "line": 511,
             "description": "To set gl state to a known and constant state in every render pass",
             "itemtype": "method",
             "name": "resetGLState",
@@ -7955,7 +8093,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 552,
+            "line": 542,
             "description": "Calls the render method for every RenderInstance (it also takes into account events and frustrum culling)",
             "itemtype": "method",
             "name": "renderInstances",
@@ -7976,7 +8114,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 734,
+            "line": 731,
             "description": "returns a list of all the lights overlapping this instance (it uses sperical bounding so it could returns lights that are not really overlapping)\nIt is used by the multipass lighting to iterate",
             "itemtype": "method",
             "name": "getNearLights",
@@ -8001,28 +8139,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 939,
-            "description": "Update the scene shader query according to the render pass\nDo not reuse the query, they change between rendering passes (shadows, reflections, etc)",
-            "itemtype": "method",
-            "name": "fillSceneShaderQuery",
-            "params": [
-                {
-                    "name": "scene",
-                    "description": "",
-                    "type": "Scene"
-                },
-                {
-                    "name": "render_settings",
-                    "description": "",
-                    "type": "RenderSettings"
-                }
-            ],
-            "class": "LS.Renderer",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/render/renderer.js",
-            "line": 1019,
+            "line": 950,
             "description": "Collects and process the rendering instances, cameras and lights that are visible\nIts a prepass shared among all rendering passes\nWarning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)",
             "itemtype": "method",
             "name": "processVisibleData",
@@ -8048,7 +8165,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1211,
+            "line": 1121,
             "description": "Renders a frame into a texture (could be a cubemap, in which case does the six passes)",
             "itemtype": "method",
             "name": "renderInstancesToRT",
@@ -8074,7 +8191,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1249,
+            "line": 1159,
             "description": "Renders the current scene to a cubemap centered in the given position",
             "itemtype": "method",
             "name": "renderToCubemap",
@@ -8119,7 +8236,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1305,
+            "line": 1215,
             "description": "Renders the material preview to an image (or to the screen)",
             "itemtype": "method",
             "name": "renderMaterialPreview",
@@ -8154,7 +8271,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1390,
+            "line": 1300,
             "description": "Returns the last camera that falls into a given screen position",
             "itemtype": "method",
             "name": "getCameraAtPosition",
@@ -8184,44 +8301,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1417,
-            "description": "Sets the render pass to use, this allow to change between \"color\",\"shadow\",\"picking\",etc",
-            "itemtype": "method",
-            "name": "setRenderPass",
-            "params": [
-                {
-                    "name": "name",
-                    "description": "name of the render pass as in render_passes",
-                    "type": "String"
-                }
-            ],
-            "class": "LS.Renderer",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/render/renderer.js",
-            "line": 1428,
-            "description": "Register a render pass to be used during the rendering",
-            "itemtype": "method",
-            "name": "registerRenderPass",
-            "params": [
-                {
-                    "name": "name",
-                    "description": "name of the render pass as in render_passes",
-                    "type": "String"
-                },
-                {
-                    "name": "info",
-                    "description": "render pass info, { render_instance: Function( instance, render_settings ) }",
-                    "type": "Object"
-                }
-            ],
-            "class": "LS.Renderer",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/render/renderer.js",
-            "line": 1443,
+            "line": 1327,
             "description": "Adds a new RenderQueue to the Renderer.",
             "itemtype": "method",
             "name": "addRenderQueue",
@@ -8251,7 +8331,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1466,
+            "line": 1357,
             "description": "Enables a ShaderBlock ONLY DURING THIS FRAME",
             "itemtype": "method",
             "name": "enableFrameShaderBlock",
@@ -8267,7 +8347,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1488,
+            "line": 1379,
             "description": "Renders one texture into another texture, it allows to apply a shader",
             "itemtype": "method",
             "name": "blit",
@@ -8284,8 +8364,13 @@
                 },
                 {
                     "name": "shader",
-                    "description": "[optional]",
+                    "description": "[optional] shader to apply, it must use the GL.Shader.QUAD_VERTEX_SHADER as vertex shader",
                     "type": "GL.Shader"
+                },
+                {
+                    "name": "uniforms",
+                    "description": "[optional] uniforms for the shader",
+                    "type": "Object"
                 }
             ],
             "class": "LS.Renderer",
@@ -8984,6 +9069,38 @@
         {
             "file": "../src/resources/pack.js",
             "line": 162,
+            "description": "Adds a resource to the prefab",
+            "itemtype": "method",
+            "name": "addResource",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "filename of the resource",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Pack",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/pack.js",
+            "line": 175,
+            "description": "Remove a resource to the prefab",
+            "itemtype": "method",
+            "name": "removeResource",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "filename of the resource",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Pack",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/pack.js",
+            "line": 188,
             "description": "to create a WBin containing all the resource and metadata",
             "itemtype": "method",
             "name": "Pack.createWBin",
@@ -9062,6 +9179,38 @@
         {
             "file": "../src/resources/prefab.js",
             "line": 163,
+            "description": "Adds a resource to the prefab",
+            "itemtype": "method",
+            "name": "addResource",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "filename of the resource",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Prefab",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/prefab.js",
+            "line": 176,
+            "description": "Remove a resource to the prefab",
+            "itemtype": "method",
+            "name": "removeResource",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "filename of the resource",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Prefab",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/prefab.js",
+            "line": 190,
             "description": "to create a new prefab, it packs all the data an instantiates the resource",
             "itemtype": "method",
             "name": "Prefab.createPrefab",
@@ -9273,7 +9422,7 @@
         },
         {
             "file": "../src/utils/wbin.js",
-            "line": 317,
+            "line": 323,
             "description": "Extract the header info from an ArrayBuffer (it contains version, and lumps info)",
             "itemtype": "method",
             "name": "WBin.getHeaderInfo",

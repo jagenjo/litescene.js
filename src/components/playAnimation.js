@@ -501,9 +501,13 @@ PlayAnimation.prototype.getEvents = function()
 }
 
 //returns which actions can be triggered in this component
-PlayAnimation.prototype.getActions = function()
+PlayAnimation.prototype.getActions = function( actions )
 {
-	return { "play": "function","pause": "function","stop": "function" };
+	actions = actions || {};
+	actions["play"] = "function";
+	actions["pause"] = "function";
+	actions["stop"] = "function";
+	return actions;
 }
 
 

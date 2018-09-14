@@ -53,7 +53,7 @@ function Camera(o)
 	//in case we want to overwrite the view matrix manually
 	this._use_custom_projection_matrix = false; 
 
-	//in case we want to overwrite the view matrix manually
+	//in case we want to overwrite the shader of all visible objects
 	this.overwrite_material = null;
 
 	this._view_matrix = mat4.create();

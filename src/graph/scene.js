@@ -598,7 +598,7 @@ if(typeof(LiteGraph) != "undefined")
 		var compo = this.getComponent();
 		if(compo && compo.getActions)
 		{
-			var actions = compo.getActions();
+			var actions = compo.getActions({});
 			if(actions)
 			{
 				if(actions.constructor === Array)

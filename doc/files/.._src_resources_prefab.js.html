@@ -60,6 +60,7 @@
                                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
                                 <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
+                                <li><a href="../classes/LS.Components.MorphDeformer.html">LS.Components.MorphDeformer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
                                 <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
                                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
@@ -109,7 +110,6 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
-                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
@@ -321,6 +321,33 @@ Prefab.prototype.createObject = function()
 
 	return node;
 }
+
+/**
+* Adds a resource to the prefab
+* @method addResource
+* @param {String} filename filename of the resource
+**/
+Prefab.prototype.addResource = function( filename )
+{
+	filename = LS.ResourcesManager.cleanFullpath( filename );
+	var index = this.resource_names.indexOf(filename);
+	if(index == -1)
+		this.resource_names.push( filename );
+}
+
+/**
+* Remove a resource to the prefab
+* @method removeResource
+* @param {String} filename filename of the resource
+**/
+Prefab.prototype.removeResource = function(filename)
+{
+	filename = LS.ResourcesManager.cleanFullpath( filename );
+	var index = this.resource_names.indexOf(filename);
+	if(index != -1)
+		this.resource_names.splice( index, 1 );
+}
+
 
 /**
 * to create a new prefab, it packs all the data an instantiates the resource
