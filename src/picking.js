@@ -152,7 +152,7 @@ var Picking = {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 		this._picking_next_color_id = 0;
-		LS.Renderer.setRenderPass("picking");
+		LS.Renderer.setRenderPass( PICKING_PASS );
 		picking_render_settings.layers = layers;
 
 		//check instances colliding with cursor using a ray against AABBs
@@ -177,7 +177,7 @@ var Picking = {
 		LEvent.trigger( scene, "renderPicking", mouse_pos );
 		LEvent.trigger( LS.Renderer, "renderPicking", mouse_pos );
 
-		LS.Renderer.setRenderPass("color");
+		LS.Renderer.setRenderPass( COLOR_PASS );
 	}
 };
 

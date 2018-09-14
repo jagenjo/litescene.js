@@ -99,6 +99,10 @@ LS.Shaders.registerSnippet("light_structs","\n\
 
 // LIGHT ************************************************
 
+
+
+
+
 Light._vs_shaderblock_code = "\n\
 	#pragma shaderblock \"testShadow\"\n\
 ";

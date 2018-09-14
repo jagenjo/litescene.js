@@ -807,6 +807,7 @@ Material.prototype.getShader = function( pass_name )
 	return shader;
 }
 
+//main function called to render an object
 Material.prototype.renderInstance = function( instance, render_settings, pass )
 {
 	//some globals

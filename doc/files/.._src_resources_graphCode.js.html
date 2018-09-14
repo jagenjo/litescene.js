@@ -60,6 +60,7 @@
                                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
                                 <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
+                                <li><a href="../classes/LS.Components.MorphDeformer.html">LS.Components.MorphDeformer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
                                 <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
                                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
@@ -109,7 +110,6 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
-                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
@@ -308,9 +308,9 @@ GraphCode.prototype.propagate = function()
 }
 
 //used in materials
-GraphCode.prototype.getShaderCode = function()
+GraphCode.prototype.getShaderCode = function( as_string )
 {
-	if( this._shader_code &amp;&amp; this._code_version == this._graph._version )
+	if( this._shader_code &amp;&amp; this._code_version == this._graph._version &amp;&amp; !as_string )
 		return this._shader_code;
 
 	if(!this._shader_code)
@@ -342,12 +342,15 @@ GraphCode.prototype.getShaderCode = function()
 	o.Emission = vec3(0.0);\n\
 	o.Specular = 1.0;\n\
 	o.Gloss = 40.0;\n\
-	o.Reflectivity = max(0.0, 0.5 - dot(IN.viewDir,o.Normal));\n\
+	o.Reflectivity = 0.0;\n\
 	o.Alpha = IN.color.a;\n&quot;;
 
 	var context = {
 		fs_out: uniforms_code + &quot;\n\n&quot; + surface_code + &quot;\n&quot; + graph_code + &quot;\n}\n&quot;
 	};
+
+	if( as_string )
+		return context.fs_out;
 
 	this._shader_code.code = LS.ShaderCode.replaceCode( final_code, context );
 	this._code_version = this._graph._version;

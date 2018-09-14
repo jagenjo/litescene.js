@@ -10,31 +10,14 @@ function MeshRenderer(o)
 {
 	this._enabled = true;
 
-	/**
-	* The name of the mesh to render
-	* @property mesh {string}
-	* @default null;
-	*/
 	this._mesh = null;
-	/**
-	* The name of the mesh to render in case the mesh is far away, this mesh is also used for collision testing if using raycast to RenderInstances
-	* @property lod_mesh {string}
-	* @default null;
-	*/
+
 	this._lod_mesh = null;
-	/**
-	* The id of the submesh group to render, if the id is -1 then all the mesh is rendered.
-	* @property submesh_id {number}
-	* @default -1;
-	*/
+
 	this._submesh_id = -1;
 
 	this._material = null;
-	/**
-	* The GL primitive to use when rendering this mesh (gl.POINTS, gl.TRIANGLES, etc), -1 is default, it also supports the option 10 which means Wireframe
-	* @property primitive {number}
-	* @default -1;
-	*/
+
 	this._primitive = -1;
 
 	this._must_update_static = true; //used in static meshes
@@ -62,6 +45,11 @@ Object.defineProperty( MeshRenderer.prototype, 'enabled', {
 	enumerable: true
 });
 
+/**
+* The GL primitive to use when rendering this mesh (gl.POINTS, gl.TRIANGLES, etc), -1 is default, it also supports the option 10 which means Wireframe
+* @property primitive {number}
+* @default -1;
+*/
 Object.defineProperty( MeshRenderer.prototype, 'primitive', {
 	get: function() { return this._primitive; },
 	set: function(v) { 
@@ -74,6 +62,11 @@ Object.defineProperty( MeshRenderer.prototype, 'primitive', {
 	enumerable: true
 });
 
+/**
+* The material to apply to this render, if not provided the one in the node will be used
+* @property material {string}
+* @default -1;
+*/
 Object.defineProperty( MeshRenderer.prototype, 'material', {
 	get: function() { return this._material; },
 	set: function(v) { 
@@ -83,6 +76,11 @@ Object.defineProperty( MeshRenderer.prototype, 'material', {
 	enumerable: true
 });
 
+/**
+* The name of the mesh to render
+* @property mesh {string}
+* @default null;
+*/
 Object.defineProperty( MeshRenderer.prototype, 'mesh', {
 	get: function() { return this._mesh; },
 	set: function(v) { 
@@ -92,6 +90,11 @@ Object.defineProperty( MeshRenderer.prototype, 'mesh', {
 	enumerable: true
 });
 
+/**
+* The name of the mesh to render in case the mesh is far away, this mesh is also used for collision testing if using raycast to RenderInstances
+* @property lod_mesh {string}
+* @default null;
+*/
 Object.defineProperty( MeshRenderer.prototype, 'lod_mesh', {
 	get: function() { return this._lod_mesh; },
 	set: function(v) { 
@@ -101,6 +104,11 @@ Object.defineProperty( MeshRenderer.prototype, 'lod_mesh', {
 	enumerable: true
 });
 
+/**
+* The id of the submesh group to render, if the id is -1 then all the mesh is rendered.
+* @property submesh_id {number}
+* @default -1;
+*/
 Object.defineProperty( MeshRenderer.prototype, 'submesh_id', {
 	get: function() { return this._submesh_id; },
 	set: function(v) { 

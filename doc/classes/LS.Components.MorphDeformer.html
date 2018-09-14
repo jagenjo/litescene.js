@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.ShaderGraph</title>
+    <title>LS.Components.MorphDeformer</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -60,6 +60,7 @@
                                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
                                 <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
+                                <li><a href="../classes/LS.Components.MorphDeformer.html">LS.Components.MorphDeformer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
                                 <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
                                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
@@ -109,7 +110,6 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
-                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
@@ -156,12 +156,12 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.ShaderGraph Class</h1>
+<h1>LS.Components.MorphDeformer Class</h1>
 <div class="box meta">
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_resources_shaderGraph.js.html#l2"><code>..&#x2F;src&#x2F;resources&#x2F;shaderGraph.js:2</code></a>
+            Defined in: <a href="../files/.._src_components_morphDeformer.js.html#l3"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:3</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -170,15 +170,188 @@
 
 
 <div class="box intro">
-    <p>ShaderGraph is a resource containing a graph that generates the code associated to a shader
-It is used to define special ways to render scene objects, having full control of the rendering algorithm</p>
+    <p>It complements a MeshRenderer to add Morph Targets (Blend Shapes) to deform meshes.
+Morph Targets of a mesh must have the same topology and number of vertex, otherwise it won't work.</p>
 
 </div>
 
     <div class="constructor">
         <h2>Constructor</h2>
-<div id="method_LS.ShaderGraph" class="method item">
-    <h3 class="name"><code>LS.ShaderGraph</code></h3>
+<div id="method_LS.Components.MorphDeformer" class="method item">
+    <h3 class="name"><code>LS.Components.MorphDeformer</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>object</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l3"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:3</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">object</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>to configure from</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+    </div>
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+            <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
+            <li class="api-class-tab properties"><a href="#properties">Properties</a></li>
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+                <div class="index-section methods">
+                    <h3>Methods</h3>
+
+                    <ul class="index-list methods">
+                            <li class="index-item method">
+                                <a href="#method_clearWeights">clearWeights</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getBaseMesh">getBaseMesh</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getMorphIndex">getMorphIndex</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_optimizeMorphTargets">optimizeMorphTargets</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setMorphMesh">setMorphMesh</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setMorphWeight">setMorphWeight</a>
+
+                            </li>
+                    </ul>
+                </div>
+
+                <div class="index-section properties">
+                    <h3>Properties</h3>
+
+                    <ul class="index-list properties">
+                            <li class="index-item property">
+                                <a href="#property_mode  MorphDeformer.AUTOMATIC, MorphDeformer.CPU, MorphDeformer.STREAMS, MorphDeformer.TEXTURES">mode  MorphDeformer.AUTOMATIC, MorphDeformer.CPU, MorphDeformer.STREAMS, MorphDeformer.TEXTURES</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_morph_targets">morph_targets</a>
+
+                            </li>
+                    </ul>
+                </div>
+
+
+        </div>
+
+            <div id="methods" class="api-class-tabpanel">
+                <h2 class="off-left">Methods</h2>
+
+<div id="method_clearWeights" class="method item">
+    <h3 class="name"><code>clearWeights</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>object</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l80"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:80</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Sets the weight for all the</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">object</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>with the serialized info</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_getBaseMesh" class="method item">
+    <h3 class="name"><code>getBaseMesh</code></h3>
 
         <span class="paren">()</span>
 
@@ -192,7 +365,7 @@ It is used to define special ways to render scene objects, having full control o
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_shaderGraph.js.html#l2"><code>..&#x2F;src&#x2F;resources&#x2F;shaderGraph.js:2</code></a>
+        <a href="../files/.._src_components_morphDeformer.js.html#l647"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:647</code></a>
         </p>
 
 
@@ -200,31 +373,305 @@ It is used to define special ways to render scene objects, having full control o
     </div>
 
     <div class="description">
-        
+        <p>Returns the base mesh on which the morph targets will be applied</p>
+
     </div>
 
 
 
 
 </div>
+<div id="method_getMorphIndex" class="method item">
+    <h3 class="name"><code>getMorphIndex</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>mesh_name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l524"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:524</code></a>
+        </p>
+
+
+
     </div>
 
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
+    <div class="description">
+        <p>returns the index of the morph target that uses this mesh</p>
 
-    </ul>
+    </div>
 
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">mesh_name</code>
+                        <span class="type">String</span>
 
 
+                    <div class="param-description">
+                        <p>the name (filename) of the mesh in the morph target</p>
 
+                    </div>
 
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the index</p>
+
+            </div>
         </div>
 
 
+</div>
+<div id="method_optimizeMorphTargets" class="method item">
+    <h3 class="name"><code>optimizeMorphTargets</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l663"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:663</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Removes innecesary morph targets and removes data from mesh that is already in the base mesh</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_setMorphMesh" class="method item">
+    <h3 class="name"><code>setMorphMesh</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+                <li class="arg">
+                        <code>mesh</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l538"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:538</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>sets the mesh for a morph target</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the index of the morph target</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">mesh</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>the mesh resource</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_setMorphWeight" class="method item">
+    <h3 class="name"><code>setMorphWeight</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+                <li class="arg">
+                        <code>weight</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l551"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:551</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>sets the weight for a morph target</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the index of the morph target</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">weight</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the weight</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+            </div>
+
+            <div id="properties" class="api-class-tabpanel">
+                <h2 class="off-left">Properties</h2>
+
+<div id="property_mode  MorphDeformer.AUTOMATIC, MorphDeformer.CPU, MorphDeformer.STREAMS, MorphDeformer.TEXTURES" class="property item">
+    <h3 class="name"><code>mode  MorphDeformer.AUTOMATIC, MorphDeformer.CPU, MorphDeformer.STREAMS, MorphDeformer.TEXTURES</code></h3>
+    <span class="type">Number</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l15"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:15</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>The mode used to apply the morph targets, could be using the CPU, the GPU using uniforms( limited by the browser/driver) or using Textures (more expensive). Leave it as automatic so the system knows the best case.</p>
+
+    </div>
+
+        <p><strong>Default:</strong> MorphDeformer.AUTOMATIC;</p>
+
+
+</div>
+<div id="property_morph_targets" class="property item">
+    <h3 class="name"><code>morph_targets</code></h3>
+    <span class="type">Array</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_morphDeformer.js.html#l22"><code>..&#x2F;src&#x2F;components&#x2F;morphDeformer.js:22</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>An array with every morph targets info in the form of { mesh: mesh_name, weight: number }</p>
+
+    </div>
+
+        <p><strong>Default:</strong> [];</p>
+
+
+</div>
+            </div>
 
 
     </div>

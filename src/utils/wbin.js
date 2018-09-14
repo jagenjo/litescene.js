@@ -278,7 +278,13 @@ WBin.load = function( data_array, skip_classname, filename )
 					break;
 			case "WideObject": 
 							lump_data = new Uint16Array( (new Uint8Array( lump_data )).buffer ); //no break
-			case "Object":	lump_final = JSON.parse( WBin.TypedArrayToString( lump_data ) ); break;
+			case "Object":	
+				var str = WBin.TypedArrayToString( lump_data );
+				if(str)
+					lump_final = JSON.parse( str ); 
+				else
+					console.warn("WBIN: lump \""+ lump.name +"\" string is empty, skipping.");
+				break;
 			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
 				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment

@@ -60,6 +60,7 @@
                                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
                                 <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
+                                <li><a href="../classes/LS.Components.MorphDeformer.html">LS.Components.MorphDeformer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
                                 <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
                                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
@@ -109,7 +110,6 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
-                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
@@ -1541,8 +1541,11 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 	//WBIN?
 	if(data.constructor == ArrayBuffer)
 	{
-		if(!data.length) //empty file?
+		if(!data.byteLength) //empty file?
+		{
+			console.warn(&quot;Empty WBin?&quot;);
 			return null;
+		}
 
 		resource = WBin.load(data);
 		if(callback)

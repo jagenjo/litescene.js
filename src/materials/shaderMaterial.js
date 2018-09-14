@@ -326,10 +326,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	var camera = LS.Renderer._current_camera;
 	var scene = LS.Renderer._current_scene;
 	var model = instance.matrix;
-
-	//node matrix info
-	var instance_final_query = instance._final_query;
-	var instance_final_samplers = instance._final_samplers;
 	var render_uniforms = LS.Renderer._render_uniforms;
 
 	//maybe this two should be somewhere else
@@ -343,10 +339,11 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	//global stuff
 	this._render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
+	LS.Renderer.bindSamplers( instance.samplers );
 	var global_flags = LS.Renderer._global_shader_blocks_flags;
 
 	//TODO: could this part be precomputed before rendering color pass?
-	if( pass.id == COLOR_PASS ) //allow reflections only in color pass
+	if( pass == COLOR_PASS ) //allow reflections only in color pass
 	{
 		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
 		if( LS.Renderer._global_textures.environment )
@@ -370,7 +367,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	var lights = null;
 
 	//ignore lights renders the object with flat illumination
-	var ignore_lights = pass.id != COLOR_PASS || render_settings.lights_disabled || this._light_mode === Material.NO_LIGHTS;
+	var ignore_lights = pass != COLOR_PASS || render_settings.lights_disabled || this._light_mode === Material.NO_LIGHTS;
 
 	if( !ignore_lights )
 		lights = LS.Renderer.getNearLights( instance );
@@ -463,11 +460,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	return true;
 }
 
-ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings, pass )
-{
-	return this.renderInstance( instance, render_settings, pass );
-}
-
 ShaderMaterial.prototype.renderPickingInstance = function( instance, render_settings, pass )
 {
 	//get shader code
@@ -481,10 +473,6 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	var scene = LS.Renderer._current_scene;
 	var model = instance.matrix;
 	var node = instance.node;
-
-	//node matrix info
-	var instance_final_query = instance._final_query;
-	var instance_final_samplers = instance._final_samplers;
 	var render_uniforms = LS.Renderer._render_uniforms;
 
 	//maybe this two should be somewhere else
@@ -497,6 +485,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	//global stuff
 	this._render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
+	LS.Renderer.bindSamplers( instance.samplers );
 
 	//extract shader compiled
 	var shader = shader_code.getShader( pass.name, block_flags );
