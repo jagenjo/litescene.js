@@ -88,6 +88,22 @@ MorphDeformer.prototype.clearWeights = function()
 		this.morph_targets[i].weight = 0;
 }
 
+/**
+* Adds a new morph target
+* @method addMorph
+* @param {String} mesh_name
+* @param {Number} weight
+*/
+MorphDeformer.prototype.addMorph = function( mesh_name, weight)
+{
+	weight = weight || 0;
+	var index = this.getMorphIndex( mesh_name );
+	if(index == -1)
+		this.morph_targets.push({mesh: mesh_name, weight: weight});
+	else
+		this.morph_targets[index] = {mesh: mesh_name, weight: weight};
+}
+
 MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 {
 	if(!render_instances.length || MorphDeformer.max_supported_vertex_attribs < 16)
