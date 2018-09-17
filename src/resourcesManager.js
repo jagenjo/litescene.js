@@ -685,7 +685,7 @@ var ResourcesManager = {
 		};
 
 		//force no cache by request
-		settings.nocache = this.ignore_cache || this.force_nocache_extensions[ extension ] || this.nocache_files[ url ];
+		settings.nocache = this.ignore_cache || (this.force_nocache_extensions.indexOf[ extension ] != -1) || this.nocache_files[ url ];
 
 		//in case we need to force a response format 
 		var format_info = LS.Formats.supported[ extension ];
