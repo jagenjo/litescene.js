@@ -858,90 +858,6 @@ if(typeof(LiteGraph) != "undefined")
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );
 	global.LGraphMaterial = LGraphMaterial;
 
-	//************************************************************
-	/*
-	global.LGraphLight = function()
-	{
-		this.properties = {mat_name:""};
-		this.addInput("Light","Light");
-		this.addOutput("Intensity","number");
-		this.addOutput("Color","color");
-	}
-
-	LGraphLight.title = "Light";
-	LGraphLight.desc = "Light from a scene";
-
-	LGraphLight.prototype.onExecute = function()
-	{
-		var scene = this.graph.getScene();
-		if(!scene)
-			return;
-
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
-
-		if(!node)
-			node = this.graph._scenenode;
-
-		var light = null;
-		if(node) //use light of the node
-			light = node.getLight();
-		//if it has an input light
-		var slot = this.findInputSlot("Light");
-		if( slot != -1 )
-			light = this.getInputData(slot);
-		if(!light)
-			return;
-
-		//read inputs
-		for(var i = 0; i < this.inputs.length; ++i)
-		{
-			var input = this.inputs[i];
-			var v = this.getInputData(i);
-			if(v === undefined)
-				continue;
-
-			switch( input.name )
-			{
-				case "Intensity": light.intensity = v; break;
-				case "Color": vec3.copy(light.color,v); break;
-				case "Eye": vec3.copy(light.eye,v); break;
-				case "Center": vec3.copy(light.center,v); break;
-			}
-		}
-
-		//write outputs
-		for(var i = 0; i < this.outputs.length; ++i)
-		{
-			var output = this.outputs[i];
-			if(!output.links || !output.links.length)
-				continue;
-
-			switch( output.name )
-			{
-				case "Light": this.setOutputData(i, light ); break;
-				case "Intensity": this.setOutputData(i, light.intensity ); break;
-				case "Color": this.setOutputData(i, light.color ); break;
-				case "Eye": this.setOutputData(i, light.eye ); break;
-				case "Center": this.setOutputData(i, light.center ); break;
-			}
-		}
-	}
-
-	LGraphLight.prototype.onGetInputs = function()
-	{
-		return [["Light","Light"],["Intensity","number"],["Color","color"],["Eye","vec3"],["Center","vec3"]];
-	}
-
-	LGraphLight.prototype.onGetOutputs = function()
-	{
-		return [["Light","Light"],["Intensity","number"],["Color","color"],["Eye","vec3"],["Center","vec3"]];
-	}
-
-	LiteGraph.registerNodeType("scene/light", LGraphLight );
-	*/
-
 	//************************************
 
 	global.LGraphGlobal = function LGraphGlobal()
@@ -1067,10 +983,20 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
+	/*
 	LGraphLocatorProperty.prototype.onGetInputs = function()
 	{
-		return [["Toggle",LiteGraph.ACTION]];
+		var r = [["Toggle",LiteGraph.ACTION]];
+		var info = this.getLocatorInfo();
+		if(!info)
+			return r;
+		var properties = LS.getObjectProperties( info.target );
+		for(var i in properties)
+			r.push([i,properties[i]]);
+		return r;
 	}
+	LGraphLocatorProperty.prototype.onGetOutputs = LGraphLocatorProperty.prototype.onGetInputs;
+	*/
 
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
 

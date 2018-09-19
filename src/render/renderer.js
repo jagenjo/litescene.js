@@ -149,7 +149,7 @@ var Renderer = {
 		});
 
 		this.createRenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.NO_SORT );
-
+		this._full_viewport.set([0,0,gl.drawingBufferWidth,gl.drawingBufferHeight]);
 	},
 
 	reset: function()
@@ -329,14 +329,19 @@ var Renderer = {
 	*
 	* @method renderFrame
 	* @param {Camera} camera 
-	* @param {Object} render_settings
+	* @param {Object} render_settings [optional]
 	* @param {Scene} scene [optional] this can be passed when we are rendering a different scene from LS.GlobalScene (used in renderMaterialPreview)
 	*/
 	renderFrame: function ( camera, render_settings, scene )
 	{
+		render_settings = render_settings || this.default_render_settings;
+
 		//get all the data
-		if(scene) //in case we use another scene
-			this.processVisibleData(scene, render_settings);
+		if(scene) //in case we use another scene than the default one
+		{
+			scene._frame++;
+			this.processVisibleData( scene, render_settings );
+		}
 		this._current_scene = scene = scene || this._current_scene; //ugly, I know
 
 		//set as active camera and set viewport
@@ -395,6 +400,12 @@ var Renderer = {
 		var starty = this._full_viewport[1];
 		var width = this._full_viewport[2];
 		var height = this._full_viewport[3];
+		if(width == 0 && height == 0)
+		{
+			console.warn("enableCamera: full viewport was 0, assigning to full viewport");
+			width = gl.viewport_data[2];
+			height = gl.viewport_data[3];
+		}
 
 		var final_x = Math.floor(width * camera._viewport[0] + startx);
 		var final_y = Math.floor(height * camera._viewport[1] + starty);
@@ -416,12 +427,18 @@ var Renderer = {
 			}
 		}
 
+		//recompute the matrices (view,proj and viewproj)
 		camera.updateMatrices();
 
 		//store matrices locally
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
 		mat4.copy( this._viewprojection_matrix, camera._viewprojection_matrix );
+
+		//safety in case something went wrong in the camera
+		for(var i = 0; i < 16; ++i)
+			if( isNaN( this._viewprojection_matrix[i] ) )
+				console.warn("warning: viewprojection matrix contains NaN when enableCamera is used");
 
 		//2D Camera: TODO: MOVE THIS SOMEWHERE ELSE
 		mat4.ortho( this._2Dviewprojection_matrix, -1, 1, -1, 1, 1, -1 );
@@ -488,6 +505,8 @@ var Renderer = {
 	sortRenderQueues: function( camera, render_settings )
 	{
 		var instances = this._visible_instances;
+		if(!instances)
+			return;
 
 		//compute distance to camera
 		var camera_eye = camera.getEye( this._temp_cameye );
@@ -617,7 +636,7 @@ var Renderer = {
 			if(!instance.material) //in case something went wrong...
 				continue;
 
-			var material = camera.overwrite_material || instance.material;
+			var material = camera._overwrite_material || instance.material;
 
 			if(material.opacity <= 0) //TODO: remove this, do it somewhere else
 				continue;
@@ -673,7 +692,7 @@ var Renderer = {
 
 				this._rendered_instances += 1;
 
-				var material = camera.overwrite_material || instance.material;
+				var material = camera._overwrite_material || instance.material;
 
 				if( pass == PICKING_PASS && material.renderPickingInstance )
 					material.renderPickingInstance( instance, render_settings, pass );
@@ -981,6 +1000,9 @@ var Renderer = {
 			return;
 		}
 				
+		//find which materials are going to be seen
+		var materials = this._visible_materials; 
+		materials.length = 0;
 
 		//prepare cameras: TODO: sort by priority
 		for(var i = 0, l = cameras.length; i < l; ++i)
@@ -988,6 +1010,18 @@ var Renderer = {
 			var camera = cameras[i];
 			camera._rendering_index = i;
 			camera.prepare();
+			if(camera.overwrite_material)
+			{
+				var material = camera.overwrite_material.constructor === String ? LS.ResourcesManager.resources[ camera.overwrite_material ] : camera.overwrite_material;
+				if(material)
+				{
+					camera._overwrite_material = material;
+					materials.push( material );
+				}
+			}
+			else
+				camera._overwrite_material = null;
+
 		}
 
 		//define the main camera (the camera used for some algorithms)
@@ -998,10 +1032,6 @@ var Renderer = {
 			else
 				this._main_camera = new LS.Camera(); // ??
 		}
-
-		//find which materials are going to be seen
-		var materials = this._visible_materials; 
-		materials.length = 0;
 
 		instances = instances || scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();

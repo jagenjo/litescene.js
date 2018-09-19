@@ -338,8 +338,8 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 	//global stuff
 	this._render_state.enable();
-	LS.Renderer.bindSamplers( this._samplers );
-	LS.Renderer.bindSamplers( instance.samplers );
+	LS.Renderer.bindSamplers( this._samplers ); //material samplers
+	LS.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
 	var global_flags = LS.Renderer._global_shader_blocks_flags;
 
 	//TODO: could this part be precomputed before rendering color pass?

@@ -695,6 +695,8 @@ var ResourcesManager = {
 				settings.dataType = format_info.dataType;
 			if( format_info.mimeType ) //force mimeType
 				settings.mimeType = format_info.mimeType;
+			if( format_info["native"] )
+				settings.dataType = null;
 		}
 
 		//send the REQUEST

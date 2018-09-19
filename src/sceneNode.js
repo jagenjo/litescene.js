@@ -380,7 +380,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 	}
     else if(path.length == 1) //compo or //var
 	{
-		if(path[0][0] == "@")
+		if(path[0][0] == "@") //compo uid
 		{
 			target = this.getComponentByUId( path[0] );
 			return {
