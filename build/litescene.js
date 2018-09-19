@@ -4558,6 +4558,8 @@ var ResourcesManager = {
 				settings.dataType = format_info.dataType;
 			if( format_info.mimeType ) //force mimeType
 				settings.mimeType = format_info.mimeType;
+			if( format_info["native"] )
+				settings.dataType = null;
 		}
 
 		//send the REQUEST
@@ -7745,8 +7747,8 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 	//global stuff
 	this._render_state.enable();
-	LS.Renderer.bindSamplers( this._samplers );
-	LS.Renderer.bindSamplers( instance.samplers );
+	LS.Renderer.bindSamplers( this._samplers ); //material samplers
+	LS.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
 	var global_flags = LS.Renderer._global_shader_blocks_flags;
 
 	//TODO: could this part be precomputed before rendering color pass?
@@ -16145,90 +16147,6 @@ if(typeof(LiteGraph) != "undefined")
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );
 	global.LGraphMaterial = LGraphMaterial;
 
-	//************************************************************
-	/*
-	global.LGraphLight = function()
-	{
-		this.properties = {mat_name:""};
-		this.addInput("Light","Light");
-		this.addOutput("Intensity","number");
-		this.addOutput("Color","color");
-	}
-
-	LGraphLight.title = "Light";
-	LGraphLight.desc = "Light from a scene";
-
-	LGraphLight.prototype.onExecute = function()
-	{
-		var scene = this.graph.getScene();
-		if(!scene)
-			return;
-
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
-
-		if(!node)
-			node = this.graph._scenenode;
-
-		var light = null;
-		if(node) //use light of the node
-			light = node.getLight();
-		//if it has an input light
-		var slot = this.findInputSlot("Light");
-		if( slot != -1 )
-			light = this.getInputData(slot);
-		if(!light)
-			return;
-
-		//read inputs
-		for(var i = 0; i < this.inputs.length; ++i)
-		{
-			var input = this.inputs[i];
-			var v = this.getInputData(i);
-			if(v === undefined)
-				continue;
-
-			switch( input.name )
-			{
-				case "Intensity": light.intensity = v; break;
-				case "Color": vec3.copy(light.color,v); break;
-				case "Eye": vec3.copy(light.eye,v); break;
-				case "Center": vec3.copy(light.center,v); break;
-			}
-		}
-
-		//write outputs
-		for(var i = 0; i < this.outputs.length; ++i)
-		{
-			var output = this.outputs[i];
-			if(!output.links || !output.links.length)
-				continue;
-
-			switch( output.name )
-			{
-				case "Light": this.setOutputData(i, light ); break;
-				case "Intensity": this.setOutputData(i, light.intensity ); break;
-				case "Color": this.setOutputData(i, light.color ); break;
-				case "Eye": this.setOutputData(i, light.eye ); break;
-				case "Center": this.setOutputData(i, light.center ); break;
-			}
-		}
-	}
-
-	LGraphLight.prototype.onGetInputs = function()
-	{
-		return [["Light","Light"],["Intensity","number"],["Color","color"],["Eye","vec3"],["Center","vec3"]];
-	}
-
-	LGraphLight.prototype.onGetOutputs = function()
-	{
-		return [["Light","Light"],["Intensity","number"],["Color","color"],["Eye","vec3"],["Center","vec3"]];
-	}
-
-	LiteGraph.registerNodeType("scene/light", LGraphLight );
-	*/
-
 	//************************************
 
 	global.LGraphGlobal = function LGraphGlobal()
@@ -16354,10 +16272,20 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
+	/*
 	LGraphLocatorProperty.prototype.onGetInputs = function()
 	{
-		return [["Toggle",LiteGraph.ACTION]];
+		var r = [["Toggle",LiteGraph.ACTION]];
+		var info = this.getLocatorInfo();
+		if(!info)
+			return r;
+		var properties = LS.getObjectProperties( info.target );
+		for(var i in properties)
+			r.push([i,properties[i]]);
+		return r;
 	}
+	LGraphLocatorProperty.prototype.onGetOutputs = LGraphLocatorProperty.prototype.onGetInputs;
+	*/
 
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
 
@@ -21113,7 +21041,7 @@ var Renderer = {
 		});
 
 		this.createRenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.NO_SORT );
-
+		this._full_viewport.set([0,0,gl.drawingBufferWidth,gl.drawingBufferHeight]);
 	},
 
 	reset: function()
@@ -21293,14 +21221,19 @@ var Renderer = {
 	*
 	* @method renderFrame
 	* @param {Camera} camera 
-	* @param {Object} render_settings
+	* @param {Object} render_settings [optional]
 	* @param {Scene} scene [optional] this can be passed when we are rendering a different scene from LS.GlobalScene (used in renderMaterialPreview)
 	*/
 	renderFrame: function ( camera, render_settings, scene )
 	{
+		render_settings = render_settings || this.default_render_settings;
+
 		//get all the data
-		if(scene) //in case we use another scene
-			this.processVisibleData(scene, render_settings);
+		if(scene) //in case we use another scene than the default one
+		{
+			scene._frame++;
+			this.processVisibleData( scene, render_settings );
+		}
 		this._current_scene = scene = scene || this._current_scene; //ugly, I know
 
 		//set as active camera and set viewport
@@ -21359,6 +21292,12 @@ var Renderer = {
 		var starty = this._full_viewport[1];
 		var width = this._full_viewport[2];
 		var height = this._full_viewport[3];
+		if(width == 0 && height == 0)
+		{
+			console.warn("enableCamera: full viewport was 0, assigning to full viewport");
+			width = gl.viewport_data[2];
+			height = gl.viewport_data[3];
+		}
 
 		var final_x = Math.floor(width * camera._viewport[0] + startx);
 		var final_y = Math.floor(height * camera._viewport[1] + starty);
@@ -21380,12 +21319,18 @@ var Renderer = {
 			}
 		}
 
+		//recompute the matrices (view,proj and viewproj)
 		camera.updateMatrices();
 
 		//store matrices locally
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
 		mat4.copy( this._viewprojection_matrix, camera._viewprojection_matrix );
+
+		//safety in case something went wrong in the camera
+		for(var i = 0; i < 16; ++i)
+			if( isNaN( this._viewprojection_matrix[i] ) )
+				console.warn("warning: viewprojection matrix contains NaN when enableCamera is used");
 
 		//2D Camera: TODO: MOVE THIS SOMEWHERE ELSE
 		mat4.ortho( this._2Dviewprojection_matrix, -1, 1, -1, 1, 1, -1 );
@@ -21452,6 +21397,8 @@ var Renderer = {
 	sortRenderQueues: function( camera, render_settings )
 	{
 		var instances = this._visible_instances;
+		if(!instances)
+			return;
 
 		//compute distance to camera
 		var camera_eye = camera.getEye( this._temp_cameye );
@@ -21581,7 +21528,7 @@ var Renderer = {
 			if(!instance.material) //in case something went wrong...
 				continue;
 
-			var material = camera.overwrite_material || instance.material;
+			var material = camera._overwrite_material || instance.material;
 
 			if(material.opacity <= 0) //TODO: remove this, do it somewhere else
 				continue;
@@ -21637,7 +21584,7 @@ var Renderer = {
 
 				this._rendered_instances += 1;
 
-				var material = camera.overwrite_material || instance.material;
+				var material = camera._overwrite_material || instance.material;
 
 				if( pass == PICKING_PASS && material.renderPickingInstance )
 					material.renderPickingInstance( instance, render_settings, pass );
@@ -21945,6 +21892,9 @@ var Renderer = {
 			return;
 		}
 				
+		//find which materials are going to be seen
+		var materials = this._visible_materials; 
+		materials.length = 0;
 
 		//prepare cameras: TODO: sort by priority
 		for(var i = 0, l = cameras.length; i < l; ++i)
@@ -21952,6 +21902,18 @@ var Renderer = {
 			var camera = cameras[i];
 			camera._rendering_index = i;
 			camera.prepare();
+			if(camera.overwrite_material)
+			{
+				var material = camera.overwrite_material.constructor === String ? LS.ResourcesManager.resources[ camera.overwrite_material ] : camera.overwrite_material;
+				if(material)
+				{
+					camera._overwrite_material = material;
+					materials.push( material );
+				}
+			}
+			else
+				camera._overwrite_material = null;
+
 		}
 
 		//define the main camera (the camera used for some algorithms)
@@ -21962,10 +21924,6 @@ var Renderer = {
 			else
 				this._main_camera = new LS.Camera(); // ??
 		}
-
-		//find which materials are going to be seen
-		var materials = this._visible_materials; 
-		materials.length = 0;
 
 		instances = instances || scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();
@@ -26741,13 +26699,18 @@ Texture.cubemap_camera_parameters = [
 ];
 */
 
-/*
+Camera.prototype.onResourceRenamed = function( old_name, new_name )
+{
+	if(old_name == this.overwrite_material)
+		this.overwrite_material = new_name;
+}
+
 Camera.prototype.getResources = function (res)
 {
-	//nothing to do, cameras dont use assets, althoug they could generate them
+	if(this.overwrite_material && this.overwrite_material.constructor === String)
+		res[ this.overwrite_material ] = true;
 	return res;
 }
-*/
 
 
 /**
@@ -35470,7 +35433,7 @@ GraphComponent.prototype.runGraph = function()
 	//if(!this._graphcode || this._graphcode._version != this._graph_version )
 	//	this.processGraph();
 
-	if(!this._graphcode)
+	if(this.from_file && !this._graphcode)
 		return;
 
 	this._graph.runStep( 1, LS.catch_exceptions );
@@ -44390,7 +44353,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 	}
     else if(path.length == 1) //compo or //var
 	{
-		if(path[0][0] == "@")
+		if(path[0][0] == "@") //compo uid
 		{
 			target = this.getComponentByUId( path[0] );
 			return {

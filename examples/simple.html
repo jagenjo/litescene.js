@@ -11,8 +11,8 @@
 <title>litescene.js: simple example</title>
 	<link rel="stylesheet" type="text/css" href="style.css" />
 	<style type='text/css'>
-		body { background-color: #DDD;}
-		h1 { color: #777; background-color: #CCC; }
+		html, body { width: 100%; height: 100%; overflow: hidden; }
+		* { margin: 0; padding: 0; }
 	</style>
 
 	<script type="text/javascript" src="../../litegl/external/gl-matrix-min.js"></script>
@@ -27,19 +27,21 @@
 		{
 			try
 			{
-				gl = GL.create({alpha:false, premultipliedAlpha: false});
-				this.glcanvas = gl.canvas;
-				document.getElementById("content").appendChild(gl.canvas);
-				this.gl = gl;
+				gl = GL.create({alpha:false, premultipliedAlpha: false });
 			}
 			catch (e)
 			{
-				document.getElementById("content").innerHTML = "<a href='blog'><img src='preview.png' /></a>";
+				alert("WebGL not supported by your browser");
 				return;
 			}
 
-			gl.canvas.width = 1000;
-			gl.canvas.height = 800;
+			//resize the canvas and add to DOM
+			gl.canvas.width = document.body.offsetWidth;
+			gl.canvas.height = document.body.offsetHeight;
+			this.glcanvas = gl.canvas;
+			document.body.appendChild(gl.canvas);
+			this.gl = gl;
+
 
 			//capture interaction events
 			gl.captureMouse();
@@ -49,42 +51,45 @@
 			gl.onmousedown = this.onmousedown;
 			gl.onmouseup = this.onmouseup;
 			gl.onmousemove = this.onmousemove;
+			gl.animate();
 
-			ShadersManager.init("../data/shaders.xml");
-			Scene.init();
-			Scene.ambient_color = [0.5,0.5,0.5];
-			LS.ResourcesManager.path = "assets/";
+			LS.Renderer.init();
+			LS.ResourcesManager.setPath("assets/");
+			LS.ResourcesManager.allow_base_files = true;
 
-			Scene.background_color = [0.1,0.1,0.1,1];
-			Scene.ambient_color = [0.2,0.2,0.2];
+			LS.GlobalScene.info.background_color = [0.1,0.1,0.1,1];
+			LS.GlobalScene.info.ambient_color = [0.2,0.2,0.2];
 
+			//to render the grid, this is useful for debug
+			var debugrenderer = new LS.DebugRender();
+			debugrenderer.enable();
+
+			//create some nodes
 			var node = new LS.SceneNode("monitor");
-			node.material = new Material({ textures: { color: "monitor_textura.png", anormal: "monitor_normalmap.jpg" } });
-			node.loadAndSetMesh("monitor.obj");
-			Scene.root.addChild(node);
+			node.material = new LS.StandardMaterial({ textures: { color: "monitor_textura.png" } });
+			node.setMesh("monitor.obj");
+			LS.GlobalScene.root.addChild(node);
 			var main = node;
 
 			node = new LS.SceneNode("screen");
-			node.material = new Material({ color: [0.5,0.5,0.5], emissive: [0.0,0.0,0.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 1000,
+			node.material = new LS.StandardMaterial({ color: [0.5,0.5,0.5], emissive: [0.0,0.0,0.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 1000,
 				textures: { detail:"pattern_rgb.png", 
 							color: "empty-screen.png" }});
-			//node.material.blending = "additive";
-			node.loadAndSetMesh("screen.obj");
+			node.setMesh("screen.obj");
 			main.addChild(node);
 			
-
 			//global camera
-			var camera = Scene.getCamera();
+			var camera = LS.GlobalScene.getCamera();
 			camera.center = [0,35,0];
 			camera.eye = [150,40,150];
 			camera.far = 1000;
 			camera.near = 1;
 
 			//light
-			var light = Scene.getLight();
+			var light = LS.GlobalScene.getLight();
 			light.color = [0.6,0.6,0.6];
 			light.position = [0,100,150];
-			light.type = Light.SPOT;
+			light.type = LS.Light.SPOT;
 			light.spot_cone = true;
 			light.far = 500;
 			light.near = 20;
@@ -93,23 +98,23 @@
 			light.cast_shadows = false;
 			light.hard_shadows = true;
 			light.shadow_bias = 0.001;
-			//Scene.light.projective_texture = "window.png";//"stained-glass.png";
 
-			Scene.loadResources();
+			LS.GlobalScene.loadResources();
 		},
 
 		ondraw: function()
 		{
+			//move the camera a little bit
 			var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
-			var camera = Scene.getCamera();
-			vec3.copy(camera.eye, [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)]);
-			Scene.render(camera, APP.render_options);
+			var camera = LS.GlobalScene.getCamera();
+			camera.eye = [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)];
+			LS.Renderer.renderFrame( camera, null, LS.GlobalScene );
 		},
 
 		onupdate: function(dt)
 		{
 			var now = new Date().getTime();
-			Scene.update(dt);
+			LS.GlobalScene.update(dt);
 		},
 
 		click_time: 0,
@@ -119,7 +124,7 @@
 		{
 			APP.click_time = getTime();
 
-			var node = Renderer.getNodeAtCanvasPosition(Scene, Scene.getCamera(), e.mousex, e.mousey );
+			var node = LS.Picking.getNodeAtCanvasPosition( e.mousex, e.mousey );
 			if(node && node.interactive)
 			{
 				LEvent.trigger(node,"mousedown",e);
@@ -143,7 +148,7 @@
 					LEvent.trigger(APP.clicked_node,"mousemove",e);
 				else
 				{
-					var node = Scene.getNode("monitor");
+					var node = LS.GlobalScene.getNode("monitor");
 					if(node)
 						node.transform.rotate(e.deltax,[0,1,0]);
 					APP.cam_dist += e.deltay * 0.01;
@@ -157,13 +162,6 @@
 	</script>
 </head>
 <body>
-
-<div id="wrap">
-	<div id="main">
-		<h1>Mesh DEMO</h1>
-		<div id="content"></div>
-	</div>
-</div>
 
 <script>APP.init();</script>
 </body>

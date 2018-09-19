@@ -291,7 +291,7 @@ GraphComponent.prototype.runGraph = function()
 	//if(!this._graphcode || this._graphcode._version != this._graph_version )
 	//	this.processGraph();
 
-	if(!this._graphcode)
+	if(this.from_file && !this._graphcode)
 		return;
 
 	this._graph.runStep( 1, LS.catch_exceptions );

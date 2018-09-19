@@ -142,13 +142,18 @@ Texture.cubemap_camera_parameters = [
 ];
 */
 
-/*
+Camera.prototype.onResourceRenamed = function( old_name, new_name )
+{
+	if(old_name == this.overwrite_material)
+		this.overwrite_material = new_name;
+}
+
 Camera.prototype.getResources = function (res)
 {
-	//nothing to do, cameras dont use assets, althoug they could generate them
+	if(this.overwrite_material && this.overwrite_material.constructor === String)
+		res[ this.overwrite_material ] = true;
 	return res;
 }
-*/
 
 
 /**
