@@ -185,8 +185,7 @@ var Renderer = {
 	*/
 	render: function( scene, render_settings, cameras )
 	{
-		//if( !LS.ShadersManager.ready )
-		//	return; //not ready
+		scene = scene || LS.GlobalScene;
 
 		if( this._is_rendering_frame )
 		{
@@ -366,6 +365,8 @@ var Renderer = {
 		//send after events
 		LEvent.trigger( scene, "afterRenderScene", camera );
 		LEvent.trigger( this, "afterRenderScene", camera );
+		if(this.onRenderScene)
+			this.onRenderScene( camera, render_settings, scene);
 
 		//render helpers (guizmos)
 		if(render_settings.render_helpers)

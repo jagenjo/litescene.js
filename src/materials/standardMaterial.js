@@ -466,7 +466,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "velvet":
 		case "extra":
 		case "detail_scale":
-			if(this[name].length == value.length)
+			if(this[name].length >= value.length)
 				this[name].set(value);
 			break;
 		default:

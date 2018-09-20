@@ -2,6 +2,14 @@
 if(typeof(LiteGraph) != "undefined")
 {
 
+var litegraph_texture_found = false;
+if(typeof(LGraphTexture) == "undefined")
+	console.error("LiteGraph found but no LGraphTexture, this means LiteGL wasnt not included BEFORE litegraph. Be sure to include LiteGL before LiteGraph to ensure all functionalities.");
+else
+	litegraph_texture_found = true;
+
+
+
 // Texture Blur *****************************************
 function LGraphFXStack()
 {
@@ -107,7 +115,7 @@ function LGraphCameraMotionBlur()
 }
 
 LGraphCameraMotionBlur.widgets_info = {
-	"precision": { widget:"combo", values: LGraphTexture.MODE_VALUES }
+	"precision": { widget:"combo", values: litegraph_texture_found ? LGraphTexture.MODE_VALUES : [] }
 };
 
 LGraphCameraMotionBlur.title = "Camera Motion Blur";
