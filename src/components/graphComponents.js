@@ -473,6 +473,27 @@ Object.defineProperty( FXGraphComponent.prototype, "graph", {
 	}
 });
 
+Object.defineProperty( FXGraphComponent.prototype, "render_node", {
+	enumerable: false,
+	get: function() {
+		return this._graph_frame_node;
+	},
+	set: function(v) {
+		console.error("render_node cannot be set manually");
+	}
+});
+
+Object.defineProperty( FXGraphComponent.prototype, "viewport_node", {
+	enumerable: false,
+	get: function() {
+		return this._graph_viewport_node;
+	},
+	set: function(v) {
+		console.error("viewport_node cannot be set manually");
+	}
+});
+
+
 /**
 * Returns the first component of this container that is of the same class
 * @method configure
@@ -480,7 +501,7 @@ Object.defineProperty( FXGraphComponent.prototype, "graph", {
 */
 FXGraphComponent.prototype.configure = function(o)
 {
-	if(!o.graph_data)
+	if(!this._graph || !o.graph_data)
 		return;
 
 	this.uid = o.uid;
@@ -537,12 +558,14 @@ FXGraphComponent.prototype.serialize = function()
 		frame: this.frame.serialize(),
 		use_node_camera: this.use_node_camera,
 
-		graph_data: JSON.stringify( this._graph.serialize() )
+		graph_data: this._graph ? JSON.stringify( this._graph.serialize() ) : null
 	};
 }
 
 FXGraphComponent.prototype.getResources = function(res)
 {
+	if(!this._graph) //in case it wasnt connected
+		return;
 	this._graph.sendEventToAllNodes("getResources",res);
 	return res;
 }
@@ -589,11 +612,15 @@ FXGraphComponent.prototype.setPropertyValue = function( property, value )
 
 FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
 {
+	if(!this._graph) //in case it wasnt connected
+		return;
 	this._graph.sendEventToAllNodes("onResourceRenamed",[old_name, new_name, res]);
 }
 
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
+	if(!this._graph) //in case litegraph is not installed
+		return;
 	this._graph._scenenode = node;
 	//catch the global rendering
 	//LEvent.bind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
@@ -601,12 +628,16 @@ FXGraphComponent.prototype.onAddedToNode = function(node)
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
+	if(!this._graph) //in case it wasnt connected
+		return;
 	this._graph._scenenode = null;
 	//LEvent.unbind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 FXGraphComponent.prototype.onAddedToScene = function( scene )
 {
+	if(!this._graph) //in case it wasnt connected
+		return;
 	this._graph._scene = scene;
 	LEvent.bind( scene, "enableFrameContext", this.onBeforeRender, this );
 	LEvent.bind( scene, "showFrameContext", this.onAfterRender, this );
@@ -614,6 +645,8 @@ FXGraphComponent.prototype.onAddedToScene = function( scene )
 
 FXGraphComponent.prototype.onRemovedFromScene = function( scene )
 {
+	if(!this._graph) //in case it wasnt connected
+		return;
 	this._graph._scene = null;
 	LEvent.unbind( scene, "enableFrameContext", this.onBeforeRender, this );
 	LEvent.unbind( scene, "showFrameContext", this.onAfterRender, this );

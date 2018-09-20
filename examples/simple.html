@@ -16,7 +16,8 @@
 	</style>
 
 	<script type="text/javascript" src="../../litegl/external/gl-matrix-min.js"></script>
-	<script type="text/javascript" src="../../litegl/build/litegl.js"></script>
+	<script type="text/javascript" src="../external/litegl.js"></script>
+	<script type="text/javascript" src="../external/litegraph.js"></script>
 	<script type="text/javascript" src="../build/litescene.js"></script>
 	<script type="text/javascript">
 	
@@ -25,6 +26,7 @@
 
 		init: function()
 		{
+			//create the GL context 
 			try
 			{
 				gl = GL.create({alpha:false, premultipliedAlpha: false });
@@ -53,31 +55,15 @@
 			gl.onmousemove = this.onmousemove;
 			gl.animate();
 
+			//prepare LiteScene
 			LS.Renderer.init();
 			LS.ResourcesManager.setPath("assets/");
 			LS.ResourcesManager.allow_base_files = true;
 
+			//scene globals
 			LS.GlobalScene.info.background_color = [0.1,0.1,0.1,1];
 			LS.GlobalScene.info.ambient_color = [0.2,0.2,0.2];
 
-			//to render the grid, this is useful for debug
-			var debugrenderer = new LS.DebugRender();
-			debugrenderer.enable();
-
-			//create some nodes
-			var node = new LS.SceneNode("monitor");
-			node.material = new LS.StandardMaterial({ textures: { color: "monitor_textura.png" } });
-			node.setMesh("monitor.obj");
-			LS.GlobalScene.root.addChild(node);
-			var main = node;
-
-			node = new LS.SceneNode("screen");
-			node.material = new LS.StandardMaterial({ color: [0.5,0.5,0.5], emissive: [0.0,0.0,0.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 1000,
-				textures: { detail:"pattern_rgb.png", 
-							color: "empty-screen.png" }});
-			node.setMesh("screen.obj");
-			main.addChild(node);
-			
 			//global camera
 			var camera = LS.GlobalScene.getCamera();
 			camera.center = [0,35,0];
@@ -88,17 +74,53 @@
 			//light
 			var light = LS.GlobalScene.getLight();
 			light.color = [0.6,0.6,0.6];
-			light.position = [0,100,150];
+			light.position = [150,100,-50];
+			light.target = [0,25,0];
 			light.type = LS.Light.SPOT;
 			light.spot_cone = true;
 			light.far = 500;
 			light.near = 20;
 			light.size = 200;
 			light.resolution = 2048;
-			light.cast_shadows = false;
+			light.cast_shadows = true;
 			light.hard_shadows = true;
-			light.shadow_bias = 0.001;
+			light.shadow_bias = 0.2;
 
+			//create some nodes
+			var node = new LS.SceneNode("monitor");
+			node.material = new LS.StandardMaterial({ textures: { color: "monitor_textura.png" } });
+			node.setMesh("monitor.obj");
+			LS.GlobalScene.root.addChild(node);
+			var main = node;
+
+			node = new LS.SceneNode("screen");
+			node.material = new LS.StandardMaterial({ color: [0.5,0.5,0.5], emissive: [0.3,0.5,1.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 1000,
+				textures: { detail:"pattern_rgb.png", 
+							color: "empty-screen.png" }});
+			node.setMesh("screen.obj");
+			main.addChild(node);
+
+			//add some postpo
+			var fx = new LS.Components.FXGraphComponent();
+			fx.use_antialiasing = true;
+			LS.GlobalScene.root.addComponent(fx);
+			var glow = LiteGraph.createNode("texture/glow");
+			glow.properties.threshold = 0.7;
+			glow.properties.persistence = 1.1;
+			fx.graph.add( glow );
+			fx.render_node.connect(0, glow, 0);
+			glow.connect(0, fx.viewport_node, 0);
+
+			//example of forward render function to inject draw calls into the scene
+			LS.Renderer.onRenderScene = function(camera)
+			{
+				LS.Draw.push();
+				LS.Draw.translate( Math.sin( LS.GlobalScene.time ) * 100,100,10);
+				LS.Draw.renderSolidSphere(10);
+				LS.Draw.pop();
+			}
+
+			//load resources
 			LS.GlobalScene.loadResources();
 		},
 
@@ -107,8 +129,10 @@
 			//move the camera a little bit
 			var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
 			var camera = LS.GlobalScene.getCamera();
-			camera.eye = [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)];
-			LS.Renderer.renderFrame( camera, null, LS.GlobalScene );
+			camera.eye = [5 * (APP.cam_dist + idle),40, -20 * (APP.cam_dist + idle)];
+
+			//render the scene (it uses LS.GlobalScene as default)
+			LS.Renderer.render();
 		},
 
 		onupdate: function(dt)
@@ -117,13 +141,11 @@
 			LS.GlobalScene.update(dt);
 		},
 
-		click_time: 0,
 		clicked_node: null,
 
 		onmousedown: function(e)
 		{
-			APP.click_time = getTime();
-
+			//example of picking
 			var node = LS.Picking.getNodeAtCanvasPosition( e.mousex, e.mousey );
 			if(node && node.interactive)
 			{
@@ -134,27 +156,19 @@
 
 		onmouseup: function(e)
 		{
-			APP.click_time = 0;
-			if(APP.clicked_node)
-				LEvent.trigger(APP.clicked_node,"mouseup",e);
-			 APP.clicked_node = null;
+			APP.clicked_node = null;
 		},
 
 		onmousemove: function(e)
 		{
 			if(e.dragging)
 			{
-				if(APP.clicked_node)
-					LEvent.trigger(APP.clicked_node,"mousemove",e);
-				else
-				{
-					var node = LS.GlobalScene.getNode("monitor");
-					if(node)
-						node.transform.rotate(e.deltax,[0,1,0]);
-					APP.cam_dist += e.deltay * 0.01;
-					if(APP.cam_dist < 5) APP.cam_dist = 5;
-					else if(APP.cam_dist > 10) APP.cam_dist = 10;
-				}
+				var node = LS.GlobalScene.getNode("monitor");
+				if(node)
+					node.transform.rotate(e.deltax,[0,1,0]);
+				APP.cam_dist += e.deltay * 0.01;
+				if(APP.cam_dist < 5) APP.cam_dist = 5;
+				else if(APP.cam_dist > 10) APP.cam_dist = 10;
 			}
 		}
 	}

@@ -39,7 +39,6 @@ var APP = {
 			redraw: true,
 			autoplay: true,
 			resources: "assets/", 
-			shaders: "../data/shaders.xml",
 			container: document.body,
 			redraw: true,
 			allow_base_files: true
@@ -94,13 +93,13 @@ var APP = {
 		node.material = new LS.StandardMaterial({ emissive:[0.25,0.25,0.25], textures: { color:"button_power.png", emissive: "button_power.png" } });
 		node.flags.cast_shadows = false;
 		node.transform.setPosition([-8.5,9.5,-34.0]); //-9.5,9.5,33.8
-		quat.setAxisAngle(node.transform._rotation,[0,1,0],-18*DEG2RAD);
+		node.transform.rotation = quat.setAxisAngle( quat.create(), [0,1,0],-18*DEG2RAD );
 		node.setMesh("button.obj");
 		node.addComponent( new LS.Components.Collider({shape: LS.Components.Collider.BOX, size:[4,4,4]}));
 		node.onClicked = function() { 
 			console.log("on clicked");
 			this.clicked = !this.clicked;
-			quat.setAxisAngle(this.transform._rotation, [0,1,0], 18 * (this.clicked ? 1 : -1 ) * DEG2RAD);
+			this.transform.rotation = quat.setAxisAngle(quat.create(), [0,1,0], 18 * (this.clicked ? 1 : -1 ) * DEG2RAD);
 			this.transform.mustUpdate = true;
 			light.enabled = this.clicked;
 			APP.tv_settings.power = this.clicked;
@@ -139,8 +138,6 @@ var APP = {
 		node.setMesh("postit.obj");
 		main.addChild(node);
 
-		APP.rotateScene(250);
-
 		//some useful controllers
 		LS.GlobalScene.root.addComponent( new LS.Components.CameraController({rot_speed:0.1}) );
 		var interactive = new LS.Components.InteractiveController({mode: LS.Components.InteractiveController.PICKING });
@@ -149,7 +146,7 @@ var APP = {
 		//global camera
 		var global_camera = LS.GlobalScene.getCamera();
 		global_camera.center = [0,35,0];
-		global_camera.eye = [150,40,100];
+		global_camera.eye = [0,40,-150];
 		global_camera.far = 1000;
 		global_camera.near = 1;
 
@@ -180,17 +177,12 @@ var APP = {
 		}
 	},
 
-	rotateScene: function(angle)
-	{
-		LS.GlobalScene.getNode("monitor").transform.rotate(angle,[0,1,0]);
-	},
-
 	onUpdate: function(dt)
 	{
 		//Monitor screen effects
 		var mat = LS.GlobalScene.getNode("screen").getMaterial();
 		var emissive = mat.emissive;
-		if(APP.tv_settings.power && emissive[0] < 4)
+		if(APP.tv_settings.power && emissive[0] < 3)
 			vec3.add(emissive,emissive,[0.1,0.1,0.1]);
 		else if(!APP.tv_settings.power && emissive[0] > 0)
 			vec3.sub(emissive,emissive,[0.1,0.1,0.1]);
