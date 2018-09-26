@@ -450,7 +450,7 @@ LGraph.prototype.clear = function()
 	//nodes
 	this._nodes = [];
 	this._nodes_by_id = {};
-	this._nodes_in_order = null; //nodes that are executable sorted in execution order
+	this._nodes_in_order = []; //nodes that are executable sorted in execution order
 	this._nodes_executable = null; //nodes that contain onExecute
 
 	//other scene stuff
@@ -1289,7 +1289,7 @@ LGraph.prototype.changeGlobalInputType = function(name, type)
 	if(!this.global_inputs[name])
 		return false;
 
-	if(this.global_inputs[name].type == type || this.global_inputs[name].type.toLowerCase() == type.toLowerCase() )
+	if(this.global_inputs[name].type && this.global_inputs[name].type.toLowerCase() == type.toLowerCase() )
 		return;
 
 	this.global_inputs[name].type = type;
@@ -1415,7 +1415,7 @@ LGraph.prototype.changeGlobalOutputType = function(name, type)
 	if(!this.global_outputs[name])
 		return false;
 
-	if(this.global_outputs[name].type.toLowerCase() == type.toLowerCase() )
+	if(this.global_outputs[name].type && this.global_outputs[name].type.toLowerCase() == type.toLowerCase() )
 		return;
 
 	this.global_outputs[name].type = type;
@@ -2525,8 +2525,8 @@ LGraphNode.prototype.addWidget = function( type, name, value, callback, options 
 		options: options || {}
 	};
 
-	if(options.y)
-		w.y = options.y;
+	if(w.options.y !== undefined )
+		w.y = w.options.y;
 
 	if( type == "combo" && !w.options.values )
 		throw("LiteGraph addWidget('combo',...) requires to pass values in options: { values:['red','blue'] }");
@@ -2651,7 +2651,7 @@ LGraphNode.prototype.connect = function( slot, target_node, target_slot )
 
 	if(!this.graph) //could be connected before adding it to a graph
 	{
-		console.log("Connect: Error, node doesnt belong to the graph. Nodes must be added first to the graph before connecting them."); //due to link ids being associated with graphs
+		console.log("Connect: Error, node doesnt belong to any graph. Nodes must be added first to a graph before connecting them."); //due to link ids being associated with graphs
 		return false;
 	}
 
@@ -3743,6 +3743,7 @@ LGraphCanvas.prototype.processMouseDown = function(e)
 	var skip_dragging = false;
 	var skip_action = false;
 	var now = LiteGraph.getTime();
+	var is_double_click = (now - this.last_mouseclick) < 300;
 
 	this.canvas_mouse[0] = e.canvasX;
 	this.canvas_mouse[1] = e.canvasY;
@@ -3838,7 +3839,7 @@ LGraphCanvas.prototype.processMouseDown = function(e)
 				}
 
 				//double clicking
-				if ((now - this.last_mouseclick) < 300 && this.selected_nodes[ node.id ])
+				if (is_double_click && this.selected_nodes[ node.id ])
 				{
 					//double click node
 					if( node.onDblClick)
@@ -3882,6 +3883,10 @@ LGraphCanvas.prototype.processMouseDown = function(e)
 				else
 					this.selected_group.recomputeInsideNodes();
 			}
+
+			if( is_double_click )
+				this.showSearchBox( e );
+			
 			clicking_canvas_bg = true;
 		}
 

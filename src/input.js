@@ -232,6 +232,42 @@ var Input = {
 	},
 
 	/**
+	* Returns the axis based on the gamepad or the keyboard cursors. Useful when you do now know if the player will use keyboard of gamepad
+	*
+	* @method getAxis
+	* @param {String} "vertical" or "horizontal"
+	* @return {Number} the value of the axis
+	*/
+	getAxis: function( axis )
+	{
+		if( axis == "vertical" )
+		{
+			if( this.isKeyPressed( 38 )	|| this.isKeyPressed( "W" )) //up
+				return 1;
+			if( this.isKeyPressed( 40 )	|| this.isKeyPressed( "S" )) //down
+				return -1;
+		}
+		else if( axis == "horizontal" )
+		{
+			if( this.isKeyPressed( 37 )	|| this.isKeyPressed( "A" )) //left
+				return -1;
+			else if( this.isKeyPressed( 39 ) || this.isKeyPressed( "D" )) //right
+				return 1;
+		}
+
+		var gamepad = this.Gamepads[0];
+		if(gamepad)
+		{
+			if(axis == "horizontal")
+				return gamepad.axes[0];
+			else if(axis == "vertical")
+				return gamepad.axes[1];
+		}
+
+		return 0;
+	},
+
+	/**
 	* Returns a gamepad snapshot if it is connected
 	*
 	* @method getGamepad

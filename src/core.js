@@ -894,6 +894,87 @@ var LS = {
 		return String.fromCharCode.apply(null,data);
 	},
 
+	
+	/**
+	* Checks if this locator belongs to a property inside a prefab, which could be tricky in some situations
+	* @method checkLocatorBelongsToPrefab
+	**/
+	checkLocatorBelongsToPrefab: function( locator, root )
+	{
+		root = root || LS.GlobalScene.root;
+		var property_path = locator.split("/");
+
+		if( !property_path.length )
+			return null;
+
+		var node = LSQ.get( property_path[0], root );
+		if(!node)
+			return null;
+
+		return node.insidePrefab();
+	},
+
+	/**
+	* Used to convert locators so instead of using UIDs for properties it uses Names
+	* This is used when you cannot rely on the UIDs because they belong to prefabs that could change them
+	* @method convertLocatorFromUIDsToName
+	* @param {String} locator string with info about a property (p.e. "my_node/Transform/y")
+	* @param {boolean} use_basename if you want to just use the node name, othewise it uses the fullname (name with path)
+	* @param {LS.SceneNode} root
+	* @return {String} the result name without UIDs
+	*/
+	convertLocatorFromUIDsToName: function( locator, use_basename, root )
+	{
+		root = root || LS.GlobalScene.root;
+		var property_path = locator.split("/");
+
+		if( !property_path.length )
+			return null;
+
+		if( property_path[0][0] !== LS._uid_prefix && ( property_path.length == 1 || property_path[1][0] !== LS._uid_prefix))
+			return null; //is already using names
+
+		var node = LSQ.get( property_path[0], root );
+		if(!node)
+		{
+			console.warn("getIDasName: node not found in LS.GlobalScene: " + property_path[0] );
+			return false;
+		}
+
+		if(!node.name)
+		{
+			console.warn("getIDasName: node without name?");
+			return false;
+		}
+
+		//what about the component?
+		if( property_path.length > 1 && property_path[1][0] == LS._uid_prefix )
+		{
+			var comp = LS.GlobalScene.findComponentByUId( property_path[1] );
+			if(comp)
+			{
+				var comp_name = comp.constructor.name;
+				if(comp_name == "Script" || comp_name == "ScriptFromFile")
+				{
+					comp_name = comp.name;
+					if( comp_name == "unnamed" )
+					{
+						console.error("converting component UIDs to component name, but property belongs to a Script without name. You must name the script to avoid errors.");
+						comp_name = comp.constructor.name;
+					}
+				}
+				property_path[1] = comp_name;	
+			}
+		}
+
+		var result = property_path.concat();
+		if(use_basename)
+			result[0] = node.name;
+		else
+			result[0] = node.fullname;
+		return result.join("/");
+	},
+
 	/**
 	* clears the global scene and the resources manager
 	*
