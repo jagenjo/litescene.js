@@ -1007,18 +1007,23 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("target","Component");
 		this.addInput("toggle",LiteGraph.ACTION);
-		this.properties = {property_name:""};
+		this.properties = {property_name:"enabled"};
 	}
 
 	LGraphToggleValue.title = "Toggle";
 	LGraphToggleValue.desc = "Toggle a property value";
+
+	LGraphToggleValue.prototype.getTitle = function()
+	{
+		return "Toggle: " + this.properties.property_name;
+	}
 
 	LGraphToggleValue.prototype.onAction = function( action_name, params ) { 
 
 		var target = this.getInputData(0,true);
 		if(!target)
 			return;
-		var prop_name = this.properties.property_name;
+		var prop_name = this.properties.property_name || "enabled";
 		if( target[ prop_name ] !== undefined )
 			target[ prop_name ] = !target[ prop_name ];
 	}

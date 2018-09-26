@@ -881,7 +881,7 @@ Track.prototype.clear = function()
 }
 
 /**
-* used to change every track so instead of using UIDs for properties it uses node names
+* used to change every track so instead of using UIDs for properties it uses names
 * this is used when you want to apply the same animation to different nodes in the scene
 * @method getIDasName
 * @param {boolean} use_basename if you want to just use the node name, othewise it uses the fullname (name with path)
@@ -893,28 +893,7 @@ Track.prototype.getIDasName = function( use_basename, root )
 	if( !this._property_path || !this._property_path.length )
 		return null;
 
-	if(this._property_path[0][0] !== LS._uid_prefix)
-		return null; //is already using names
-
-	var node = LSQ.get( this._property_path[0], root );
-	if(!node)
-	{
-		console.warn("getIDasName: node not found in LS.GlobalScene: " + this._property_path[0] );
-		return false;
-	}
-
-	if(!node.name)
-	{
-		console.warn("getIDasName: node without name?");
-		return false;
-	}
-
-	var result = this._property_path.concat();
-	if(use_basename)
-		result[0] = node.name;
-	else
-		result[0] = node.fullname;
-	return result.join("/");
+	return LS.convertLocatorFromUIDsToName( this._property,  use_basename, root );
 }
 
 //used to change every track so instead of using node names for properties it uses node uids
@@ -928,8 +907,18 @@ Track.prototype.convertNameToID = function( root )
 	if(!node)
 		return false;
 
+	//convert node uid
 	this._property_path[0] = node.uid;
-	this._property = this._property_path[0].join("/");
+
+	//convert component uid
+	if( this._property_path.length > 1)
+	{
+		var comp = node.getComponent( this._property_path[1] );
+		if(comp)
+			this._property_path[1] = comp.uid;
+	}
+
+	this._property = this._property_path.join("/");
 	return true;
 }
 

@@ -31,6 +31,7 @@ function Script(o)
 		createAction: LS.BaseComponent.prototype.createAction,
 		bind: LS.BaseComponent.prototype.bind,
 		unbind: LS.BaseComponent.prototype.unbind,
+		trigger: (function(event,param) { return LEvent.trigger( this, event, param); }).bind(this),
 		unbindAll: LS.BaseComponent.prototype.unbindAll
 	};
 
@@ -390,7 +391,9 @@ Script.prototype.getActions = function(actions)
 
 /**
 * get events that could be triggered by this component
+* the result 
 * @method getEvents
+* @return {Array} an array with the name of the events: ["event_1","event_2", ...]
 */
 Script.prototype.getEvents = function()
 {

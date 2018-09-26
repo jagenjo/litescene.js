@@ -160,12 +160,13 @@ GraphCode.prototype.getShaderCode = function( as_string )
 	var graph_code = "";
 
 	var nodes = this._graph._nodes_in_order;
-	for(var i = 0; i < nodes.length; ++i)
-	{
-		var node = nodes[i];
-		if( node.onGetCode )
-			graph_code += node.onGetCode( "glsl", context );
-	}
+	if(nodes)
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var node = nodes[i];
+			if( node.onGetCode )
+				graph_code += node.onGetCode( "glsl", context );
+		}
 
 	var uniforms_code = "";
 	for(var i = 0; i < context.uniforms.length; ++i)
