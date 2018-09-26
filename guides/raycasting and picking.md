@@ -39,6 +39,16 @@ Other available options are:
 - max_distance: if you want to stop testing after some distance
 - first_collision: returns the first collision it find (which is not the closest one to the camera, is faster but not accurate).
 
+## Raycast against colliders
+
+Sometimes you do not want to test against all the objects in the scene, only the ones defining a collision volume. For that purpose you can use the raycast method:
+
+```js
+var collided = LS.Physics.raycast( ray.origin, ray.direction, { triangle_collision: true} );
+```
+
+This will test only with the ```Colliders``` (components of type collider) in the scene, which is much faster.
+
 
 ## Picking
 
