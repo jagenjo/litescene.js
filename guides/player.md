@@ -30,8 +30,7 @@ Create the player:
 ```js
 var player = new LS.Player({
 	width:800, height:600,
-	resources: "resources/",
-	shaders: "data/shaders.xml"
+	resources: "resources/"
 });
 ```
 
