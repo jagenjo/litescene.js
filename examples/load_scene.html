@@ -17,8 +17,8 @@
 		}
 	</style>
 
-	<script type="text/javascript" src="../../litegl/external/gl-matrix-min.js"></script>
-	<script type="text/javascript" src="../../litegl/build/litegl.js"></script>
+	<script type="text/javascript" src="../external/gl-matrix-min.js"></script>
+	<script type="text/javascript" src="../external/litegl.js"></script>
 	<script type="text/javascript" src="../build/litescene.js"></script>
 
 	<script type="text/javascript">
@@ -32,13 +32,13 @@ var APP = {
 		brightness: 1
 	},
 	render_options: {},
-	
+
 	init: function() {
 		//create context 3D
 		var player = this.player = new LS.Player({
-			width:window.innerWidth, height: window.innerHeight, 
+			width:window.innerWidth, height: window.innerHeight,
 			redraw: true,
-			resources: "assets/", 
+			resources: "assets/",
 			shaders: "../data/shaders.xml",
 			container: document.body,
 			autoplay: true,
@@ -54,7 +54,7 @@ var APP = {
 	{
 		//hook events to the controllers
 		var node = LS.GlobalScene.getNode("button");
-		LEvent.bind(node, "mouseup", function(e,v) { 
+		LEvent.bind(node, "mouseup", function(e,v) {
 			this.clicked = !this.clicked;
 			quat.setAxisAngle(this.transform._rotation, [0,1,0], 18 * (this.clicked ? 1 : -1 ) * DEG2RAD);
 			this.transform._dirty = true;
@@ -63,12 +63,12 @@ var APP = {
 		}, node);
 
 		var node = LS.GlobalScene.getNode("knob");
-		LEvent.bind(node, "knobChange", function(e,v) { 
+		LEvent.bind(node, "knobChange", function(e,v) {
 			APP.tv_settings.brightness = v;
 		});
 
 		var node = LS.GlobalScene.getNode("knob2");
-		LEvent.bind(node, "knobChange", function(e,v) { 
+		LEvent.bind(node, "knobChange", function(e,v) {
 			APP.tv_settings.delta_offset = (v-0.5)*0.01;
 		});
 
@@ -105,8 +105,8 @@ var APP = {
 		mat.uvs_matrix[7] += APP.tv_settings.offset;
 		APP.tv_settings.offset += dt * APP.tv_settings.delta_offset;
 	}
-};	
-	
+};
+
 	</script>
 </head>
 <body>
