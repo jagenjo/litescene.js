@@ -1,54 +1,87 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-<!--
-<meta property="og:title" content="GameEditor" />
-<meta property="og:description" content="GameEditor for simple games" />
-<meta property="og:image" content="" />
--->
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+        <title>litescene.js</title>
+        <link type="text/css" rel="stylesheet" media="all" href="examples/style.css" />
+        <style type="text/css">
+            #usage p {
+                margin-bottom: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>litescene.js</h1>
+            <div class="content">
+                <p>Litescene is a scene graph library for WebGL with a component based hierarchical node system.
+                    It comes with a realistic rendering pipeline and some interesting components to make it easier to build and share scenes.</p>
+                <ul>
+                    <li>Component based node system</li>
+                    <li>Realistic rendering pipeline, it supports shadows, reflections, textures for all properties, etc</li>
+                    <li>Material system that automatically computes the best shader, making it easy to control properties</li>
+                    <li>Resources Manager to load and store any kind of resource ( textures, meshes, etc)</li>
+                    <li>Serializing methods to convert any Scene to JSON</li>
+                    <li>Parser for most common file formats</li>
+                    <li>Easy to embed</li>
+                </ul>
+                <p>It uses its own low-level library called <a href="https://github.com/jagenjo/litegl.js">litegl.js</a></p>
+                <p><img src="litescene-screenshot.png" alt="litescene-screenshot" /></p>
 
-<title>litescene.js</title>
-	<link type="text/css" rel="stylesheet" media="all" href="https://github.com/assets/github-c066013be20516a6aae45467044fa109f18bd0c6.css">
-	<link type="text/css" rel="stylesheet" media="all" href="https://github.com/assets/github2-97081caeb5890bc349a9ff52de33ac5ba1a4b6cc.css">
-	<link type="text/css" rel="stylesheet" media="all" href="https://github.com/assets/styleguide-4a2ef42768c9e616cf8022dec2fe99290430ac2c.css">
-	<link rel="stylesheet" type="text/css" href="style.css" />
-	<style type='text/css'>
-	</style>
-</head>
-<body>
+                <h3>WebGLStudio</h3>
+                <p>Litescene has been created to work together with <a href="https://webglstudio.org">WebGLStudio</a>, an open source online 3D editor.
+                    From WebGLStudio you can export the JSON file containing all the info and use it in your LiteScene.</p>
 
-<div id="wrap">
-	<div id="main">
-		<div id="content" class="markdown-body">
-			<h1>litescene.js</h1>
-			<p>Litescene.js is a component based scene graph library in Javascript that provides a realistic rendering pipeline on top of WebGL.</p>
-			<p>It implements common classes like Scene, SceneNode, Camera, Light and Transform.</p>
-			<p>It relies on litegl.js for the low-level webgl actions.</p>
-			<p>Some of the main features:</p>
-			<ul>
-				<li>Component based node system.</li>
-				<li>Binary formats for meshes.</li>
-				<li>Ubershader material system</li>
-				<li>Easy to extend</li>
-			</ul>
-			
-			<h2>Usage</h2>
+                <div id="usage">
+                    <h3>Usage</h3>
+                    <p>Include the library and dependencies</p>
+                    <pre>
 
+    &lt;script src="external/gl-matrix-min.js">&lt;/script>
+    &lt;script src="external/litegl.min.js">&lt;/script>
+    &lt;script src="js/litescene.js">&lt;/script>
+                    </pre>
+                    <p>Create the context</p>
+                    <pre>
 
-			<h2>Examples</h2>
-			<ul>
-				<li><a href="examples/monitor.html">Load one scene</a></li>
-			</ul>
+    var player = new LS.Player({
+	width:800, height:600,
+	resources: "resources/",
+	shaders: "data/shaders.xml"
+    });
+                    </pre>
+                    <p>Attach to Canvas to the DOM:</p>
+                    <pre>
 
-			<h2>Documentation</h2>
-			<p>There is an <a href="doc">automatic generated documentation</a> online.</p>
-			<p>Check also the <a href="http://glmatrix.net/docs/2.2.0/symbols/vec3.html">gl-matrix documentation</a> to a better understanding of how to operate with matrices and vectors.</p>
+    document.getElementById("mycontainer").appendChild( player.canvas )
+                    </pre>
+                    <p>or you can pass the canvas in the player settings as { canvas: my_canvas_element }</p>
+                    <br/>
+                    <p>Load the scene and play it:</p>
+                    <pre>
 
-		</div>
-	</div>
-</div>
+    player.loadScene("scene.json");
+                    </pre>
+                </div>
 
-</body>
+                <h3>Basic Examples</h3>
+                <ul>
+                    <li><a href="examples/simple.html">Simple scene</a>: events are captured manually and only takes advantage of the render engine</li>
+                    <li><a href="examples/advanced.html">Complex scene</a>: using the LS.Player</li>
+                    <li><a href="examples/load_scene.html">Loaded scene</a>: loading an existing scene created with WebGLStudio</li>
+                </ul>
+
+                <h3>Documentation</h3>
+                <p>Check the <a href="guides">guides</a> folder for a better explanation of how does it works.The doc folder contains the documentation.<br/>
+                    For info about <a href="https://github.com/jagenjo/litegl.js">litegl.js</a> check the documentation in its repository.
+                    For info about <a href="http://glmatrix.com">glMatrix</a> check the documentation in its website.</p>
+
+                <h3>Utils</h3>
+                <p>It includes several commands in the utils folder to generate doc, check errors and build minifyed version.</p>
+
+                <h3>Feedback</h3>
+                <p>You can write any feedback to <a href="mailto:javi.agenjo@gmail.com">javi.agenjo@gmail.com</a></p>
+            </div>
+        </div>
+    </body>
 </html>
-

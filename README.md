@@ -3,13 +3,13 @@
 Litescene is a scene graph library for WebGL with a component based hierarchical node system.
 It comes with a realistic rendering pipeline and some interesting components to make it easier to build and share scenes.
 
- * Component based node system.
+ * Component based node system
  * Realistic rendering pipeline, it supports shadows, reflections, textures for all properties, etc
- * Material system that automatically computes the best shader, making it easy to control properties.
+ * Material system that automatically computes the best shader, making it easy to control properties
  * Resources Manager to load and store any kind of resource ( textures, meshes, etc)
  * Serializing methods to convert any Scene to JSON
  * Parser for most common file formats
- * Easy to embed.
+ * Easy to embed
 
  It uses its own low-level library called [litegl.js](https://github.com/jagenjo/litegl.js)
 
@@ -54,7 +54,7 @@ player.loadScene("scene.json");
 Documentation
 -------------
 Check the [guides](guides) folder for a better explanation of how does it works.
-The doc folder contains the documentation. 
+The doc folder contains the documentation.
 For info about [litegl.js](https://github.com/jagenjo/litegl.js) check the documentation in its repository.
 For info about [glMatrix](http://glmatrix.com) check the documentation in its website.
 
@@ -68,7 +68,3 @@ Feedback
 --------
 
 You can write any feedback to javi.agenjo@gmail.com
-
-
-
-
