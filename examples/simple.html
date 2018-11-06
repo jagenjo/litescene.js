@@ -1,184 +1,183 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-<!--
-<meta property="og:title" content="GameEditor" />
-<meta property="og:description" content="GameEditor for simple games" />
-<meta property="og:image" content="" />
--->
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 
-<title>litescene.js: simple example</title>
-	<link rel="stylesheet" type="text/css" href="style.css" />
-	<style type='text/css'>
-		html, body { width: 100%; height: 100%; overflow: hidden; }
-		* { margin: 0; padding: 0; }
-	</style>
+        <title>litescene.js: simple example</title>
+        <link rel="stylesheet" type="text/css" href="style.css" />
+        <style type='text/css'>
+            html, body { width: 100%; height: 100%; overflow: hidden; }
+            * { margin: 0; padding: 0; }
+        </style>
 
-	<script type="text/javascript" src="../external/gl-matrix-min.js"></script>
-	<script type="text/javascript" src="../external/litegl.js"></script>
-	<script type="text/javascript" src="../external/litegraph.js"></script>
-	<script type="text/javascript" src="../build/litescene.js"></script>
-	<script type="text/javascript">
-	
-	var APP = {
-		cam_dist: 10,
+        <script type="text/javascript" src="../external/gl-matrix-min.js"></script>
+        <script type="text/javascript" src="../external/litegl.js"></script>
+        <script type="text/javascript" src="../external/litegraph.js"></script>
+        <script type="text/javascript" src="../build/litescene.js"></script>
+        <script type="text/javascript">
+            var APP = {
+                cam_dist: 10,
 
-		init: function()
-		{
-			//create the GL context 
-			try
-			{
-				gl = GL.create({alpha:false, premultipliedAlpha: false });
-			}
-			catch (e)
-			{
-				alert("WebGL not supported by your browser");
-				return;
-			}
+                init: function ()
+                {
+                    //create the GL context
+                    try
+                    {
+                        gl = GL.create({alpha: false, premultipliedAlpha: false});
+                    } catch (e)
+                    {
+                        alert("WebGL not supported by your browser");
+                        return;
+                    }
 
-			//resize the canvas and add to DOM
-			gl.canvas.width = document.body.offsetWidth;
-			gl.canvas.height = document.body.offsetHeight;
-			this.glcanvas = gl.canvas;
-			document.body.appendChild(gl.canvas);
-			this.gl = gl;
+                    //resize the canvas and add to DOM
+                    gl.canvas.width = document.body.offsetWidth;
+                    gl.canvas.height = document.body.offsetHeight;
+                    this.glcanvas = gl.canvas;
+                    document.body.appendChild(gl.canvas);
+                    this.gl = gl;
 
 
-			//capture interaction events
-			gl.captureMouse();
-			gl.captureKeys(true);
-			gl.ondraw = this.ondraw;
-			gl.onupdate = this.onupdate;
-			gl.onmousedown = this.onmousedown;
-			gl.onmouseup = this.onmouseup;
-			gl.onmousemove = this.onmousemove;
-			gl.animate();
+                    //capture interaction events
+                    gl.captureMouse();
+                    gl.captureKeys(true);
+                    gl.ondraw = this.ondraw;
+                    gl.onupdate = this.onupdate;
+                    gl.onmousedown = this.onmousedown;
+                    gl.onmouseup = this.onmouseup;
+                    gl.onmousemove = this.onmousemove;
+                    gl.animate();
 
-			//prepare LiteScene
-			LS.Renderer.init();
-			LS.ResourcesManager.setPath("assets/");
-			LS.ResourcesManager.allow_base_files = true;
+                    //prepare LiteScene
+                    LS.Renderer.init();
+                    LS.ResourcesManager.setPath("assets/");
+                    LS.ResourcesManager.allow_base_files = true;
 
-			//scene globals
-			LS.GlobalScene.info.background_color = [0.1,0.1,0.1,1];
-			LS.GlobalScene.info.ambient_color = [0.2,0.2,0.2];
+                    //scene globals
+                    LS.GlobalScene.info.background_color = [0.1, 0.1, 0.1, 1];
+                    LS.GlobalScene.info.ambient_color = [0.2, 0.2, 0.2];
 
-			//global camera
-			var camera = LS.GlobalScene.getCamera();
-			camera.center = [0,35,0];
-			camera.eye = [150,40,150];
-			camera.far = 1000;
-			camera.near = 1;
+                    //global camera
+                    var camera = LS.GlobalScene.getCamera();
+                    camera.center = [0, 35, 0];
+                    camera.eye = [150, 40, 150];
+                    camera.far = 1000;
+                    camera.near = 1;
 
-			//light
-			var light = LS.GlobalScene.getLight();
-			light.color = [0.6,0.6,0.6];
-			light.position = [150,100,-50];
-			light.target = [0,25,0];
-			light.type = LS.Light.SPOT;
-			light.spot_cone = true;
-			light.far = 500;
-			light.near = 20;
-			light.size = 200;
-			light.resolution = 2048;
-			light.cast_shadows = true;
-			light.hard_shadows = true;
-			light.shadow_bias = 0.2;
+                    //light
+                    var light = LS.GlobalScene.getLight();
+                    light.color = [0.6, 0.6, 0.6];
+                    light.position = [150, 100, -50];
+                    light.target = [0, 25, 0];
+                    light.type = LS.Light.SPOT;
+                    light.spot_cone = true;
+                    light.far = 500;
+                    light.near = 20;
+                    light.size = 200;
+                    light.resolution = 2048;
+                    light.cast_shadows = true;
+                    light.hard_shadows = true;
+                    light.shadow_bias = 0.2;
 
-			//create some nodes
-			var node = new LS.SceneNode("monitor");
-			node.material = new LS.StandardMaterial({ textures: { color: "monitor_textura.png" } });
-			node.setMesh("monitor.obj");
-			LS.GlobalScene.root.addChild(node);
-			var main = node;
+                    //create some nodes
+                    var node = new LS.SceneNode("monitor");
+                    node.material = new LS.StandardMaterial({textures: {color: "monitor_textura.png"}});
+                    node.setMesh("monitor.obj");
+                    LS.GlobalScene.root.addChild(node);
+                    var main = node;
 
-			node = new LS.SceneNode("screen");
-			node.material = new LS.StandardMaterial({ color: [0.5,0.5,0.5], emissive: [0.3,0.5,1.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 1000,
-				textures: { detail:"pattern_rgb.png", 
-							color: "empty-screen.png" }});
-			node.setMesh("screen.obj");
-			main.addChild(node);
+                    node = new LS.SceneNode("screen");
+                    node.material = new LS.StandardMaterial({
+                        color: [0.5, 0.5, 0.5],
+                        emissive: [0.3, 0.5, 1.0],
+                        detail: [0, 256, 256],
+                        specular_factor: 2,
+                        specular_gloss: 1000,
+                        textures: {
+                            detail: "pattern_rgb.png",
+                            color: "empty-screen.png"
+                        }
+                    });
+                    node.setMesh("screen.obj");
+                    main.addChild(node);
 
-			//add some postpo
-			var fx = new LS.Components.FXGraphComponent();
-			fx.use_antialiasing = true;
-			LS.GlobalScene.root.addComponent(fx);
-			var glow = LiteGraph.createNode("texture/glow");
-			glow.properties.threshold = 0.7;
-			glow.properties.persistence = 1.1;
-			fx.graph.add( glow );
-			fx.render_node.connect(0, glow, 0);
-			glow.connect(0, fx.viewport_node, 0);
+                    //add some postpo
+                    var fx = new LS.Components.FXGraphComponent();
+                    fx.use_antialiasing = true;
+                    LS.GlobalScene.root.addComponent(fx);
+                    var glow = LiteGraph.createNode("texture/glow");
+                    glow.properties.threshold = 0.7;
+                    glow.properties.persistence = 1.1;
+                    fx.graph.add(glow);
+                    fx.render_node.connect(0, glow, 0);
+                    glow.connect(0, fx.viewport_node, 0);
 
-			//example of forward render function to inject draw calls into the scene
-			LS.Renderer.onRenderScene = function(camera)
-			{
-				LS.Draw.push();
-				LS.Draw.translate( Math.sin( LS.GlobalScene.time ) * 100,100,10);
-				LS.Draw.renderSolidSphere(10);
-				LS.Draw.pop();
-			}
+                    //example of forward render function to inject draw calls into the scene
+                    LS.Renderer.onRenderScene = function (camera)
+                    {
+                        LS.Draw.push();
+                        LS.Draw.translate(Math.sin(LS.GlobalScene.time) * 100, 100, 10);
+                        LS.Draw.renderSolidSphere(10);
+                        LS.Draw.pop();
+                    };
 
-			//load resources
-			LS.GlobalScene.loadResources();
-		},
+                    //load resources
+                    LS.GlobalScene.loadResources();
+                },
 
-		ondraw: function()
-		{
-			//move the camera a little bit
-			var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
-			var camera = LS.GlobalScene.getCamera();
-			camera.eye = [5 * (APP.cam_dist + idle),40, -20 * (APP.cam_dist + idle)];
+                ondraw: function ()
+                {
+                    //move the camera a little bit
+                    var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
+                    var camera = LS.GlobalScene.getCamera();
+                    camera.eye = [5 * (APP.cam_dist + idle), 40, -20 * (APP.cam_dist + idle)];
 
-			//render the scene (it uses LS.GlobalScene as default)
-			LS.Renderer.render();
-		},
+                    //render the scene (it uses LS.GlobalScene as default)
+                    LS.Renderer.render();
+                },
 
-		onupdate: function(dt)
-		{
-			var now = new Date().getTime();
-			LS.GlobalScene.update(dt);
-		},
+                onupdate: function (dt)
+                {
+                    //var now = new Date().getTime();
+                    LS.GlobalScene.update(dt);
+                },
 
-		clicked_node: null,
+                clicked_node: null,
 
-		onmousedown: function(e)
-		{
-			//example of picking
-			var node = LS.Picking.getNodeAtCanvasPosition( e.mousex, e.mousey );
-			if(node && node.interactive)
-			{
-				LEvent.trigger(node,"mousedown",e);
-				APP.clicked_node = node;
-			} 
-		},
+                onmousedown: function (e)
+                {
+                    //example of picking
+                    var node = LS.Picking.getNodeAtCanvasPosition(e.mousex, e.mousey);
+                    if (node && node.interactive)
+                    {
+                        LEvent.trigger(node, "mousedown", e);
+                        APP.clicked_node = node;
+                    }
+                },
 
-		onmouseup: function(e)
-		{
-			APP.clicked_node = null;
-		},
+                onmouseup: function (e)
+                {
+                    APP.clicked_node = null;
+                },
 
-		onmousemove: function(e)
-		{
-			if(e.dragging)
-			{
-				var node = LS.GlobalScene.getNode("monitor");
-				if(node)
-					node.transform.rotate(e.deltax,[0,1,0]);
-				APP.cam_dist += e.deltay * 0.01;
-				if(APP.cam_dist < 5) APP.cam_dist = 5;
-				else if(APP.cam_dist > 10) APP.cam_dist = 10;
-			}
-		}
-	}
-	
-	</script>
-</head>
-<body>
-
-<script>APP.init();</script>
-</body>
+                onmousemove: function (e)
+                {
+                    if (e.dragging)
+                    {
+                        var node = LS.GlobalScene.getNode("monitor");
+                        if (node)
+                            node.transform.rotate(e.deltax, [0, 1, 0]);
+                        APP.cam_dist += e.deltay * 0.01;
+                        if (APP.cam_dist < 5)
+                            APP.cam_dist = 5;
+                        else if (APP.cam_dist > 10)
+                            APP.cam_dist = 10;
+                    }
+                }
+            };
+        </script>
+    </head>
+    <body>
+        <script>APP.init();</script>
+    </body>
 </html>
-
-
