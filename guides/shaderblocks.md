@@ -92,7 +92,7 @@ Globally for the next frame:
 You can chain several ShaderBlocks so one can include another one, just use the same syntaxis using pragmas.
 Just be careful of not creating recursive loops.
 
-```cpp
+```glsl
 //from my ShaderBlock "morphing"...
 #pragma shaderblock "morphing_texture"
 ```
@@ -104,7 +104,7 @@ This may seem strange but it is common when we have a ShaderBlock that can be af
 
 To solve this a ShaderBlock can include a ShaderBlock but instead of specifying the name, it can specify a dynamic name that will be read from the ShaderBlock context:
 
-```
+```glsl
 //the name of the block doesnt have quotes, because it is a dynamic name
 #pragma shaderblock morphing_mode
 ```
