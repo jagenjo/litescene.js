@@ -11,7 +11,7 @@ To tackle this problem ShaderCode allows to include ShaderBlocks.
 A ShaderBlock its a snippet of code that could be toggled from different elements of the render pipeline.
 
 Depending on if the ShaderBlock is enabled or disabled it will output a different fragment of code.
-And because every shaderblock has its own unique number, they can be easily mapped using bit operations in a 64 bits number.
+And because every shaderblock has its own unique number, they can be easily mapped using bit operations in a 32 bits number.
 
 ## Creating a ShaderBlock
 
