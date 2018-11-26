@@ -19,7 +19,7 @@ To create a ShaderBlock you must instatiate the ShaderBlock class and configure 
 
 First create the ShaderBlock and give it a name (this name will be the one referenced from the shader when including it):
 ```javascript
-var morphing_block = new LS.ShaderBlock("morphing");
+var my_shader_block = new LS.ShaderBlock("morphing");
 ```
 The next step is to add the code snippets for the Vertex or Fragment shader. 
 
@@ -28,16 +28,27 @@ The next step is to add the code snippets for the Vertex or Fragment shader.
 When adding a code snippet you have to pass two snippets, one for when the ShaderBlock is enabled and one for when it is disabled. This is because from your shader you will be calling functions contained in this ShaderBlock, and you want the shader to have this functions even if the ShaderBlock is disabled.
 
 ```javascript
-morphing_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
+var enabled_shader_code = "void applyMorphing(inout vec4 vertex, inout vec3 normal) { ... }\n";
+var disabled_shader_code = "void applyMorphing(inout vec4 vertex, inout vec3 normal) {}\n";
+my_shader_block.addCode( GL.VERTEX_SHADER, enabled_shader_code, disabled_shader_code );
 ```
 
 ### ShaderBlock events
 
-You can also assign code to certain events triggered inside the shader.
-This is different from the previous code in that this only gets added if it is enabled and the shader has a ```#pragma event "event_name"```
+Sometimes several shader blocks want to inject code in the same area of the shader, without knowing if other blocks exist.
+For that reason ShaderCodes could contain 'pragma events' where ShaderBlocks can inject code.
+
+This is different from the previous code in that this only gets added if it is enabled and the shader has the corresponding ```#pragma event "event_name"```
+
+```glsl
+//inside the vertex or fragment shader
+//...
+#pragma event "vs_functions"
+//...
+```
 
 ```javascript
-morphing_block.bindEvent( "vs_functions", "float myFunc() { return 1.0; }" );
+my_shader_block.bindEvent( "vs_functions", "float myFunc() { return 1.0; }" );
 ```
 
 ### Registering the ShaderBlock
@@ -45,12 +56,12 @@ morphing_block.bindEvent( "vs_functions", "float myFunc() { return 1.0; }" );
 Register the ```LS.ShaderBlock``` in the system by calling the register function:
 
 ```javascript
-morphing_block.register();
+my_shader_block.register();
 ```
 
 After doing this you can call it from your shader:
 
-```cpp
+```glsl
 #pragma shaderblock "morphing"
 
 void main() {
@@ -94,6 +105,7 @@ This may seem strange but it is common when we have a ShaderBlock that can be af
 To solve this a ShaderBlock can include a ShaderBlock but instead of specifying the name, it can specify a dynamic name that will be read from the ShaderBlock context:
 
 ```
+//the name of the block doesnt have quotes, because it is a dynamic name
 #pragma shaderblock morphing_mode
 ```
 
@@ -105,6 +117,8 @@ The variable name can be defined from the ShaderBlock and only will be assigned 
 var morphing_texture_block = new LS.ShaderBlock("morphing_texture");
 morphing_texture_block.defineContextMacros( { "morphing_mode": "morphing_texture"} );
 ```
+
+This was created so ShaderBlocks could have some level of dynamism.
 
 ## Preprocessor macros
 
@@ -149,5 +163,5 @@ this.onSceneRender = function()
 
 Check the ```LS.ShaderMaterial```, ```LS.ShaderCode```, ```LS.ShaderManager```, ```LS.ShaderBlock``` and ```LS.GLSLCode``` to understand better how it works.
 
-Also check the MorphDeformer component as a complete use-case.
+Also check the ```LS.Components.MorphDeformer``` component as a complete use-case.
 
