@@ -12,8 +12,8 @@
 		}
 	</style>
 
-	<script type="text/javascript" src="../../litegl/external/gl-matrix-min.js"></script>
-	<script type="text/javascript" src="../../litegl/build/litegl.js"></script>
+	<script type="text/javascript" src="../external/gl-matrix-min.js"></script>
+	<script type="text/javascript" src="../external/litegl.js"></script>
 	<script type="text/javascript" src="../build/litescene.js"></script>
 
 	<script type="text/javascript">
@@ -27,11 +27,11 @@ var APP = {
 		brightness: 1
 	},
 	render_options: {},
-	
+
 	init: function() {
 		//create context 3D
 		var player = this.player = new LS.Player({
-			width:window.innerWidth, height: window.innerHeight, 
+			width:window.innerWidth, height: window.innerHeight,
 			redraw: true,
 			resources: "assets/", 
 			container: document.body,
@@ -81,10 +81,9 @@ var APP = {
 		else
 			mat.opacity = 0.1;
 		mat.uvs_matrix[7] += APP.tv_settings.offset;
-
 	}
-};	
-	
+};
+
 	</script>
 </head>
 <body>
