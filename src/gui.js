@@ -752,7 +752,7 @@ var GUI = {
 			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				norm_value = ( (LS.Input.Mouse.mousex - this._offset[0]) - (area[0] + margin)) / (area[2] - margin*2);
+				norm_value = ( (LS.Input.Mouse.x - this._offset[0]) - (area[0] + margin)) / (area[2] - margin*2);
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;
 				value = norm_value * range + left_value;
@@ -823,7 +823,7 @@ var GUI = {
 			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				norm_value = ( (LS.Input.Mouse.mousey - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
+				norm_value = ( (LS.Input.Mouse.y - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;
 				norm_value = 1 - norm_value; //reverse slider
@@ -893,12 +893,12 @@ var GUI = {
 			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				var dx = LS.Input.Mouse.mousex - (area[0] + area[2] * 0.5) - this._offset[0];
-				var dy = LS.Input.Mouse.mousey - (area[1] + area[3] * 0.5) - this._offset[1];
+				var dx = LS.Input.Mouse.x - (area[0] + area[2] * 0.5) - this._offset[0];
+				var dy = LS.Input.Mouse.y - (area[1] + area[3] * 0.5) - this._offset[1];
 				//var angle = Math.atan2( dx, -dy ) / Math.PI;
 				var angle = ( Math.atan2( dx, -dy ) - start_angle ) / total_angle;
 				norm_value = angle;
-				//norm_value = ( (LS.Input.Mouse.mousey - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
+				//norm_value = ( (LS.Input.Mouse.y - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
 				//norm_value = 1 - norm_value; //reverse slider
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;

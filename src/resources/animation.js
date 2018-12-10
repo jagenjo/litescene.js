@@ -479,7 +479,7 @@ Take.prototype.removeTrack = function( track )
 }
 
 
-Take.prototype.getPropertiesSample = function(time, result)
+Take.prototype.getPropertiesSample = function( time, result )
 {
 	result = result || [];
 	for(var i = 0; i < this.tracks.length; ++i)
@@ -934,11 +934,27 @@ Track.prototype.convertIDtoName = function( use_basename, root )
 	return true;
 }
 
+
 /**
-* Adds a new keyframe to this track
+* Adds a new keyframe from the current value of that property
+* @method addKeyframeFromCurrent
+* @param {Number} time time stamp in seconds
+* @param {LS.SceneTree} scene 
+*/
+Track.prototype.addKeyframeFromCurrent = function( time, scene )
+{
+	scene = scene || LS.GlobalScene;
+	var info = scene.getPropertyInfoFromPath( this._property_path );
+	if(!info)
+		return null;
+	return this.addKeyframe( time, info.value );
+}
+
+/**
+* Adds a new keyframe to this track given a value
 * @method addKeyframe
 * @param {Number} time time stamp in seconds
-* @param {*} value anything you want to store
+* @param {*} value anything you want to store, if omited then the current value is used
 * @param {Boolean} skip_replace if you want to replace existing keyframes at same time stamp or add it next to that
 * @return {Number} index of keyframe
 */

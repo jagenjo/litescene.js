@@ -1045,7 +1045,8 @@ var ResourcesManager = {
 		{
 			var alert_res = this.resources[i];
 			if( alert_res != res && alert_res.onResourceRenamed )
-				alert_res.onResourceRenamed( old_name, new_name, res );
+				if( alert_res.onResourceRenamed( old_name, new_name, res ) )
+					this.resourceModified(alert_res);
 		}
 
 		//ugly: too hardcoded

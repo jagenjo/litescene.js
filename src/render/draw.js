@@ -69,81 +69,8 @@ var Draw = {
 		var coords = [[0,1],[1,1],[1,0],[0,0]];
 		this.quad_mesh = GL.Mesh.load({vertices:vertices, coords: coords});
 
-		var vertex_shader = '\
-			precision mediump float;\n\
-			attribute vec3 a_vertex;\n\
-			#ifdef USE_COLOR\n\
-				attribute vec4 a_color;\n\
-				varying vec4 v_color;\n\
-			#endif\n\
-			#ifdef USE_TEXTURE\n\
-				attribute vec2 a_coord;\n\
-				varying vec2 v_coord;\n\
-			#endif\n\
-			#ifdef USE_SIZE\n\
-				attribute float a_extra;\n\
-			#endif\n\
-			#ifdef USE_INSTANCING\n\
-				attribute mat4 u_model;\n\
-			#else\n\
-				uniform mat4 u_model;\n\
-			#endif\n\
-			uniform mat4 u_viewprojection;\n\
-			uniform float u_point_size;\n\
-			uniform float u_perspective;\n\
-			uniform float u_point_perspective;\n\
-			float computePointSize(float radius, float w)\n\
-			{\n\
-				if(radius < 0.0)\n\
-					return -radius;\n\
-				return u_perspective * radius / w;\n\
-			}\n\
-			void main() {\n\
-				#ifdef USE_TEXTURE\n\
-					v_coord = a_coord;\n\
-				#endif\n\
-				#ifdef USE_COLOR\n\
-					v_color = a_color;\n\
-				#endif\n\
-				vec3 vertex = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
-				gl_Position = u_viewprojection * vec4(vertex,1.0);\n\
-				gl_PointSize = u_point_size;\n\
-				#ifdef USE_SIZE\n\
-					gl_PointSize = a_extra;\n\
-				#endif\n\
-				if(u_point_perspective != 0.0)\n\
-					gl_PointSize = computePointSize( gl_PointSize, gl_Position.w );\n\
-			}\
-			';
-
-		var pixel_shader = '\
-			precision mediump float;\n\
-			uniform vec4 u_color;\n\
-			#ifdef USE_COLOR\n\
-				varying vec4 v_color;\n\
-			#endif\n\
-			#ifdef USE_TEXTURE\n\
-				varying vec2 v_coord;\n\
-				uniform sampler2D u_texture;\n\
-			#endif\n\
-			void main() {\n\
-				vec4 color = u_color;\n\
-				#ifdef USE_TEXTURE\n\
-				  color *= texture2D(u_texture, v_coord);\n\
-				  if(color.a < 0.1)\n\
-					discard;\n\
-			    #endif\n\
-				#ifdef USE_POINTS\n\
-				    float dist = length( gl_PointCoord.xy - vec2(0.5) );\n\
-					if( dist > 0.45 )\n\
-						discard;\n\
-			    #endif\n\
-				#ifdef USE_COLOR\n\
-					color *= v_color;\n\
-				#endif\n\
-				gl_FragColor = color;\n\
-			}\
-		';
+		var vertex_shader = Draw.vertex_shader_code;
+		var pixel_shader = Draw.fragment_shader_code;
 
 		//create shaders
 		this.shader = new Shader( vertex_shader, pixel_shader );
@@ -1563,8 +1490,89 @@ var Draw = {
 			indices: new Uint16Array(this._global_mesh_max_vertices * 3)
 		}, { stream_type: gl.DYNAMIC_STREAM });
 	}
-
 };
+
+
+Draw.vertex_shader_code = '\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	varying vec3 v_vertex;\n\
+	attribute vec3 a_normal;\n\
+	varying vec3 v_normal;\n\
+	#ifdef USE_COLOR\n\
+		attribute vec4 a_color;\n\
+		varying vec4 v_color;\n\
+	#endif\n\
+	#ifdef USE_TEXTURE\n\
+		attribute vec2 a_coord;\n\
+		varying vec2 v_coord;\n\
+	#endif\n\
+	#ifdef USE_SIZE\n\
+		attribute float a_extra;\n\
+	#endif\n\
+	#ifdef USE_INSTANCING\n\
+		attribute mat4 u_model;\n\
+	#else\n\
+		uniform mat4 u_model;\n\
+	#endif\n\
+	uniform mat4 u_viewprojection;\n\
+	uniform float u_point_size;\n\
+	uniform float u_perspective;\n\
+	uniform float u_point_perspective;\n\
+	float computePointSize(float radius, float w)\n\
+	{\n\
+		if(radius < 0.0)\n\
+			return -radius;\n\
+		return u_perspective * radius / w;\n\
+	}\n\
+	void main() {\n\
+		#ifdef USE_TEXTURE\n\
+			v_coord = a_coord;\n\
+		#endif\n\
+		#ifdef USE_COLOR\n\
+			v_color = a_color;\n\
+		#endif\n\
+		v_vertex = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
+		v_normal = ( u_model * vec4( a_normal, 0.0 )).xyz;\n\
+		gl_Position = u_viewprojection * vec4(v_vertex,1.0);\n\
+		gl_PointSize = u_point_size;\n\
+		#ifdef USE_SIZE\n\
+			gl_PointSize = a_extra;\n\
+		#endif\n\
+		if(u_point_perspective != 0.0)\n\
+			gl_PointSize = computePointSize( gl_PointSize, gl_Position.w );\n\
+	}\
+';
+
+Draw.fragment_shader_code = '\
+	precision mediump float;\n\
+	uniform vec4 u_color;\n\
+	#ifdef USE_COLOR\n\
+		varying vec4 v_color;\n\
+	#endif\n\
+	#ifdef USE_TEXTURE\n\
+		varying vec2 v_coord;\n\
+		uniform sampler2D u_texture;\n\
+	#endif\n\
+	void main() {\n\
+		vec4 color = u_color;\n\
+		#ifdef USE_TEXTURE\n\
+		  color *= texture2D(u_texture, v_coord);\n\
+		  if(color.a < 0.1)\n\
+			discard;\n\
+		#endif\n\
+		#ifdef USE_POINTS\n\
+			float dist = length( gl_PointCoord.xy - vec2(0.5) );\n\
+			if( dist > 0.45 )\n\
+				discard;\n\
+		#endif\n\
+		#ifdef USE_COLOR\n\
+			color *= v_color;\n\
+		#endif\n\
+		gl_FragColor = color;\n\
+	}\
+';
+
 
 if(typeof(LS) != "undefined")
 	LS.Draw = Draw;

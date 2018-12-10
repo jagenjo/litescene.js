@@ -40,7 +40,7 @@ var Picking = {
 	/**
 	* Returns the instance under a screen position
 	* @method getInstanceAtCanvasPosition
-	* @param {number} x in canvas coordinates
+	* @param {number} x in canvas coordinates (0,0 is bottom-left)
 	* @param {number} y in canvas coordinates
 	* @param {Camera} camera
 	* @param {number} layers default is 0xFFFF which is all
@@ -60,7 +60,7 @@ var Picking = {
 		this._picking_nodes = {};
 
 		//render all Render Instances
-		this.getPickingColorFromBuffer( scene, camera, x,y, layers );
+		this.getPickingColorFromBuffer( scene, camera, x, y, layers );
 
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
@@ -97,6 +97,7 @@ var Picking = {
 	_picking_nodes: {},
 	_picking_render_settings: new RenderSettings(),
 
+	//x,y must be in canvas coordinates (0,0 is bottom-left)
 	getPickingColorFromBuffer: function( scene, camera, x, y, layers )
 	{
 		//create texture
@@ -107,9 +108,7 @@ var Picking = {
 			//LS.ResourcesManager.textures[":picking"] = this._pickingMap; //debug the texture
 		}
 
-		//y = gl.canvas.height - y; //reverse Y
 		var small_area = true;
-
 		LS.Renderer._current_target = this._pickingMap;
 
 		this._pickingFBO.bind();
@@ -140,7 +139,8 @@ var Picking = {
 		return this._picking_color;
 	},
 
-	renderPickingBuffer: function( scene, camera, layers, mouse_pos )
+	//pos must be in canvas coordinates (0,0 is bottom-left)
+	renderPickingBuffer: function( scene, camera, layers, pos )
 	{
 		if(layers === undefined)
 			layers = 0xFFFF;
@@ -157,9 +157,9 @@ var Picking = {
 
 		//check instances colliding with cursor using a ray against AABBs
 		var instances = null;
-		if( mouse_pos ) //not tested yet
+		if( pos ) //not tested yet
 		{
-			var ray = camera.getRayInPixel( mouse_pos[0], mouse_pos[1] );
+			var ray = camera.getRay( pos[0], pos[1] );
 			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
 			if( instances_collisions )
 			{
@@ -174,8 +174,8 @@ var Picking = {
 
 		LS.Renderer.renderInstances( picking_render_settings, instances );
 
-		LEvent.trigger( scene, "renderPicking", mouse_pos );
-		LEvent.trigger( LS.Renderer, "renderPicking", mouse_pos );
+		LEvent.trigger( scene, "renderPicking", pos );
+		LEvent.trigger( LS.Renderer, "renderPicking", pos );
 
 		LS.Renderer.setRenderPass( COLOR_PASS );
 	}

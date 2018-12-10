@@ -2,7 +2,22 @@
 //this file defines the shaderblocks that interact in the render of any standard material
 //the pipeline is quite standard
 
-//for structures like Input go to shaders.xml
+//for structures like Input go to shaders.js
+/*	struct Input {\n\
+	vec4 color;\n\
+	vec3 vertex;\n\
+	vec3 normal;\n\
+	vec2 uv;\n\
+	vec2 uv1;\n\
+	\n\
+	vec3 camPos;\n\
+	vec3 viewDir;\n\
+	vec3 worldPos;\n\
+	vec3 worldNormal;\n\
+	vec4 screenPos;\n\
+};\n\
+*/
+
 
 //define surface structures
 LS.Shaders.registerSnippet("surface","\n\
@@ -112,6 +127,8 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
+	#pragma shaderblock \"firstPass\"\n\
+	#pragma shaderblock \"lastPass\"\n\
 	#pragma shaderblock \"applyIrradiance\"\n\
 	#pragma shaderblock \"attenuation\"\n\
 	#pragma shaderblock SHADOWBLOCK \"testShadow\"\n\
@@ -125,7 +142,6 @@ Light._enabled_fs_shaderblock_code = "\n\
 		FinalLight FINALLIGHT;\n\
 		// INIT\n\
 		FINALLIGHT.Color = LIGHT.Color;\n\
-		FINALLIGHT.Ambient = LIGHT.Ambient;\n\
 		\n\
 		// COMPUTE VECTORS\n\
 		vec3 N = o.Normal; //use the final normal (should be the same as IN.worldNormal)\n\
@@ -142,12 +158,16 @@ Light._enabled_fs_shaderblock_code = "\n\
 		vec3 R = reflect(E,N);\n\
 		\n\
 		// IRRADIANCE\n\
-		applyIrradiance( o, FINALLIGHT );\n\
+		#ifdef BLOCK_FIRSTPASS\n\
+			FINALLIGHT.Ambient = LIGHT.Ambient;\n\
+			applyIrradiance( IN, o, FINALLIGHT );\n\
+		#endif\n\
 		// PHONG FORMULA\n\
 		float NdotL = 1.0;\n\
 		NdotL = dot(N,L);\n\
 		float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);\n\
-		NdotL = max( 0.0, NdotL + LIGHT.Offset );\n\
+		NdotL = NdotL + LIGHT.Offset;\n\
+		NdotL = max( 0.0, NdotL );\n\
 		FINALLIGHT.Diffuse = abs(NdotL);\n\
 		FINALLIGHT.Specular = o.Specular * pow( clamp(dot(R,-L),0.001,1.0), o.Gloss );\n\
 		\n\
@@ -177,8 +197,9 @@ Light._enabled_fs_shaderblock_code = "\n\
 	{\n\
 		vec3 total_light = FINALLIGHT.Ambient * o.Ambient + FINALLIGHT.Color * FINALLIGHT.Diffuse * FINALLIGHT.Attenuation * FINALLIGHT.Shadow;\n\
 		vec3 final_color = o.Albedo * total_light;\n\
-		if(u_light_info.z == 0.0)\n\
-			final_color += o.Emission;\n\
+		#ifdef BLOCK_FIRSTPASS\n\
+		final_color += o.Emission;\n\
+		#endif\n\
 		final_color	+= o.Albedo * (FINALLIGHT.Color * FINALLIGHT.Specular * FINALLIGHT.Attenuation * FINALLIGHT.Shadow);\n\
 		return max( final_color, vec3(0.0) );\n\
 	}\n\
@@ -205,14 +226,15 @@ Light._disabled_shaderblock_code = "\n\
 		FINALLIGHT.Specular = 0.0;\n\
 		FINALLIGHT.Attenuation = 0.0;\n\
 		FINALLIGHT.Shadow = 0.0;\n\
-		applyIrradiance( o, FINALLIGHT );\n\
+		applyIrradiance( IN, o, FINALLIGHT );\n\
 		return FINALLIGHT;\n\
 	}\n\
 	vec3 applyLight( in SurfaceOutput o, in FinalLight FINALLIGHT )\n\
 	{\n\
 		vec3 final_color = o.Albedo * o.Ambient * FINALLIGHT.Ambient;\n\
-		if(u_light_info.z == 0.0)\n\
-			final_color += o.Emission;\n\
+		#ifdef BLOCK_FIRSTPASS\n\
+		final_color += o.Emission;\n\
+		#endif\n\
 		return final_color;\n\
 	}\n\
 	\n\
@@ -481,8 +503,9 @@ var reflection_code = "\n\
 		vec3 R = reflect( IN.viewDir, o.Normal );\n\
 		vec3 bg = vec3(0.0);\n\
 		//is last pass for this object?\n\
-		if(u_light_info.w == 0.0 || u_light_info.z == (u_light_info.w - 1.0))\n\
-			bg = getEnvironmentColor( R, 0.0 );\n\
+		#ifdef BLOCK_LASTPASS\n\
+		bg = getEnvironmentColor( R, 0.0 );\n\
+		#endif\n\
 		final_color.xyz = mix( final_color.xyz, bg, clamp( o.Reflectivity, 0.0, 1.0) );\n\
 		return final_color;\n\
 	}\n\
@@ -500,23 +523,17 @@ ShaderMaterial.reflection_block = reflection_block;
 reflection_block.addCode( GL.FRAGMENT_SHADER, reflection_code, reflection_disabled_code );
 reflection_block.register();
 
-// IRRADIANCE *************************************
-var irradiance_code = "\n\
-	uniform samplerCube irradiance_texture;\n\
-	\n\
-	void applyIrradiance( in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
-	{\n\
-		FINALLIGHT.Ambient *= textureCube( irradiance_texture, o.Normal ).xyz;\n\
-	}\n\
-";
-
+//dummy irradiance code (it is overwritten later)
 var irradiance_disabled_code = "\n\
-	void applyIrradiance( in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
+	void applyIrradiance( in Input IN, in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
 	{\n\
 	}\n\
 ";
 
-var irradiance_block = new LS.ShaderBlock("applyIrradiance");
-ShaderMaterial.irradiance_block = irradiance_block;
-irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
-irradiance_block.register();
+if( !LS.Shaders.getShaderBlock("applyIrradiance") )
+{
+	var irradiance_block = new LS.ShaderBlock("applyIrradiance");
+	ShaderMaterial.irradiance_block = irradiance_block;
+	irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_disabled_code, irradiance_disabled_code );
+	irradiance_block.register();
+}

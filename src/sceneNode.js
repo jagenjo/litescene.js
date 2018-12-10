@@ -163,6 +163,9 @@ Object.defineProperty( SceneNode.prototype, 'visible', {
 	set: function(v)
 	{
 		this.flags.visible = v;
+		if( this._children )
+		for(var i = 0; i < this._children.length; ++i )
+			this._children[i].visible = v;
 	},
 	get: function(){
 		return this.flags.visible;
@@ -174,6 +177,9 @@ Object.defineProperty( SceneNode.prototype, 'is_static', {
 	set: function(v)
 	{
 		this.flags.is_static = v;
+		if( this._children )
+		for(var i = 0; i < this._children.length; ++i )
+			this._children[i].is_static = v;
 	},
 	get: function(){
 		return this.flags.is_static;

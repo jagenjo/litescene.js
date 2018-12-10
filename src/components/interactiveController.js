@@ -51,7 +51,7 @@ InteractiveController.prototype.getNodeUnderMouse = function( e )
 	var camera = LS.Renderer.getCameraAtPosition( e.canvasx, e.canvasy );
 	if(!camera)
 		return null;
-	var ray = camera.getRayInPixel( e.canvasx, e.canvasy );
+	var ray = camera.getRay( e.canvasx, e.canvasy );
 
 	if(this.mode == InteractiveController.BOUNDING)
 	{

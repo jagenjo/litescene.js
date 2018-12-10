@@ -158,9 +158,23 @@ var Input = {
 	lockMouse: function(v)
 	{
 		if(v)
+		{
 			gl.canvas.requestPointerLock();
+
+		}
 		else
 			document.exitPointerLock();
+	},
+
+	/**
+	* returns true is mouse is in pointer lock mode
+	*
+	* @method isMouseLocked
+	* @return {boolean}
+	*/
+	isMouseLocked: function()
+	{
+		return !!document.pointerLockElement;
 	},
 
 	//called from LS.Player when onmouse
@@ -169,8 +183,14 @@ var Input = {
 	{
 		this.last_mouse = e;
 
-		this.Mouse.mousex = e.mousex;
-		this.Mouse.mousey = e.mousey;
+		if( this.isMouseLocked() )
+		{
+			e.canvasx = e.mousex = (gl.canvas.width * 0.5)|0;
+			e.canvasy = e.mousey = (gl.canvas.height * 0.5)|0;
+		}
+
+		this.Mouse.x = this.Mouse.mousex = this.Mouse.canvasx = e.canvasx;
+		this.Mouse.y = this.Mouse.mousex = this.Mouse.canvasy = e.canvasy;
 
 		//save it in case we need to know where was the last click
 		if(e.type == "mousedown")

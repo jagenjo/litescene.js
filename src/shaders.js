@@ -179,11 +179,11 @@ var Shaders = {
 	* @param {string} id
 	* @param {LS.ShaderBlock} shader_block
 	*/
-	registerShaderBlock: function( id, shader_block )
+	registerShaderBlock: function( id, shader_block, ignore_warning )
 	{
 		var block_id = -1;
 
-		if( this.shader_blocks_by_id.get( id ) )
+		if( !ignore_warning && this.shader_blocks_by_id.get( id ) )
 		{
 			console.warn("There is already a ShaderBlock with that name, replacing it: ", id);
 			block_id = this.shader_blocks_by_id.get(id).flag_id;
@@ -327,9 +327,9 @@ ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context
 *
 * @method register
 **/
-ShaderBlock.prototype.register = function()
+ShaderBlock.prototype.register = function( overwrite )
 {
-	LS.Shaders.registerShaderBlock(this.name, this);
+	LS.Shaders.registerShaderBlock(this.name, this, overwrite );
 }
 
 ShaderBlock.prototype.checkDependencies = function( code )
@@ -616,7 +616,7 @@ GLSLCode.pragma_methods["shaderblock"] = {
 		}
 
 		var block_code = shader_block.getFinalCode( shader_type, block_flags, context );
-		if( !block_code )
+		if( block_code == null )
 			return null;
 
 		//add the define BLOCK_name only if enabled
@@ -915,3 +915,22 @@ LS.Shaders.registerSnippet("computePointSize","\n\
 				return u_viewport.w * u_camera_perspective.z * radius / w;\n\
 			}\n\
 	");
+
+
+//base blocks that behave more like booleans 
+
+//used to have the BLOCK_FIRSTPASS macro
+var firstpass_block = LS.Shaders.firstpass_block = new LS.ShaderBlock("firstPass");
+firstpass_block.addCode( GL.FRAGMENT_SHADER, "", "" );
+firstpass_block.register();
+
+//used to have the BLOCK_LASTPASS macro
+var lastpass_block = LS.Shaders.lastpass_block = new LS.ShaderBlock("lastPass");
+lastpass_block.addCode( GL.FRAGMENT_SHADER, "", "" );
+lastpass_block.register();
+
+//used to render normalinfo to buffer
+var normalbuffer_block = LS.Shaders.normalbuffer_block = new LS.ShaderBlock("normalBuffer");
+normalbuffer_block.addCode( GL.FRAGMENT_SHADER, "", "" );
+normalbuffer_block.register();
+

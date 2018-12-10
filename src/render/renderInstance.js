@@ -36,11 +36,12 @@ function RenderInstance( node, component )
 	//transformation
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
-	this.center = vec3.create();
+	this.position = vec3.create(); //the origin of the node
 
 	//for visibility computation
 	this.oobb = BBox.create(); //object space bounding box
 	this.aabb = BBox.create(); //axis aligned bounding box
+	this.center = BBox.getCenter( this.aabb ); //the center of the AABB
 
 	//info about the material
 	this.material = null; //the material, cannot be a string
@@ -66,6 +67,7 @@ function RenderInstance( node, component )
 	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering (using bit operations)
 	this._is_visible = false; //used during the rendering to mark if it was seen
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
+	this._nearest_reflection_probe = null;
 }
 
 RenderInstance.NO_SORT = 0;
@@ -83,7 +85,7 @@ RenderInstance.prototype.fromNode = function(node)
 		this.setMatrix( node.transform._global_matrix );
 	else
 		this.setMatrix( LS.IDENTITY );
-	mat4.multiplyVec3( this.center, this.matrix, LS.ZEROS );
+	mat4.multiplyVec3( this.position, this.matrix, LS.ZEROS );
 	this.layers = node.layers;
 }
 

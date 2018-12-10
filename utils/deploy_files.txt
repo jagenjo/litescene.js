@@ -31,6 +31,7 @@
 ../src/resources/graphCode.js
 
 ../src/graph/scene.js
+../src/graph/components.js
 ../src/graph/logic.js
 ../src/graph/fx.js
 ../src/graph/actions.js

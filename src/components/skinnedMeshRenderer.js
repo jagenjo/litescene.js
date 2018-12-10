@@ -165,7 +165,7 @@ SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
 	return node.transform.getGlobalMatrixRef();
 }
 
-//checks the list of bones in mesh.bones and retrieves its matrices
+//checks the list of bones in mesh.bones and returns an array of mat4 with their transform
 SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 {
 	//bone matrices
@@ -323,7 +323,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	RI.material = this.material || this._root.getMaterial();
 
 	if( this.apply_skinning )
-		RI.use_bounding = false; //no frustum test in skinned meshes, hard to compute the frustrum in CPU
+		RI.use_bounding = false; //no frustum test in skinned meshes, hard to compute the frustrum when deformations are applied
 
 	if(this.primitive == gl.POINTS)
 		RI.uniforms.u_point_size = this.point_size;

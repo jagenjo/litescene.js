@@ -193,3 +193,29 @@ if( !Float32Array.prototype.hasOwnProperty( "equal" ) )
 		enumerable: false
 	});
 }
+
+
+//parsers usually need this
+//takes an string an returns a Uint8Array typed array containing that string
+function stringToTypedArray( str, fixed_length )
+{
+	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
+	for(var i = 0; i < str.length; i++)
+		r[i] = str.charCodeAt(i);
+	return r;
+}
+
+//takes a typed array with ASCII codes and returns the string
+function typedArrayToString( typed_array, same_size )
+{
+	var r = "";
+	for(var i = 0; i < typed_array.length; i++)
+		if (typed_array[i] == 0 && !same_size)
+			break;
+		else
+			r += String.fromCharCode( typed_array[i] );
+	return r;
+}
+
+LS.stringToTypedArray = stringToTypedArray;
+LS.typedArrayToString = typedArrayToString;

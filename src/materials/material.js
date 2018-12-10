@@ -655,6 +655,7 @@ Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
 		{
 			sampler.texture = new_name;
 			v = true;
+
 		}
 	}
 	return v;

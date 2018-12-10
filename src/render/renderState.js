@@ -389,20 +389,22 @@ RenderState.prototype.setBlendMode = function( mode )
 	this.blendFunc1 = mode[1];
 }
 
-RenderState.prototype.enable = function()
+RenderState.prototype.enable = function( render_settings )
 {
-	RenderState.enable( this );
+	RenderState.enable( this, null, render_settings );
 }
 
-RenderState.enable = function( state, prev )
+RenderState.enable = function( state, prev, render_settings )
 {
 	var flags = state.flags;
+
+	var force_two_sided = render_settings && render_settings.force_two_sided ? true : false;
 
 	if(!prev)
 	{
 		//faces
 		gl.frontFace( state.front_face );
-		if(state.cull_face)
+		if(state.cull_face && !force_two_sided )
 			gl.enable( gl.CULL_FACE );
 		else
 			gl.disable( gl.CULL_FACE );
@@ -450,11 +452,11 @@ RenderState.enable = function( state, prev )
 	}
 
 	//faces
-	if(prev.front_face !== state.front_face)
+	if( prev.front_face !== state.front_face )
 		gl.frontFace( state.front_face );
-	if(prev.cull_face !== state.cull_face)
+	if( prev.cull_face !== state.cull_face || force_two_sided )
 	{
-		if(state.cull_face)
+		if( state.cull_face && !force_two_sided )
 			gl.enable( gl.CULL_FACE );
 		else
 			gl.disable( gl.CULL_FACE );

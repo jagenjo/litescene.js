@@ -70,7 +70,7 @@ Knob.prototype.onMouse = function(e, mouse_event)
 		var cam = LS.Renderer.getCameraAtPosition( mouse_event.canvasx, mouse_event.canvasy );
 		if(!cam)
 			return;
-		var ray = cam.getRayInPixel( mouse_event.canvasx, mouse_event.canvasy );
+		var ray = cam.getRay( mouse_event.canvasx, mouse_event.canvasy );
 		if(!ray)
 			return;
 

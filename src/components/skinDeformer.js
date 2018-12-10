@@ -206,11 +206,12 @@ SkinDeformer.prototype.applySkinning = function(RI)
 	if(!mesh || !mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
+	var bones = null;
 	
 	if( SkinDeformer.gpu_skinning_supported && !this.cpu_skinning ) 
 	{
 		//retrieve all the bones
-		var bones = this.getBoneMatrices( mesh );
+		bones = this.getBoneMatrices( mesh );
 		var bones_size = bones.length * 12;
 		if(!bones.length)
 		{
@@ -299,7 +300,21 @@ SkinDeformer.prototype.applySkinning = function(RI)
 	}
 	else
 		this._root.transform.getGlobalMatrix( RI.matrix );
-	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+
+	if(bones && bones.length) //extract at least one position from the bones, we need for probes and sorting
+	{
+		RI.center.set( LS.ZEROS );
+		for(var i = 0; i < bones.length; ++i)
+		{
+			RI.center[0] += bones[i][3];
+			RI.center[1] += bones[i][7];
+			RI.center[2] += bones[i][11];
+		}
+		RI.center[0] /= bones.length;
+		RI.center[1] /= bones.length;
+		RI.center[2] /= bones.length;
+	}
+	mat4.multiplyVec3( RI.position, RI.matrix, LS.ZEROS );
 
 	RI.use_bounding = false;
 }

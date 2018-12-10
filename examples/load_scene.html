@@ -2,13 +2,8 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-<!--
-<meta property="og:title" content="GameEditor" />
-<meta property="og:description" content="GameEditor for simple games" />
-<meta property="og:image" content="" />
--->
 
-<title>Scene Creation Demo</title>
+<title>Scene Loading Demo</title>
 	<style type='text/css'>
 		html, body {
 			background-color: black;
@@ -39,7 +34,6 @@ var APP = {
 			width:window.innerWidth, height: window.innerHeight, 
 			redraw: true,
 			resources: "assets/", 
-			shaders: "../data/shaders.xml",
 			container: document.body,
 			autoplay: true,
 			allow_base_files: true
@@ -52,35 +46,19 @@ var APP = {
 
 	afterLoading: function()
 	{
-		//hook events to the controllers
+		//hook events to the controllers if you want to add interaction
 		var node = LS.GlobalScene.getNode("button");
-		LEvent.bind(node, "mouseup", function(e,v) { 
+		LEvent.bind( node, "mouseup", function(e,v) { 
 			this.clicked = !this.clicked;
+			//rotate button
 			quat.setAxisAngle(this.transform._rotation, [0,1,0], 18 * (this.clicked ? 1 : -1 ) * DEG2RAD);
 			this.transform._dirty = true;
+			//switch internal light
 			LS.GlobalScene.getNode("light").light.enabled = this.clicked;
 			APP.tv_settings.power = this.clicked;
 		}, node);
 
-		var node = LS.GlobalScene.getNode("knob");
-		LEvent.bind(node, "knobChange", function(e,v) { 
-			APP.tv_settings.brightness = v;
-		});
-
-		var node = LS.GlobalScene.getNode("knob2");
-		LEvent.bind(node, "knobChange", function(e,v) { 
-			APP.tv_settings.delta_offset = (v-0.5)*0.01;
-		});
-
 		this.ready = true;
-	},
-
-	rotateScene: function(angle)
-	{
-		if(!this.ready)
-			return;
-
-		LS.GlobalScene.getNode("monitor").transform.rotate(angle,[0,1,0]);
 	},
 
 	onUpdate: function(dt)
@@ -103,7 +81,7 @@ var APP = {
 		else
 			mat.opacity = 0.1;
 		mat.uvs_matrix[7] += APP.tv_settings.offset;
-		APP.tv_settings.offset += dt * APP.tv_settings.delta_offset;
+
 	}
 };	
 	

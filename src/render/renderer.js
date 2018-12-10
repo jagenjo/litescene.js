@@ -45,7 +45,6 @@ var Renderer = {
 	_visible_materials: [],
 	_near_lights: [],
 	_active_samples: [],
-	_reflection_probes: [],
 
 	//stats
 	_frame_cpu_time: 0,
@@ -66,22 +65,24 @@ var Renderer = {
 	_temp_matrix: mat4.create(),
 	_temp_cameye: vec3.create(),
 	_identity_matrix: mat4.create(),
-	_render_uniforms: {},
+	_uniforms: {},
+	_samplers: [],
 	_instancing_data: [],
 
 	//safety
 	_is_rendering_frame: false,
+	_ignore_reflection_probes: false,
 
 	//debug
 	allow_textures: true,
 	_sphere_mesh: null,
 
 	//fixed texture slots for global textures
-	SHADOWMAP_TEXTURE_SLOT: 6,
-	ENVIRONMENT_TEXTURE_SLOT: 5,
-	IRRADIANCE_TEXTURE_SLOT: 4,
-	LIGHTPROJECTOR_TEXTURE_SLOT: 3,
-	LIGHTEXTRA_TEXTURE_SLOT: 2,
+	SHADOWMAP_TEXTURE_SLOT: 7,
+	ENVIRONMENT_TEXTURE_SLOT: 6,
+	IRRADIANCE_TEXTURE_SLOT: 5,
+	LIGHTPROJECTOR_TEXTURE_SLOT: 4,
+	LIGHTEXTRA_TEXTURE_SLOT: 3,
 
 	//used in special cases
 	BONES_TEXTURE_SLOT: 3,
@@ -105,7 +106,7 @@ var Renderer = {
 		LS.ResourcesManager.textures[":flatnormal"] = this._normal_texture;
 
 		//some global meshes could be helpful: used for irradiance probes
-		this._sphere_mesh = GL.Mesh.sphere({size:1,detail:32});
+		this._sphere_mesh = GL.Mesh.sphere({ size:1, detail:32 });
 
 		//draw helps rendering debug stuff
 		if(LS.Draw)
@@ -150,6 +151,9 @@ var Renderer = {
 
 		this.createRenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.NO_SORT );
 		this._full_viewport.set([0,0,gl.drawingBufferWidth,gl.drawingBufferHeight]);
+
+		this._uniforms.u_viewport = gl.viewport_data;
+		this._uniforms.environment_texture = this.ENVIRONMENT_TEXTURE_SLOT;
 	},
 
 	reset: function()
@@ -213,7 +217,6 @@ var Renderer = {
 			this._global_textures[i] = null;
 		if(!this._current_pass)
 			this._current_pass = COLOR_PASS;
-
 
 		//to restore from a possible exception (not fully tested, remove if problem)
 		if(!render_settings.ignore_reset)
@@ -427,6 +430,7 @@ var Renderer = {
 				gl.viewport( final_x, final_y, final_width, final_height );
 			}
 		}
+		camera._last_viewport_in_pixels.set( gl.viewport_data );
 
 		//recompute the matrices (view,proj and viewproj)
 		camera.updateMatrices();
@@ -588,9 +592,6 @@ var Renderer = {
 		LEvent.trigger( scene, "beforeRenderInstances", render_settings );
 		//scene.triggerInNodes( "beforeRenderInstances", render_settings );
 
-		//compute global scene info
-		this.fillSceneUniforms( scene, render_settings );
-
 		//reset state of everything!
 		this.resetGLState( render_settings );
 
@@ -608,7 +609,8 @@ var Renderer = {
 
 		var render_instances = instances || this._visible_instances;
 
-		this.bindSamplers( scene._samplers );
+		//global samplers
+		this.bindSamplers( this._samplers );
 
 		var instancing_data = this._instancing_data;
 
@@ -913,27 +915,21 @@ var Renderer = {
 		}
 	},
 
-	//Called at the beginning of renderInstances (once per renderFrame)
-	//DO NOT CACHE, parameters can change between render passes
+	//Called at the beginning of processVisibleData 
 	fillSceneUniforms: function( scene, render_settings )
 	{
 		//global uniforms
-		var uniforms = {
-			u_point_size: this.default_point_size,
-			u_time: scene._time || getTime() * 0.001,
-			u_ambient_light: scene.info.ambient_color,
-			u_viewport: gl.viewport_data
-		};
+		var uniforms = scene._uniforms;
+		uniforms.u_time = scene._time || getTime() * 0.001;
+		uniforms.u_ambient_light = scene.info ? scene.info.ambient_color : vec3.create();
 
-		scene._uniforms = uniforms;
-		scene._samplers = scene._samplers || [];
-		scene._samplers.length = 0;
+		this._samplers.length = 0;
 
 		//clear globals
 		this._global_textures.environment = null;
-		this._global_textures.irradiance = null;
 
 		//fetch global textures
+		if(scene.info)
 		for(var i in scene.info.textures)
 		{
 			var texture = LS.getTexture( scene.info.textures[i] );
@@ -943,8 +939,6 @@ var Renderer = {
 			var slot = 0;
 			if( i == "environment" )
 				slot = LS.Renderer.ENVIRONMENT_TEXTURE_SLOT;
-			else if( i == "irradiance" )
-				slot = LS.Renderer.IRRADIANCE_TEXTURE_SLOT;
 			else
 				continue; 
 
@@ -954,14 +948,12 @@ var Renderer = {
 				texture.bind(0);
 				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid artifact
 			}
-			scene._samplers[ slot ] = texture;
+			this._samplers[ slot ] = texture;
 			scene._uniforms[ i + "_texture" ] = slot; 
 			scene._uniforms[ i + type ] = slot; //LEGACY
 
 			if( i == "environment" )
 				this._global_textures.environment = texture;
-			else if( i == "irradiance" )
-				this._global_textures.irradiance = texture;
 		}
 
 		LEvent.trigger( scene, "fillSceneUniforms", scene._uniforms );
@@ -984,6 +976,8 @@ var Renderer = {
 		var frame = scene._frame;
 
 		this._current_scene = scene;
+		//compute global scene info
+		this.fillSceneUniforms( scene, render_settings );
 
 		//update info about scene (collecting it all or reusing the one collected in the frame before)
 		if(!skip_collect_data)
@@ -1070,6 +1064,12 @@ var Renderer = {
 
 			//add extra info: distance to main camera (used for sorting)
 			instance._dist = vec3.dist( instance.center, camera_eye );
+
+			//find nearest reflection probe
+			if( scene._reflection_probes.length && !this._ignore_reflection_probes )
+				instance._nearest_reflection_probe = scene.findNearestReflectionProbe( instance.center );
+			else
+				instance._nearest_reflection_probe = null;
 
 			//change conditionaly
 			if(render_settings.force_wireframe && instance.primitive != gl.LINES ) 
@@ -1332,8 +1332,8 @@ var Renderer = {
 	* Returns the last camera that falls into a given screen position
 	*
 	* @method getCameraAtPosition
-	* @param {number} x
-	* @param {number} y
+	* @param {number} x in canvas coordinates (0,0 is bottom-left)
+	* @param {number} y in canvas coordinates (0,0 is bottom-left)
 	* @param {Scene} scene if not specified last rendered scene will be used
 	* @return {Camera} the camera
 	*/
@@ -1349,7 +1349,7 @@ var Renderer = {
 			if(!camera.enabled || camera.render_to_texture)
 				continue;
 
-			if( camera.isPointInCamera(x,y) )
+			if( camera.isPoint2DInCameraViewport(x,y) )
 				return camera;
 		}
 		return null;
@@ -1387,11 +1387,12 @@ var Renderer = {
 	
 	/**
 	* Enables a ShaderBlock ONLY DURING THIS FRAME
+	* must be called during frame rendering (event like fillSceneUniforms)
 	*
 	* @method enableFrameShaderBlock
 	* @param {String} shader_block_name
 	*/
-	enableFrameShaderBlock: function( shader_block_name, uniforms )
+	enableFrameShaderBlock: function( shader_block_name, uniforms, samplers )
 	{
 		var shader_block = shader_block_name.constructor === LS.ShaderBlock ? shader_block_name : LS.Shaders.getShaderBlock( shader_block_name );
 
@@ -1404,7 +1405,31 @@ var Renderer = {
 		//add uniforms to renderer uniforms?
 		if(uniforms)
 			for(var i in uniforms)
-				this._render_uniforms[i] = uniforms[i];
+				this._uniforms[i] = uniforms[i];
+
+		if(samplers)
+			for(var i = 0; i < samplers.length; ++i)
+				if( samplers[i] )
+					this._samplers[i] = samplers[i];
+	},
+
+	/**
+	* Disables a ShaderBlock ONLY DURING THIS FRAME
+	* must be called during frame rendering (event like fillSceneUniforms)
+	*
+	* @method disableFrameShaderBlock
+	* @param {String} shader_block_name
+	*/
+	disableFrameShaderBlock:  function( shader_block_name, uniforms, samplers )
+	{
+		var shader_block = shader_block_name.constructor === LS.ShaderBlock ? shader_block_name : LS.Shaders.getShaderBlock( shader_block_name );
+		if( !shader_block || !(this._global_shader_blocks_flags & shader_block.flag_mask) )
+			return; //not active
+
+		var index = this._global_shader_blocks.indexOf( shader_block );
+		if(index != -1)
+			this._global_shader_blocks.splice( index, 1 );
+		this._global_shader_blocks_flags &= ~( shader_block.flag_mask ); //disable bit
 	},
 
 	/**

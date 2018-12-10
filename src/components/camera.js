@@ -47,6 +47,7 @@ function Camera(o)
 	//viewport in normalized coordinates: left, bottom, width, height
 	this._viewport = new Float32Array([0,0,1,1]);
 	this._viewport_in_pixels = vec4.create(); //viewport in screen coordinates
+	this._last_viewport_in_pixels = vec4.create(); //updated when the camera is enabled from Renderer.enableCamera
 
 	this._background_color = vec4.fromValues(0,0,0,1);
 
@@ -86,8 +87,8 @@ function Camera(o)
 		u_previous_viewprojection: this._previous_viewprojection_matrix
 	};
 
+	this._frustum_planes = this.updateFrustumPlanes(); //to create
 	this.updateMatrices();
-	this._frustum_planes = geo.extractPlanes( this._viewprojection_matrix );
 
 	//LEvent.bind(this,"cameraEnabled", this.onCameraEnabled.bind(this));
 }
@@ -458,6 +459,20 @@ Object.defineProperty( Camera.prototype, "background_color", {
 });
 
 /**
+* the clear alpha value
+* @property background_alpha {Number}
+*/
+Object.defineProperty( Camera.prototype, "background_alpha", {
+	get: function() {
+		return this._background_color[3];
+	},
+	set: function(v) {
+		this._background_color[3] = v;
+	},
+	enumerable: true
+});
+
+/**
 * returns the texture from the render frame context
 * @property render_to_texture {GL.Texture} 
 */
@@ -723,15 +738,8 @@ Camera.prototype.updateMatrices = function( force )
 		mat4.invert(this._model_matrix, this._view_matrix );
 	}
 
-	/*
-	if(this.flip_x) //used in reflections
-	{
-		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
-	};
-	*/
-	//if(this._root && this._root.transform)
-
 	mat4.multiply(this._viewprojection_matrix, this._projection_matrix, this._view_matrix );
+	this.updateFrustumPlanes();
 
 	this._must_update_view_matrix = false;
 	this._must_update_projection_matrix = false;
@@ -744,6 +752,8 @@ Camera.prototype.updateMatrices = function( force )
 */
 Camera.prototype.updateFrustumPlanes = function()
 {
+	if(!this._frustum_planes)
+		this._frustum_planes = new Float32Array(24);
 	geo.extractPlanes( this._viewprojection_matrix, this._frustum_planes );
 	return this._frustum_planes;
 }
@@ -1391,51 +1401,81 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 }
 
 /**
+* transform from mouse coordinates (0,0 is top-left on the canvas) to local camera viewport coordinates (0,0 is bottom-left corner of the camera viewport)
+* @method mouseToViewport
+* @param {vec2} pos in mouse coordinates
+* @return {vec2} the pos in local camera viewport coordinates
+*/
+Camera.prototype.mouseToViewport = function(pos, out)
+{
+	out = out || vec2.create();
+	var v = this._last_viewport_in_pixels;
+	out[0] = pos[0] - v[0];
+	out[1] = v[3] - (pos[1] - v[1]);
+	return out;
+}
+
+/**
 * given an x and y position, returns the ray {start, dir}
 * @method getRay
-* @param {number} x
-* @param {number} y
+* @param {number} x in canvas coordinates (bottom-left is 0,0)
+* @param {number} y in canvas coordinates (bottom-left is 0,0)
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used using the camera viewport)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
 * @param {LS.Ray} result [optional] to reuse ray
 * @return {LS.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
 */
-Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport, result )
-{
-	//apply camera viewport
-	if(!skip_local_viewport)
-		viewport = this.getLocalViewport( viewport, this._viewport_in_pixels );
+Camera.prototype.getRay = (function(){
+	var tmp_pos = vec3.create();
+	var tmp_eye = vec3.create();
+	return function getRay( x, y, viewport, skip_local_viewport, result )
+	{
+		//apply camera viewport
+		if(!skip_local_viewport)
+			viewport = this.getLocalViewport( viewport, this._viewport_in_pixels );
+		else
+			viewport = gl.viewport_data;
 
-	if( this._must_update_view_matrix || this._must_update_projection_matrix )
-		this.updateMatrices();
-	var eye = this.getEye();
-	var pos = vec3.unproject(vec3.create(), [x,y,1], this._viewprojection_matrix, viewport );
-	if(!pos)
-		return null;
+		//flip Y
+		//y = (viewport[3] - y) - viewport[1];
 
-	if(this.type == Camera.ORTHOGRAPHIC)
-		eye = vec3.unproject(eye, [x,y,0], this._viewprojection_matrix, viewport );
+		if( this._must_update_view_matrix || this._must_update_projection_matrix )
+			this.updateMatrices();
+		tmp_pos[0] = x; tmp_pos[1] = y; tmp_pos[2] = 1;
+		var pos = vec3.unproject( tmp_pos, tmp_pos, this._viewprojection_matrix, viewport );
+		if(!pos)
+			return null;
 
-	var dir = vec3.subtract( pos, pos, eye );
-	vec3.normalize(dir, dir);
+		var eye = null;
+		if(this.type == Camera.ORTHOGRAPHIC)
+		{
+			tmp_eye[0] = x; tmp_eye[1] = y; tmp_eye[2] = 0;
+			eye = vec3.unproject( tmp_eye, tmp_eye, this._viewprojection_matrix, viewport );
+		}
+		else
+			eye = this.getEye( tmp_eye );
 
-	result = result || new LS.Ray();
-	result.origin.set(eye);
-	result.direction.set(dir);
-	return result;
-}
+		var dir = vec3.subtract( pos, pos, eye );
+		vec3.normalize(dir, dir);
+
+		result = result || new LS.Ray();
+		result.origin.set(eye);
+		result.direction.set(dir);
+		return result;
+	}
+})();
 
 Camera.prototype.getRayInPixel = Camera.prototype.getRay; //LEGACY
 
 /**
 * Returns true if the 2D point (in screen space coordinates) is inside the camera viewport area
-* @method isPointInCamera
-* @param {number} x
-* @param {number} y
+* @method isPoint2DInCameraViewport
+* @param {number} x in canvas coordinates (0,0 is bottom-left)
+* @param {number} y in canvas coordinates (0,0 is bottom-left)
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used)
 * @return {boolean} 
 */
-Camera.prototype.isPointInCamera = function( x, y, viewport )
+Camera.prototype.isPoint2DInCameraViewport = function( x, y, viewport )
 {
 	var v = this.getLocalViewport( viewport, this._viewport_in_pixels );
 	if( x < v[0] || x > v[0] + v[2] ||
@@ -1443,6 +1483,19 @@ Camera.prototype.isPointInCamera = function( x, y, viewport )
 		return false;
 	return true;
 }
+
+/**
+* Returns true if the 3D point is inside the camera frustum
+* @method testSphereInsideFrustum
+* @param {vec3} center
+* @param {vec3} radius
+* @return {boolean} 
+*/
+Camera.prototype.testSphereInsideFrustum = function( center, radius )
+{
+	return geo.frustumTestSphere( this._frustum_planes, center, radius || 0 ) != CLIP_OUTSIDE;
+}
+
 
 Camera.prototype.configure = function(o)
 {
@@ -1568,6 +1621,7 @@ Camera.prototype.applyTransformMatrix = function( matrix, center, element )
 	this._must_update_view_matrix = true;
 	return true;
 }
+
 
 //Rendering stuff ******************************************
 

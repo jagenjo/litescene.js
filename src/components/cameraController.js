@@ -14,15 +14,18 @@ function CameraController(o)
 	this.left_button_action = CameraController.ORBIT;
 	this.right_button_action = CameraController.PAN;
 	this.middle_button_action = CameraController.PAN;
+	//this.touch_button_action = CameraController.ORBIT;
 	this.mouse_wheel_action = CameraController.CHANGE_DISTANCE;
 
 	this.keyboard_walk = false;
+	this.keyboard_walk_plane = false;
 	this.lock_mouse = false;
 
 	this.rot_speed = 1;
 	this.walk_speed = 10;
 	this.wheel_speed = 1;
 	this.smooth = false;
+	this.render_crosshair = false;
 
 	this._moving = vec3.fromValues(0,0,0);
 
@@ -95,6 +98,7 @@ CameraController.prototype.onAddedToScene = function( scene )
 	LEvent.bind( scene, "keydown",this.onKey,this);
 	LEvent.bind( scene, "keyup",this.onKey,this);
 	LEvent.bind( scene, "update",this.onUpdate,this);
+	LEvent.bind( scene, "renderGUI",this.onRenderGUI,this);
 }
 
 CameraController.prototype.onRemovedFromScene = function( scene )
@@ -130,18 +134,24 @@ CameraController.prototype.onUpdate = function(e)
 	if(!cam || !cam.enabled)
 		return;
 
-	if(this._root.transform) //attached to node
+	//move using the delta vector
+	if(this._moving[0] != 0 || this._moving[1] != 0 || this._moving[2] != 0)
 	{
-	}
-	else 
-	{
-		if(this.keyboard_walk)
+		var delta = cam.getLocalVector( this._moving );
+		if( this.keyboard_walk_plane )
+			delta[1] = 0;
+		if(vec3.length(delta))
 		{
-			//move using the delta vector
-			if(this._moving[0] != 0 || this._moving[1] != 0 || this._moving[2] != 0)
+			vec3.normalize( delta, delta );
+			vec3.scale(delta, delta, this.walk_speed * (this._fast ? 10 : 1));
+
+			if(this._root.transform) //attached to node
 			{
-				var delta = cam.getLocalVector( this._moving );
-				vec3.scale(delta, delta, this.walk_speed );
+				this._root.transform.translateGlobal(delta);
+				cam.updateMatrices();
+			}
+			else
+			{
 				cam.move(delta);
 				cam.updateMatrices();
 			}
@@ -339,6 +349,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		return;
 	
 	var node = this._root;
+	var scene = node.scene;
 	var cam = node.camera;
 	if(!cam || !cam.enabled)
 		return;
@@ -372,6 +383,9 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	if(mouse_event.eventType == "mousedown")
 	{
+		if(this.lock_mouse && !document.pointerLockElement && scene._state == LS.PLAYING)
+			LS.Input.lockMouse(true);
+
 		if( LS.Input.Mouse.isButtonPressed( GL.LEFT_MOUSE_BUTTON ) )
 			changed |= this.processMouseButtonDownEvent( this.left_button_action, mouse_event, this._collision_left );
 		if( LS.Input.Mouse.isButtonPressed( GL.MIDDLE_MOUSE_BUTTON ) )
@@ -380,11 +394,12 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			changed |= this.processMouseButtonDownEvent( this.right_button_action, mouse_event, this._collision_right );
 		this._dragging = true;
 	}
+
 	if(!mouse_event.dragging)
 		this._dragging = false;
 
 	//mouse move
-	if( mouse_event.eventType == "mousemove" && this.lock_mouse && document.pointerLockElement )
+	if( ( mouse_event.eventType == "mousemove" || mouse_event.eventType == "touchmove" ) && (this.lock_mouse && ( document.pointerLockElement || mouse_event.is_touch )) )
 		changed |= this.processMouseButtonMoveEvent( this.no_button_action, mouse_event, this._collision_none  );
 
 	//regular mouse dragging
@@ -466,7 +481,7 @@ CameraController.prototype.onTouch = function( e, touch_event)
 CameraController.prototype.testOriginPlane = function(x,y, result)
 {
 	var cam = this._root.camera;
-	var ray = cam.getRayInPixel( x, gl.canvas.height - y );
+	var ray = cam.getRay( x, gl.canvas.height - y );
 	var result = result || vec3.create();
 
 	//test against plane at 0,0,0
@@ -478,7 +493,7 @@ CameraController.prototype.testOriginPlane = function(x,y, result)
 CameraController.prototype.testPerpendicularPlane = function(x,y, center, result)
 {
 	var cam = this._root.camera;
-	var ray = cam.getRayInPixel( x, gl.canvas.height - y );
+	var ray = cam.getRay( x, gl.canvas.height - y );
 
 	var front = cam.getFront();
 	var center = center || cam.getCenter();
@@ -495,43 +510,60 @@ CameraController.prototype.onKey = function(e, key_event)
 	if(!this._root || !this.enabled) 
 		return;
 
-	//trace(key_event);
-	if(key_event.keyCode == 87)
+	//keyboard movement
+	if( this.keyboard_walk )
 	{
-		if(key_event.type == "keydown")
-			this._moving[2] = -1;
-		else
-			this._moving[2] = 0;
-	}
-	else if(key_event.keyCode == 83)
-	{
-		if(key_event.type == "keydown")
-			this._moving[2] = 1;
-		else
-			this._moving[2] = 0;
-	}
-	else if(key_event.keyCode == 65)
-	{
-		if(key_event.type == "keydown")
-			this._moving[0] = -1;
-		else
-			this._moving[0] = 0;
-	}
-	else if(key_event.keyCode == 68)
-	{
-		if(key_event.type == "keydown")
-			this._moving[0] = 1;
-		else
-			this._moving[0] = 0;
-	}
-	
-	if(key_event.keyCode == 16) //shift in windows chrome
-	{
-		if(key_event.type == "keydown")
-			vec3.scale( this._moving, this._moving, 10 );
+		if(key_event.keyCode == 87)
+		{
+			if(key_event.type == "keydown")
+				this._moving[2] = -1;
+			else
+				this._moving[2] = 0;
+		}
+		else if(key_event.keyCode == 83)
+		{
+			if(key_event.type == "keydown")
+				this._moving[2] = 1;
+			else
+				this._moving[2] = 0;
+		}
+		else if(key_event.keyCode == 65)
+		{
+			if(key_event.type == "keydown")
+				this._moving[0] = -1;
+			else
+				this._moving[0] = 0;
+		}
+		else if(key_event.keyCode == 68)
+		{
+			if(key_event.type == "keydown")
+				this._moving[0] = 1;
+			else
+				this._moving[0] = 0;
+		}
+		else if(key_event.keyCode == 16) //shift in windows chrome
+		{
+			if(key_event.type == "keydown")
+				this._fast = true;
+			else if(key_event.type == "keyup")
+				this._fast = false;
+		}
 	}
 
 	//LEvent.trigger(Scene,"change");
+}
+
+CameraController.prototype.onRenderGUI = function()
+{
+	if(!this.render_crosshair || !this.enabled || !this._camera || !this._camera.enabled || !LS.Input.isMouseLocked() )
+		return;
+	var ctx = gl;
+	gl.start2D();
+	ctx.fillStyle = "rgba(0,0,0,0.5)";
+	ctx.fillRect( gl.viewport_data[2] * 0.5 - 1, gl.viewport_data[3] * 0.5 - 1, 4, 4 );
+	ctx.fillStyle = "rgba(255,255,255,1)";
+	ctx.fillRect( gl.viewport_data[2] * 0.5, gl.viewport_data[3] * 0.5, 2, 2 );
+	gl.finish2D();
 }
 
 LS.registerComponent( CameraController );

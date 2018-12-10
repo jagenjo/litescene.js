@@ -381,7 +381,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 
 	if(this.use_submaterials)
 	{
-		this.onCollectInstancesSubmaterials(instances);
+		this.onCollectInstancesSubmaterials( instances );
 		return;
 	}
 

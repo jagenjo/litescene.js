@@ -8,36 +8,51 @@
 
 function NodeManipulator(o)
 {
+	this.enabled = true;
+	this.on_node_clicked = false;
+	this.use_global_up_for_yaw = false;
 	this.rot_speed = [1,1]; //degrees
-	this.smooth = false;
 	if(o)
 		this.configure(o);
 }
 
 NodeManipulator.icon = "mini-icon-rotator.png";
 
+NodeManipulator.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene, "mousemove",this.onSceneMouse,this);
+}
+
+NodeManipulator.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene, "mousemove",this.onSceneMouse, this);
+}
+
 NodeManipulator.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind( node, "mousemove",this.onMouse,this);
-	LEvent.bind( node, "update",this.onUpdate,this);
+	LEvent.bind( node, "mousemove",this.onNodeMouse,this);
 }
 
 NodeManipulator.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind( node, "mousemove",this.onMouse,this);
-	LEvent.unbind( node, "update",this.onUpdate,this);
+	LEvent.unbind( node, "mousemove",this.onNodeMouse,this);
 }
 
-NodeManipulator.prototype.onUpdate = function(e)
+NodeManipulator.prototype.onNodeMouse = function( e, mouse_event )
 {
-	if(!this._root)
+	if(!this.on_node_clicked || !this.enabled)
 		return;
-
-	if(!this._root.transform)
-		return;
+	return this.onMouse( e, mouse_event );
 }
 
-NodeManipulator.prototype.onMouse = function(e, mouse_event)
+NodeManipulator.prototype.onSceneMouse = function( e, mouse_event )
+{
+	if(this.on_node_clicked || !this.enabled)
+		return;
+	return this.onMouse( e, mouse_event );
+}
+
+NodeManipulator.prototype.onMouse = function( e, mouse_event )
 {
 	if(!this._root || !this._root.transform)
 		return;
@@ -49,13 +64,15 @@ NodeManipulator.prototype.onMouse = function(e, mouse_event)
 	var scene = this._root.scene;
 	var camera = scene.getCamera();
 
-	var right = camera.getLocalVector( LS.Components.Transform.RIGHT );
-	this._root.transform.rotateGlobal( mouse_event.deltax * this.rot_speed[0], LS.Components.Transform.UP );
-	this._root.transform.rotateGlobal( mouse_event.deltay * this.rot_speed[1], right );
-	scene.requestFrame();
+	//yaw
+	var up = this.use_global_up_for_yaw ? LS.Components.Transform.UP : camera.getLocalVector( LS.Components.Transform.UP );
+	this._root.transform.rotateGlobal( mouse_event.deltax * this.rot_speed[0], up );
 
-	//this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
-	//this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
+	//pitch
+	var right = camera.getLocalVector( LS.Components.Transform.RIGHT );
+	this._root.transform.rotateGlobal( mouse_event.deltay * this.rot_speed[1], right );
+
+	scene.requestFrame();
 }
 
-LS.registerComponent(NodeManipulator);
+LS.registerComponent( NodeManipulator );

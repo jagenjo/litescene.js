@@ -10,21 +10,25 @@ function Scene()
 {
 	this.uid = LS.generateUId("TREE-");
 
+	this._state = LS.STOPPED;
+
 	this._root = new LS.SceneNode("root");
 	this._root.removeAllComponents();
 	this._root._is_root  = true;
 	this._root._in_tree = this;
 	this._nodes = [ this._root ];
-	this._nodes_by_name = {"root":this._root};
+	this._nodes_by_name = { "root" : this._root };
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 	this._components_by_uid = {};
 
 	//used to stored info when collecting from nodes
+	this._uniforms = {};
 	this._instances = [];
 	this._lights = [];
 	this._cameras = [];
 	this._colliders = [];
+	this._reflection_probes = [];
 
 	//MOST OF THE PARAMETERS ARE CREATED IN init() METHOD
 
@@ -187,6 +191,12 @@ Scene.prototype.clear = function()
 	//remove scene components
 	this._root.processActionInComponents("onRemovedFromNode",this); //send to components
 	this._root.processActionInComponents("onRemovedFromScene",this); //send to components
+
+	this._instances.length = 0;
+	this._lights.length = 0;
+	this._cameras.length = 0;
+	this._colliders.length = 0;
+	this._reflection_probes.length = 0;
 
 	this.init();
 	/**
@@ -1525,6 +1535,7 @@ Scene.prototype.collectData = function( cameras )
 	for(var i = 0, l = instances.length; i < l; ++i)
 	{
 		var instance = instances[i];
+
 		//compute the axis aligned bounding box
 		if(instance.use_bounding)
 			instance.updateAABB();
@@ -1816,6 +1827,37 @@ Scene.prototype.updateStaticObjects = function()
 	this.collectData();
 	LS.allow_static = old;
 }
+
+/**
+* search for the nearest reflection probe to the point
+*
+* @method findNearestReflectionProbe
+* @param {vec3} position
+* @return {LS.ReflectionProbe} the reflection probe
+*/
+Scene.prototype.findNearestReflectionProbe = function( position )
+{
+	if(!this._reflection_probes.length)
+		return null;
+
+	if( this._reflection_probes.length == 1 )
+		return this._reflection_probes[0];
+
+	var probes = this._reflection_probes;
+	var min_dist = 1000000;
+	var nearest_probe = null;
+	for(var i = 0; i < probes.length; ++i)
+	{
+		var probe = probes[i];
+		var dist = vec3.distance( position, probe._position );
+		if( dist > min_dist )
+			continue;
+		min_dist = dist;
+		nearest_probe = probe;
+	}
+	return nearest_probe;
+}
+
 
 //tells to all the components, nodes, materials, etc, that one resource has changed its name so they can update it inside
 Scene.prototype.sendResourceRenamedEvent = function( old_name, new_name, resource )

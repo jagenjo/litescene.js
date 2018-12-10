@@ -77,7 +77,6 @@ GlobalInfo.prototype.getPropertiesInfo = function()
 	return {
 		"ambient_color":"color",
 		"textures/environment": "texture",
-		"textures/irradiance": "texture",
 		"render_settings":"RenderSettings"
 	};
 }

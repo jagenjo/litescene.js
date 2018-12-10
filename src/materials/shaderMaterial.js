@@ -326,38 +326,51 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	var camera = LS.Renderer._current_camera;
 	var scene = LS.Renderer._current_scene;
 	var model = instance.matrix;
-	var render_uniforms = LS.Renderer._render_uniforms;
+	var renderer_uniforms = LS.Renderer._uniforms;
 
 	//maybe this two should be somewhere else
-	render_uniforms.u_model = model; 
-	render_uniforms.u_normal_model = instance.normal_matrix; 
+	renderer_uniforms.u_model = model; 
+	renderer_uniforms.u_normal_model = instance.normal_matrix; 
 
 	//compute flags: checks the ShaderBlocks attached to this instance and resolves the flags
 	var block_flags = instance.computeShaderBlockFlags();
-	block_flags |= LS.Renderer._global_block_flags; //apply global block_flags
-
-	//global stuff
-	this._render_state.enable();
-	LS.Renderer.bindSamplers( this._samplers ); //material samplers
-	LS.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
 	var global_flags = LS.Renderer._global_shader_blocks_flags;
 
-	//TODO: could this part be precomputed before rendering color pass?
+	//find environment texture
 	if( pass == COLOR_PASS ) //allow reflections only in color pass
 	{
 		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
+
+		var environment_texture = null;
 		if( LS.Renderer._global_textures.environment )
+			environment_texture = LS.Renderer._global_textures.environment;
+
+		if(instance._nearest_reflection_probe )
 		{
-			if( LS.Renderer._global_textures.environment.texture_type == GL.TEXTURE_2D )
+			if( instance._nearest_reflection_probe._texture )
+				environment_texture = instance._nearest_reflection_probe._tex_id;
+		}
+
+		if( environment_texture )
+		{
+			var tex = LS.ResourcesManager.textures[ environment_texture ];
+			if( tex && tex.texture_type == GL.TEXTURE_2D )
 				global_flags |= environment_2d_block.flag_mask;
 			else
 				global_flags |= environment_cubemap_block.flag_mask;
 		}
-		if( LS.Renderer._global_textures.irradiance )
-		{
-			global_flags |= irradiance_block.flag_mask;
-		}
+
+		this._samplers[ LS.Renderer.ENVIRONMENT_TEXTURE_SLOT ] = environment_texture;
 	}
+	else
+	{
+		this._samplers[ LS.Renderer.ENVIRONMENT_TEXTURE_SLOT ] = null;
+	}
+
+	//global stuff
+	this._render_state.enable( render_settings );
+	LS.Renderer.bindSamplers( this._samplers ); //material samplers
+	LS.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
 
 	//for those cases
 	if(this.onRenderInstance)
@@ -372,12 +385,17 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if( !ignore_lights )
 		lights = LS.Renderer.getNearLights( instance );
 
+	if(LS.Renderer._use_normalbuffer)
+		block_flags |= LS.Shaders.normalbuffer_block.flag_mask;
+
 	//if no lights are set or the render mode is flat
 	if( !lights || lights.length == 0 || ignore_lights )
 	{
-		//global flags for environment and irradiance
+		//global flags (like environment maps, irradiance, etc)
 		if( !ignore_lights )
 			block_flags |= global_flags;
+		block_flags |= LS.Shaders.firstpass_block.flag_mask;
+		block_flags |= LS.Shaders.lastpass_block.flag_mask;
 
 		//extract shader compiled
 		var shader = shader_code.getShader( pass.name, block_flags );
@@ -388,7 +406,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		}
 
 		//assign
-		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] ); //removed, why this was in?? light ? light._uniforms : null, 
+		shader.uniformsArray( [ scene._uniforms, camera._uniforms, renderer_uniforms, this._uniforms, instance.uniforms ] ); //removed, why this was in?? light ? light._uniforms : null, 
 
 		shader.setUniform( "u_light_info", LS.ZEROS4 );
 		if( ignore_lights )
@@ -404,17 +422,23 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 	var base_block_flags = block_flags;
 
-	var uniforms_array = [ scene._uniforms, camera._uniforms, render_uniforms, null, this._uniforms, instance.uniforms ];
+	var uniforms_array = [ scene._uniforms, camera._uniforms, renderer_uniforms, null, this._uniforms, instance.uniforms ];
 
 	//render multipass with several lights
 	var prev_shader = null;
-	for(var i = 0; i < lights.length; ++i)
+	for(var i = 0, l = lights.length; i < l; ++i)
 	{
 		var light = lights[i];
 		block_flags = light.applyShaderBlockFlags( base_block_flags, pass, render_settings );
 
 		//global
 		block_flags |= global_flags;
+
+		//shaders require to know in which pass they are (ambient is applied in the first, reflections in the last)
+		if(i == 0)
+			block_flags |= LS.Shaders.firstpass_block.flag_mask;
+		if(i == l - 1)
+			block_flags |= LS.Shaders.lastpass_block.flag_mask;
 
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
@@ -428,8 +452,8 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		LS.Renderer.bindSamplers( light._samplers );
 
 		//light parameters (like index of pass or num passes)
-		light._uniforms.u_light_info[2] = i;
-		light._uniforms.u_light_info[3] = lights.length;
+		light._uniforms.u_light_info[2] = i; //num pass
+		light._uniforms.u_light_info[3] = lights.length; //total passes
 		uniforms_array[3] = light._uniforms;
 
 		//assign
@@ -473,17 +497,17 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	var scene = LS.Renderer._current_scene;
 	var model = instance.matrix;
 	var node = instance.node;
-	var render_uniforms = LS.Renderer._render_uniforms;
+	var renderer_uniforms = LS.Renderer._uniforms;
 
 	//maybe this two should be somewhere else
-	render_uniforms.u_model = model; 
-	render_uniforms.u_normal_model = instance.normal_matrix; 
+	renderer_uniforms.u_model = model; 
+	renderer_uniforms.u_normal_model = instance.normal_matrix; 
 
 	//compute flags
 	var block_flags = instance.computeShaderBlockFlags();
 
 	//global stuff
-	this._render_state.enable();
+	this._render_state.enable( render_settings );
 	LS.Renderer.bindSamplers( this._samplers );
 	LS.Renderer.bindSamplers( instance.samplers );
 
@@ -498,7 +522,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	}
 
 	//assign uniforms
-	shader.uniformsArray( [ camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] );
+	shader.uniformsArray( [ camera._uniforms, renderer_uniforms, this._uniforms, instance.uniforms ] );
 
 	//set color
 	var pick_color = LS.Picking.getNextPickingColor( instance.picking_node || node );

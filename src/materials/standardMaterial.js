@@ -722,6 +722,7 @@ uniform vec4 u_normal_texture_settings;\n\
 #pragma shaderblock \"light\"\n\
 #pragma shaderblock \"light_texture\"\n\
 #pragma shaderblock \"applyReflection\"\n\
+#pragma shaderblock \"normalBuffer\"\n\
 \n\
 #pragma snippet \"perturbNormal\"\n\
 \n\
@@ -760,6 +761,8 @@ void main() {\n\
 	surf(IN,o);\n\
 	Light LIGHT = getLight();\n\
 	applyLightTexture( IN, LIGHT );\n\
+	if( !gl_FrontFacing )\n\
+		o.Normal *= -1.0;\n\
 	FinalLight FINALLIGHT = computeLight( o, IN, LIGHT );\n\
 	FINALLIGHT.Diffuse += u_backlight_factor * max(0.0, dot(FINALLIGHT.Vector, -o.Normal));\n\
 	vec4 final_color = vec4( 0.0,0.0,0.0, o.Alpha );\n\
@@ -779,8 +782,15 @@ void main() {\n\
 	{{fs_encode}}\n\
 	#ifdef DRAW_BUFFERS\n\
 	  gl_FragData[0] = final_color;\n\
-	  if(u_light_info.z == 0.0)\n\
-		  gl_FragData[1] = o.Extra;\n\
+	  #ifdef BLOCK_FIRSTPASS\n\
+		  #ifdef BLOCK_NORMALBUFFER\n\
+			  gl_FragData[1] = vec4( o.Normal * 0.5 + vec3(0.5), 1.0 );\n\
+		  #else\n\
+			  gl_FragData[1] = o.Extra;\n\
+		  #endif\n\
+	  #else\n\
+		  gl_FragData[1] = vec4(0.0);\n\
+	 #endif\n\
 	#else\n\
 	  gl_FragColor = final_color;\n\
 	#endif\n\

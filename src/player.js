@@ -16,6 +16,8 @@
 	- autoplay: boolean to automatically start playing the scene once the load is completed
 	- loadingbar: boolean to show a loading bar
 	- debug: boolean allows to render debug info like nodes and skeletons
+	- alpha: to set the canvas to transparent
+	- ignore_scroll: to skip mouse wheel events
 
 	Optional callbacks to attach
 	============================
@@ -59,6 +61,8 @@ function Player(options)
 	}
 
 	this.debug = false;
+	this.autoplay = false;
+	this.skip_play_button = false;
 
 	this.gl = GL.create(options); //create or reuse
 	this.canvas = this.gl.canvas;
@@ -102,9 +106,9 @@ function Player(options)
 	this.gl.ongamepadButtonUp = gamepad_event_callback;
 
 	//capture input
-	gl.captureMouse(true);
+	gl.captureMouse( !(options.ignore_scroll) );
 	gl.captureKeys(true);
-	gl.captureTouch(true);
+	gl.captureTouch( !(options.ignore_touch) );
 	gl.captureGamepads(true);
 
 	if(LS.Input)
@@ -152,6 +156,7 @@ Player.prototype.configure = function( options, on_scene_loaded )
 {
 	var that = this;
 
+	this.skip_play_button = options.skip_play_button !== undefined ? options.skip_play_button : false;
 	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
 	if(options.debug)
 		this.enableDebug();
@@ -221,9 +226,12 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 		//start playing once loaded the json
 		if(that.autoplay)
 			that.play();
+		else if(!that.skip_play_button)
+			that.showPlayDialog();
 		//console.log("Scene playing");
 		if(	that.loading )
 			that.loading.visible = false;
+		that._ondraw( true );
 		if(on_complete)
 			on_complete();
 	}
@@ -453,12 +461,33 @@ Player.prototype._onfiledrop = function( file, evt )
 	return LEvent.trigger( LS.GlobalScene, "fileDrop", { file: file, event: evt } );
 }
 
+Player.prototype.showPlayDialog = function()
+{
+	var element = document.createElement("div");
+	element.style.width = "128px";
+	element.style.position = "absolute";
+	element.style.top = ((this.canvas.offsetHeight * 0.5 - 64)|0) + "px";
+	element.style.left = ((this.canvas.offsetWidth * 0.5 - 64)|0) + "px";
+	element.style.cursor = "pointer";
+	element.style.borderRadius = "10px";
+	element.style.backgroundColor = "rgba(0,0,0,0.5)";
+	element.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><circle fill="#3bd0bc" cx="64" cy="64" r="50"/><polygon id="play-button-triangle" name="play-button-triangle" fill="#FFFFFF" points="42,32 100,64, 42,96"/></svg>';
+	this.canvas.parentNode.appendChild(element);
+
+	var that = this;
+	element.addEventListener("click", function(){
+		console.log("play!");
+		this.parentNode.removeChild( this );
+		that.play();
+	});
+}
+
 //called by the render loop to draw every frame
-Player.prototype._ondraw = function()
+Player.prototype._ondraw = function( force )
 {
 	var scene = this.scene;
 
-	if(this.state == LS.Player.PLAYING)
+	if( this.state == LS.Player.PLAYING || force )
 	{
 		if(this.onPreDraw)
 			this.onPreDraw();

@@ -52,6 +52,24 @@ MorphDeformer.prototype.onAddedToNode = function(node)
 	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
 }
 
+Object.defineProperty( MorphDeformer.prototype, "weights", {
+	set: function(v) {
+		if(!v || !v.length)
+			return;
+		for(var i = 0; i < v.length; ++i)
+			if( this.morph_targets[i] )
+				this.morph_targets[i].weight = v[i] || 0;
+	},
+	get: function()
+	{
+		var result = new Array( this.morph_targets.length );
+		for(var i = 0; i < this.morph_targets.length; ++i)
+			result[i] = this.morph_targets[i].weight;
+		return result;
+	},
+	enumeration: false
+});
+
 MorphDeformer.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this );
@@ -642,13 +660,16 @@ MorphDeformer.prototype.setProperty = function(name, value)
 				this.morph_targets[ num ].mesh = value;
 		}
 	}
+	else if( name == "weights" )
+		this.weights = value;
 }
 
 
 MorphDeformer.prototype.getPropertiesInfo = function()
 {
 	var properties = {
-		enabled: "boolean"
+		enabled: "boolean",
+		weights: "array"
 	};
 
 	for(var i = 0; i < this.morph_targets.length; i++)
@@ -743,6 +764,20 @@ MorphDeformer.computeMeshDifference = function( mesh_a, mesh_b )
 	for( var i = 0; i < vertices_a.length; i+=3 )
 		diff += vec3.distance( vertices_a.subarray(i,i+3), vertices_b.subarray(i,i+3) );
 	return diff;
+}
+
+MorphDeformer.prototype.onInspectNode = function( inspector, graphnode )
+{
+	var that = this;
+	inspector.addButton(null,"Add weights' inputs",{ callback: function(){
+		for(var i = 0; i < that.morph_targets.length; ++i)
+		{
+			var morph = that.morph_targets[i];
+			if(graphnode.findInputSlot("morph_" + i + "_weight") == -1)
+				graphnode.addInput("morph_" + i + "_weight","number");
+		}
+		graphnode.setDirtyCanvas(true);
+	}});
 }
 
 LS.registerComponent( MorphDeformer );

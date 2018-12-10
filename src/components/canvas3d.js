@@ -23,6 +23,7 @@ function Canvas3D(o)
 	this.input_active = true; //used for LS.GUI methods
 	this.use_node_material = false;
 	this.generate_mipmaps = false;
+	this.max_interactive_distance = 100; //distance beyong which the mouse is no longer projected
 
 	this._clear_buffer = true; //not public, just here in case somebody wants it
 	this._skip_backside = true;
@@ -37,7 +38,8 @@ function Canvas3D(o)
 
 	this._local_mouse = {
 		mousex: 0,
-		mousey: 0
+		mousey: 0,
+		buttons: 0
 	};
 
 	this._local_mouse_click = {
@@ -209,7 +211,7 @@ Canvas3D.prototype.onCollectInstances = function(e,instances)
 	if(!this._mesh)
 		this._mesh = GL.Mesh.plane();
 	RI.setMesh(this._mesh);
-	instances.push(RI);
+	instances.push( RI );
 
 	return instances;
 }
@@ -240,33 +242,39 @@ Canvas3D.prototype.projectMouse = function()
 	//Canvas Plane
 	if(!this.root.transform)
 	{
-		this._mouse[0] = LS.Input.Mouse.x;
-		this._mouse[1] = LS.Input.Mouse.y;
+		this._mouse[0] = LS.Input.Mouse.canvasx;
+		this._mouse[1] = LS.Input.Mouse.canvasy;
+		this._mouse[2] = 0;
 		this._is_mouse_inside = true;
 		return;
 	}
 
+	var cam_dist = 0;
+	cam_dist = vec3.distance( camera.getEye(), this.root.transform.getGlobalPosition() );
+	var too_far = cam_dist > this.max_interactive_distance;
+
 	this._is_mouse_inside = false;
 
-	var mousex = LS.Input.Mouse.x;
-	var mousey = LS.Input.Mouse.y;
+	var x = LS.Input.Mouse.canvasx;
+	var y = LS.Input.Mouse.canvasy;
 	var w = this.width|0;
 	var h = this.height|0;
 
-	if( !this.input_active )
+	if( !this.input_active || too_far )
 	{
-		mousex = -1;
-		mousey = -1;
-		this._mouse[0] = mousex;
-		this._mouse[1] = mousey;
+		x = -1;
+		y = -1;
+		this._mouse[0] = x;
+		this._mouse[1] = y;
+		this._mouse[2] = -1;
 	}
 	else
 	{
 		this._mouse[0] = -1;
 		this._mouse[1] = -1;
+		this._mouse[2] = cam_dist;
 
-		var ray = camera.getRayInPixel( mousex, mousey );
-		var camera_front = camera.getFront();
+		var ray = camera.getRay( x, y );
 
 		var temp = vec3.create();
 		var plane_normal = this.root.transform.localVectorToGlobal( LS.FRONT, temp );
@@ -279,7 +287,9 @@ Canvas3D.prototype.projectMouse = function()
 			if( geo.testRayPlane( local_origin, local_direction, LS.ZEROS, LS.FRONT, this._mouse ) )
 			{
 				this._mouse[0] = (this._mouse[0] + 0.5) * w;
-				this._mouse[1] = h - (this._mouse[1] + 0.5) * h;
+				this._mouse[1] = (this._mouse[1] + 0.5) * h;
+				//flip Y
+				this._mouse[1] = h - this._mouse[1];
 			}
 		}
 	}
@@ -290,6 +300,7 @@ Canvas3D.prototype.projectMouse = function()
 		this._is_mouse_inside = true;
 
 	//hacks to work with the LS.GUI...
+	//*
 	this._local_mouse.mousex = this._mouse[0];
 	this._local_mouse.mousey = this._mouse[1];
 	this._prev_mouse = LS.Input.Mouse;
@@ -302,6 +313,7 @@ Canvas3D.prototype.projectMouse = function()
 		this._prev_click_mouse = LS.Input.current_click;
 		LS.Input.current_click = this._local_mouse_click;
 	}
+	//*/
 }
 
 /*
