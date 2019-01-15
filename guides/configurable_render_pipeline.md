@@ -24,6 +24,8 @@ This node renders an scene to a given RenderFrameContext.
 
 It allows to control which layers are rendered, or to overwrite the material.
 
+It can be used also to render shadowmaps or planar reflections.
+
 ### Viewport
 
 This node takes a texture and displays it on the screen.
