@@ -31,7 +31,6 @@ function SceneNode( name )
 
 	//from Componentcontainer
 	this._components = []; //used for logic actions
-	this._missing_components = null; //used to store state of component that couldnt be created
 
 	//from CompositePattern
 	this._parentNode = null;
@@ -82,7 +81,6 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		if( this._components && this._components.length )
 			console.warn("SceneNode.init() should not be called if it contains components, call clear instead");
 		this._components = []; //used for logic actions
-		this._missing_components = null;
 		this.addComponent( new LS.Transform() );
 	}
 }

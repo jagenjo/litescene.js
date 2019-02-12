@@ -66,7 +66,7 @@ LGraphFXStack.prototype.onExecute = function()
 	this.setOutputData(0, this._final_texture);
 }
 
-LGraphFXStack.prototype.inspect = function( inspector )
+LGraphFXStack.prototype.onInspect = function( inspector )
 {
 	return this._fx_stack.inspect( inspector );
 }
@@ -98,7 +98,7 @@ function LGraphCameraMotionBlur()
 	this.addInput("depth","Texture");
 	this.addInput("camera","Camera");
 	this.addOutput("out","Texture");
-	this.properties = { enabled: true, intensity: 1, ghosting_mitigation: true, ghosting_threshold: 0.4, freeze_camera: false, precision: LGraphTexture.DEFAULT };
+	this.properties = { enabled: true, intensity: 1, ghosting_mitigation: true, ghosting_threshold: 0.4, freeze_camera: false, low_quality: false, precision: LGraphTexture.DEFAULT };
 
 	this._inv_matrix = mat4.create();
 	this._previous_viewprojection_matrix = mat4.create();
@@ -148,13 +148,29 @@ LGraphCameraMotionBlur.prototype.onExecute = function()
 	if(!this._tex || this._tex.width != width || this._tex.height != height || this._tex.type != type )
 		this._tex = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
 
-	if(!LGraphCameraMotionBlur._shader)
+	if( this.properties.low_quality )
 	{
-		LGraphCameraMotionBlur._shader = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader );
-		LGraphCameraMotionBlur._shader_no_ghosting = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader, { GHOST_CORRECTION: "" } );
+		if(!LGraphCameraMotionBlur._shader_low)
+		{
+			LGraphCameraMotionBlur._shader_low = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader, { SAMPLES:"4" } );
+			LGraphCameraMotionBlur._shader_no_ghosting_low = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader, { GHOST_CORRECTION: "", SAMPLES:"4" } );
+		}
+	}
+	else
+	{
+		if(!LGraphCameraMotionBlur._shader)
+		{
+			LGraphCameraMotionBlur._shader = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader );
+			LGraphCameraMotionBlur._shader_no_ghosting = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader, { GHOST_CORRECTION: "" } );
+		}
 	}
 
-	var shader = this.properties.ghosting_mitigation ? LGraphCameraMotionBlur._shader_no_ghosting : LGraphCameraMotionBlur._shader;
+	var shader = null;
+	
+	if( this.properties.low_quality )
+		shader = this.properties.ghosting_mitigation ? LGraphCameraMotionBlur._shader_no_ghosting_low : LGraphCameraMotionBlur._shader_low;
+	else
+		shader = this.properties.ghosting_mitigation ? LGraphCameraMotionBlur._shader_no_ghosting : LGraphCameraMotionBlur._shader;
 
 	var inv = this._inv_matrix;
 	var vp = camera._viewprojection_matrix;
@@ -211,7 +227,9 @@ LGraphCameraMotionBlur.pixel_shader = "precision highp float;\n\
 		uniform vec2 u_camera_planes;\n\
 		uniform float u_intensity;\n\
 		uniform float u_ghosting_threshold;\n\
-		#define SAMPLES 16\n\
+		#ifndef SAMPLES\n\
+			#define SAMPLES 16\n\
+		#endif\n\
 		\n\
 		void main() {\n\
 			vec2 uv = v_coord;\n\

@@ -320,23 +320,36 @@ RenderInstance.prototype.render = function(shader, primitive)
 		this.vertex_buffers["coords1"] = this.mesh.vertexBuffers["coords1"];
 	}
 
+	if(shader.attributes["a_normal"] && !this.vertex_buffers["normals"])
+	{
+		this.mesh.computeNormals();		
+		this.vertex_buffers["normals"] = this.mesh.vertexBuffers["normals"];
+	}
+
 	//in case no secondary coords found but they are required
 	if(shader.attributes["a_extra"] && !this.vertex_buffers["extra"])
 	{
-		this.mesh.createVertexBuffer("a_extra", 1 );
+		this.mesh.createVertexBuffer("extra", "a_extra", 1 );
 		this.vertex_buffers["extra"] = this.mesh.vertexBuffers["extra"];
 	}
 
 	if(shader.attributes["a_extra2"] && !this.vertex_buffers["extra2"])
 	{
-		this.mesh.createVertexBuffer("a_extra2", 2 );
+		this.mesh.createVertexBuffer("extra2","a_extra2", 2 );
 		this.vertex_buffers["extra2"] = this.mesh.vertexBuffers["extra2"];
 	}
 
 	if(shader.attributes["a_extra3"] && !this.vertex_buffers["extra3"])
 	{
-		this.mesh.createVertexBuffer("a_extra3", 3 );
+		this.mesh.createVertexBuffer("extra3","a_extra3", 3 );
 		this.vertex_buffers["extra3"] = this.mesh.vertexBuffers["extra3"];
+	}
+
+	//in case no secondary coords found but they are required
+	if(shader.attributes["a_color"] && !this.vertex_buffers["colors"])
+	{
+		this.mesh.createVertexBuffer( "colors", "a_color", 4 );
+		this.vertex_buffers["colors"] = this.mesh.vertexBuffers["colors"];
 	}
 
 	shader.drawBuffers( this.vertex_buffers,

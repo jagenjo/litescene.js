@@ -25,6 +25,15 @@ LS.BlendFunctions[ Blend.MULTIPLY ] = [GL.DST_COLOR, GL.ONE_MINUS_SRC_ALPHA];
 LS.BlendFunctions[ Blend.SCREEN ] =	[GL.SRC_ALPHA, GL.ONE];
 LS.BlendFunctions[ Blend.CUSTOM ] =	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
 
+//Used for interpolation and splines
+LS.NONE = 0;
+LS.LINEAR = 1;
+LS.TRIGONOMETRIC = 2;
+LS.CUBIC = 3;
+LS.SPLINE = 4;
+LS.BEZIER = 5;
+LS.HERMITE = 6;
+
 //used to know the state of the application
 LS.STOPPED = 0;
 LS.PLAYING = 1; 
@@ -54,7 +63,7 @@ LS.TYPES = {
 	STRING : "string",
 	VEC2 : "vec2",
 	VEC3 : "vec3",
-	VEC4 : "vec3",
+	VEC4 : "vec4",
 	COLOR : "color",
 	COLOR4 : "color4",
 	EVENT : "event",
@@ -63,6 +72,7 @@ LS.TYPES = {
 	MESH: "mesh",
 	OBJECT: "object",
 	SCENE: "scene",
+	NODE: "node",
 	SCENENODE: "node",
 	SCENENODE_ID: "node_id",
 	COMPONENT: "component",

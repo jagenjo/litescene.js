@@ -615,14 +615,17 @@ GLSLCode.pragma_methods["shaderblock"] = {
 			return null;
 		}
 
-		var block_code = shader_block.getFinalCode( shader_type, block_flags, context );
-		if( block_code == null )
-			return null;
+		var code = "";
 
 		//add the define BLOCK_name only if enabled
 		if( shader_block.flag_mask & block_flags )
-			return "\n#define BLOCK_" + ( shader_block.name.toUpperCase() ) +"\n" + block_code + "\n";
-		return block_code + "\n";
+			code = "\n#define BLOCK_" + ( shader_block.name.toUpperCase() ) +"\n";
+
+		var block_code = shader_block.getFinalCode( shader_type, block_flags, context );
+		if( block_code )
+			code += block_code + "\n";
+
+		return code;
 	}
 };
 
@@ -928,6 +931,14 @@ firstpass_block.register();
 var lastpass_block = LS.Shaders.lastpass_block = new LS.ShaderBlock("lastPass");
 lastpass_block.addCode( GL.FRAGMENT_SHADER, "", "" );
 lastpass_block.register();
+
+//used when a mesh contains color info by vertex
+var vertex_color_block = LS.Shaders.vertex_color_block = new LS.ShaderBlock("vertex_color");
+vertex_color_block.register();
+
+//used when a mesh contains extra uv set
+var coord1_block = LS.Shaders.coord1_block = new LS.ShaderBlock("coord1");
+coord1_block.register();
 
 //used to render normalinfo to buffer
 var normalbuffer_block = LS.Shaders.normalbuffer_block = new LS.ShaderBlock("normalBuffer");

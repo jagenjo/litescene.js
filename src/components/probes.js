@@ -1,10 +1,10 @@
 ///@INFO: UNCOMMON
 /**
-* Realtime Reflective surface
+* Realtime Reflective probe
 * @class RealtimeReflector
 * @namespace LS.Components
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 
 
@@ -467,6 +467,14 @@ ReflectionProbe.helper_size = 1;
 LS.registerComponent( ReflectionProbe );
 
 
+/**
+* Precomputed Irradiance probes
+* @class IrradianceCache
+* @namespace LS.Components
+* @constructor
+* @param {Object} object to configure from
+*/
+
 
 function IrradianceCache( o )
 {
@@ -530,7 +538,7 @@ IrradianceCache["@background_color"] = { type:"color" };
 IrradianceCache["@intensity_color"] = { type:"color" };
 IrradianceCache.default_coeffs = new Float32Array([ 0,0,0, 0.5,0.75,1, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0 ]);
 
-IrradianceCache.use_sh_low = true; //set to false before shader compilation to use 9 coeffs instead of 4
+IrradianceCache.use_sh_low = false; //set to false before shader compilation to use 9 coeffs instead of 4
 
 IrradianceCache.prototype.onAddedToScene = function(scene)
 {
@@ -756,6 +764,30 @@ IrradianceCache.prototype.encodeCacheInTexture = function()
 	var matrix = this._uniforms.u_irradiance_imatrix;
 	matrix.set( this._irradiance_matrix );
 	mat4.invert( matrix, matrix );
+}
+
+IrradianceCache.prototype.getIrradiance = function( position, normal, out )
+{	
+	out = out || vec3.create();
+
+	var subs = this._irradiance_subdivisionsl;
+	var imatrix = this._uniforms.u_irradiance_imatrix;
+	var shs = this._irradiance_shs;
+	if(!shs)
+		return null;
+
+	var local_pos = vec3.create();
+	vec3.transformMat4( local_pos, position, imatrix );
+	Math.clamp( local_pos[0], 0, subs[0] - 1 );
+	Math.clamp( local_pos[1], 0, subs[1] - 1 );
+	Math.clamp( local_pos[2], 0, subs[2] - 1 );
+	var floor_probes = subs[0] * subs[2];
+	var total_probes = floor_probes * subs[1];
+	var i = Math.floor(local_pos[0]) + Math.floor(local_pos[2]) * subs[0] + Math.floor(local_pos[1]) * floor_probes;
+	var sh = shs[i];
+
+	//TODO: read coeffs
+	return out;
 }
 
 IrradianceCache.prototype.getSizeInBytes = function()
@@ -1180,7 +1212,9 @@ var irradiance_code = "\n\
 	}\n\
 	float irr_expFunc(float f)\n\
 	{\n\
-		return f*f*f*(f*(f*6.0-15.0)+10.0);\n\
+		//f = f*f*f*(f*(f*6.0-15.0)+10.0);\n\
+		//if( f < 0.0 || f > 1.0 ) return 0.0;\n\
+		return f;\n\
 	}\n\
 	vec3 computeSHRadianceAtPositionSmooth( in vec3 pos, in vec3 normal )\n\
 	{\n\

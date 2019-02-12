@@ -3,12 +3,13 @@ function Path()
 {
 	this.points = [];
 	this.closed = false;
-	this.type = Path.LINE;
+	this.type = LS.LINEAR;
 }
 
-Path.LINE = 1;
-Path.SPLINE = 2;
-Path.BEZIER = 3;
+Path.prototype.clear = function()
+{
+	this.points.length = 0;
+}
 
 Path.prototype.addPoint = function(p)
 {
@@ -26,28 +27,75 @@ Path.prototype.getSegments = function()
 
 	switch(this.type)
 	{
-		case Path.LINE: 
+		case LS.LINEAR: 
 			if(l < 2) 
 				return 0;
-			return l - 1; 
+			return l - 1 + (this.closed ? 1 : 0); 
 			break;
-		case Path.SPLINE:
+		case LS.HERMITE:
+			if(l < 2) 
+				return 0;
+			return l - 1 + (this.closed ? 1 : 0); 
+		case LS.BEZIER:
 			if(l < 3) 
 				return 0;
-			return (((l-1)/3)|0); 
+			return (((l-1)/3)|0) + (this.closed ? 1 : 0);
 			break;
 	}
 	return 0;
+}
+
+Path.prototype.movePoint = function( index, pos, preserve_tangents )
+{
+	if(index < 0 && index >= this.points.length)
+		return;
+
+	var p = this.points[ index ];
+	var total_diff = vec3.sub( vec3.create(), pos, p );
+	vec3.copy(p, pos);
+
+	if( !preserve_tangents || this.type != LS.BEZIER )
+		return;
+
+	if(index % 3 == 2 && this.points.length > index + 2 )
+	{
+		var middle_pos = this.points[index + 1];
+		var next_pos = this.points[index + 2];
+		var diff = vec3.sub( vec3.create(), middle_pos, p );
+		vec3.add( next_pos, middle_pos, diff );
+	}
+	else if(index % 3 == 1 && index > 3 )
+	{
+		var middle_pos = this.points[index - 1];
+		var prev_pos = this.points[index - 2];
+		var diff = vec3.sub( vec3.create(), middle_pos, p );
+		vec3.add( prev_pos, middle_pos, diff );
+	}
+	else if( index % 3 == 0 )
+	{
+		if( index > 1 )
+		{
+			var prev_pos = this.points[index - 1];
+			vec3.add( prev_pos, prev_pos, total_diff );
+		}
+		if( index < this.points.length - 1 )
+		{
+			var next_pos = this.points[index + 1];
+			vec3.add( next_pos, next_pos, total_diff );
+		}
+	}
 }
 
 Path.prototype.computePoint = function(f, out)
 {
 	switch(this.type)
 	{
-		case Path.LINE: return this.getLinearPoint(f,out); break;
-		case Path.SPLINE: 
+		case LS.HERMITE: return this.getHermitePoint(f,out); break;
+		case LS.BEZIER: return this.getBezierPoint(f,out); break;
+		case LS.LINEAR: 
 		default:
-			return this.getSplinePoint(f,out); break;
+			return this.getLinearPoint(f,out);
+			break;
 	}
 	//throw("Impossible path type");
 }
@@ -56,42 +104,76 @@ Path.prototype.computePoint = function(f, out)
 Path.prototype.getLinearPoint = function(f, out)
 {
 	out = out || vec3.create();
-	var l = this.points.length;
+	var num = this.points.length;
+	var l = num;
 	if(l < 2)
 		return out;
 
 	if(f <= 0)
 		return vec3.copy(out, this.points[0]);
 	if(f >= 1)
+	{
+		if(this.closed)
+			return vec3.copy(out, this.points[0]);
 		return vec3.copy(out, this.points[l-1]);
+	}
+
+	if( this.closed )
+		l += 1;
 
 	var v = ((l-1) * f);
 	var i = v|0;
 	var fract = v-i;
-	var p = this.points[ i ];
-	var p2 = this.points[ i+1 ];
+	var p = this.points[ i % num ];
+	var p2 = this.points[ (i+1) % num ];
 	return vec3.lerp(out, p, p2, fract);
 }
 
-Path.prototype.getSplinePoint = function(f, out)
+Path.temp_vec3a = vec3.create();
+Path.temp_vec3b = vec3.create();
+Path.temp_vec3c = vec3.create();
+
+Path.prototype.getBezierPoint = function(f, out)
 {
 	out = out || vec3.create();
 	var l = this.points.length;
 	if(l < 4)
 		return out;
 	l = (((l-1)/3)|0) * 3 + 1; //take only useful points
+
 	if(f <= 0)
 		return vec3.copy(out, this.points[0]);
 	if(f >= 1)
-		return vec3.copy(out, this.points[l-1]);
+		return vec3.copy(out, this.points[ this.closed ? 0 : l-1 ]);
 
-	var v = ((l-1)/3*f); 
-	var i = v|0;//spline number
+	var num = (l-1)/3 + (this.closed ? 1 : 0); //num segment
+	var v = num*f; //id.weight
+	var i = (v|0); //id
 	var t = v-i;//weight
-	var p = this.points[ i ];
-	var p1 = this.points[ i+1 ];
-	var p2 = this.points[ i+2 ];
-	var p3 = this.points[ i+3 ];
+
+	var i1 = (i*3);
+	var i2 = (i*3+1);
+	var i3 = (i*3+2);
+	var i4 = (i*3+3);
+
+	var p,p1,p2,p3;
+
+	if( this.closed && i == num-1 )
+	{
+		p = this.points[l-1];
+		p3 = this.points[0];
+		var diff = vec3.sub( Path.temp_vec3c, p, this.points[l-2] );
+		p1 = vec3.add( Path.temp_vec3a, p, diff );
+		diff = vec3.sub( Path.temp_vec3c, p3, this.points[1] );
+		p2 = vec3.add( Path.temp_vec3b, p3, diff );
+	}
+	else
+	{
+		p = this.points[ i1 ];
+		p1 = this.points[ i2 ];
+		p2 = this.points[ i3 ];
+		p3 = this.points[ i4 ];
+	}
 
 	var b1 = (1-t)*(1-t)*(1-t);
 	var b2 = 3*t*(1-t)*(1-t);
@@ -104,8 +186,41 @@ Path.prototype.getSplinePoint = function(f, out)
 	return out;
 }
 
+Path.prototype.getHermitePoint = function(f, out)
+{
+	out = out || vec3.create();
+	var l = this.points.length;
+	if(l < 2)
+		return out;
+	if(f <= 0)
+		return vec3.copy(out, this.points[0]);
+	if(f >= 1)
+		return vec3.copy(out, this.points[ this.closed ? 0 : l-1]);
+
+	var num = (l-1) + (this.closed ? 1 : 0); //num segments
+	var v = num*f; //id.weight
+	var i = (v|0); //id
+	var t = v-i;//weight
+
+	var pre_p0 = this.points[i - 1];
+	var p0 = this.points[ i ];
+	var p1 = this.points[ i+1 ];
+	var post_p1 = this.points[ i+2 ];
+
+	if(!pre_p0)
+		pre_p0 = this.closed ? this.points[l - 1] : p0;
+	if(!p1)
+		p1 = this.points[ (i+1) % l ];
+	if(!post_p1)
+		post_p1 = this.closed ? this.points[ (i+2) % l ] : p1;
+
+	Animation.EvaluateHermiteSplineVector( p0, p1, pre_p0, post_p1, t, out );
+	return out;
+}
+
+
 /*
-Path.prototype.getSplinePoint = function(f, out)
+Path.prototype.getCatmullPoint = function(f, out)
 {
 	out = out || vec3.create();
 	var l = this.points.length;
@@ -139,25 +254,25 @@ Path.interpolate = function ( p0, p1, p2, p3, t, t2, t3 ) {
 	var v1 = ( p3 - p1 ) * 0.5;
 	return ( 2 * ( p1 - p2 ) + v0 + v1 ) * t3 + ( - 3 * ( p1 - p2 ) - 2 * v0 - v1 ) * t2 + v0 * t + p1;
 };
-
 */
 
-
-Path.prototype.samplePoints = function( n )
+Path.prototype.samplePoints = function( n, out )
 {
 	if(n <= 0)
 	{
 		var segments = this.getSegments();
-		if(this.type == LS.Path.LINE)
+		if(this.type == LS.LINEAR)
 			n = segments + 1;
 		else
 			n = segments * 20;
 	}
 
-	var result = Array(n);
+	out = out || Array(n);
+	out.length = n;
+
 	for(var i = 0; i < n; i++)
-		result[i] = this.computePoint(i/(n-1));
-	return result;
+		out[i] = this.computePoint(i/(n-1));
+	return out;
 }
 
 Path.prototype.samplePointsTyped = function( n, out )
@@ -168,7 +283,7 @@ Path.prototype.samplePointsTyped = function( n, out )
 	if(n <= 0)
 	{
 		var segments = this.getSegments();
-		if(this.type == LS.Path.LINE)
+		if(this.type == LS.LINEAR)
 			n = segments + 1;
 		else
 			n = segments * 20;

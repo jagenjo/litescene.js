@@ -66,7 +66,7 @@ PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGP
 PlayAnimation.properties_order = ["animation","take"]; //this ones should be the first ones to show in the inspector
 
 PlayAnimation["@animation"] = { widget: "animation" };
-PlayAnimation["@root_node"] = { type: "node" };
+PlayAnimation["@root_node"] = { type: "node_id" };
 PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
 PlayAnimation["@current_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
 PlayAnimation["@blend_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };

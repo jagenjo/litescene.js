@@ -245,7 +245,9 @@ Scene.prototype.configure = function( scene_info )
 	if(scene_info.root)
 	{
 		this._spatial_container.clear(); // is this necessary?
+		LS._pending_encoded_objects = [];
 		this._root.configure( scene_info.root );
+		LS.resolvePendingEncodedObjects();
 	}
 
 	if( scene_info.global_scripts )
@@ -673,40 +675,20 @@ Scene.prototype.checkComponentsCodeModification = function()
 		{
 			var compo = node._components[j];
 			var class_name = LS.getObjectClassName( compo );
+			if( compo.constructor == LS.MissingComponent )
+				class_name = compo._comp_class;
+
 			var current_class = LS.Components[ class_name ];
-			if( current_class == compo.constructor )
+			if( !current_class || current_class == compo.constructor ) //already uses the right class
 				continue;
+
 			//replace class instance in-place
 			var data = compo.serialize();
-
 			var new_compo = new current_class( data );
-
 			var index = node.getIndexOfComponent( compo );
 			node.removeComponent( compo );
-			
 			node.addComponent( new_compo, index );
 			console.log("Class replaced: " + class_name );
-		}
-
-		//missing
-		if(node._missing_components && node._missing_components.length)
-		{
-			var still_missing = [];
-			for(var j = 0; j < node._missing_components.length; ++j)
-			{
-				var compo_info = node._missing_components[j];
-				var class_name = compo_info[0];
-				var current_class = LS.Components[ class_name ];
-				if(!current_class)
-				{
-					still_missing.push(compo_info);
-					continue; //still missing
-				}
-				var new_compo = new current_class( compo_info[1] );
-				node.addComponent( new_compo );
-				console.log("Missing repaired: " + class_name );
-			}
-			node._missing_components = still_missing.length ? still_missing : null;
 		}
 	}
 }

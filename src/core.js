@@ -222,7 +222,8 @@ var LS = {
 		if(	old_class_name.constructor === String )
 		{
 			old_class = LS.Components[ old_class_name ];
-			old_class_name = LS.getClassName( old_class );
+			if( old_class )
+				old_class_name = LS.getClassName( old_class );
 		}
 
 		var num = 0;
@@ -235,37 +236,34 @@ var LS = {
 			for(var j = 0; j < node._components.length; ++j)
 			{
 				var comp = node._components[j];
+				var comp_name = comp.constructor === LS.MissingComponent ? comp._comp_class : LS.getObjectClassName( comp );
+
 				//it it is the exact same class then skip it
-				if(comp.constructor === proposed_class)
+				if( comp.constructor === proposed_class )
 					continue;
-				var comp_name = LS.getObjectClassName( comp );
+
 				//if this component is neither the old comp nor the new one
 				if( comp_name != old_class_name && comp_name != new_class_name ) 
 					continue;
 
 				var info = comp.serialize();
 				node.removeComponent( comp );
-				var new_comp = new proposed_class();
+
+				var new_comp = null;
+				try
+				{
+					new_comp = new proposed_class();
+				}
+				catch (err)
+				{
+					console.error("Error in replacement component constructor");
+					console.error(err);
+					continue;
+				}
 				node.addComponent( new_comp, j < node._components.length ? j : undefined );
 				new_comp.configure( info );
 				num++;
 			}
-
-			//search in missing components
-			if(node._missing_components)
-			for(var j = 0; j < node._missing_components.length; ++j)
-			{
-				var comp_info = node._missing_components[j];
-				if( comp_info[0] !== old_class_name )
-					continue;
-				node._missing_components.splice(j,1); //remove from the list
-				var new_comp = new proposed_class();
-				node.addComponent( new_comp, comp_info[2] < node._components.length ? comp_info[2] : undefined ); //add in the place where it should be
-				new_comp.configure( comp_info[1] );
-				j--; 
-				num++;
-			}
-		
 		}
 
 		return num;
@@ -460,6 +458,9 @@ var LS = {
 	* @method cloneObject
 	* @param {Object} object the object to clone
 	* @param {Object} target=null optional, the destination object
+	* @param {bool} recursive=false optional, if you want to encode objects recursively
+	* @param {bool} only_existing=false optional, only assign to methods existing in the target object
+	* @param {bool} encode_objets=false optional, if a special object is found, encode it as ["@ENC",node,object]
 	* @return {Object} returns the cloned object (target if it is specified)
 	*/
 	cloneObject: function( object, target, recursive, only_existing, encode_objects )
@@ -543,7 +544,17 @@ var LS = {
 				}
 
 				if( encode_objects && target && v[0] == "@ENC" ) //encoded object (component, node...)
-					o[i] = LS.decodeObject(v);
+				{
+					var decoded_obj = LS.decodeObject(v);
+					o[i] = decoded_obj;
+					if(!decoded_obj) //object not found
+					{
+						if( LS._pending_encoded_objects )
+							LS._pending_encoded_objects.push([o,i,v]);
+						else
+							console.warn( "Object UID referencing object not found in the scene:", v[2] );
+					}
+				}
 				else
 					o[i] = LS.cloneObject( v ); 
 			}
@@ -604,7 +615,7 @@ var LS = {
 		if( obj.constructor.is_component && obj._root) //in case the value of this property is an actual component in the scene
 			return [ "@ENC", LS.TYPES.COMPONENT, obj.getLocator(), LS.getObjectClassName( obj ) ];
 		if( obj.constructor == LS.SceneNode && obj._in_tree) //in case the value of this property is an actual node in the scene
-			return [ "@ENC", LS.TYPES.NODE, obj.uid ];
+			return [ "@ENC", LS.TYPES.SCENENODE, obj.uid ];
 		if( obj.constructor == LS.Scene)
 			return [ "@ENC", LS.TYPES.SCENE, obj.fullpath ]; //weird case
 		if( obj.serialize || obj.toJSON )
@@ -624,13 +635,12 @@ var LS = {
 		switch( data[1] )
 		{
 			case LS.TYPES.COMPONENT: 
-			case LS.TYPES.NODE: 
+			case "node":  //legacy
+			case LS.TYPES.SCENENODE: 
 				var obj = LSQ.get( data[2] );
 				if( obj )
 					return obj;
-				if(!obj)
-					console.warn( "Object UID referencing object not found in the scene:", data[2] );
-				return data[2];
+				return null;
 				break;
 				//return  break;
 			case LS.TYPES.SCENE: return null; break; //weird case
@@ -649,6 +659,24 @@ var LS = {
 		return null;
 	},
 
+	resolvePendingEncodedObjects: function()
+	{
+		if(!LS._pending_encoded_objects)
+		{
+			console.warn("no pending enconded objects");
+			return;
+		}
+		for(var i = 0; i < LS._pending_encoded_objects.length; ++i)
+		{
+			var pending = LS._pending_encoded_objects[i];
+			var decoded_object = LS.decodeObject(pending[2]);
+			if(decoded_object)
+				pending[0][ pending[1] ] = decoded_object;
+			else
+				console.warn("Decoded object not found when configuring from JSON");
+		}
+		LS._pending_encoded_objects = null;
+	},
 
 	/**
 	* Clears all the uids inside this object and children (it also works with serialized object)

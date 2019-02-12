@@ -656,6 +656,7 @@ var Renderer = {
 			if(camera_index_flag) //shadowmap cameras dont have an index
 				instance._camera_visibility |= camera_index_flag;
 
+
 			//TODO: if material supports instancing WIP
 			/*
 			if( instancing_supported && material._allows_instancing && !instance._shader_blocks.length )
@@ -777,7 +778,7 @@ var Renderer = {
 		{
 			var light = lights[j];
 			//same layer?
-			if( (light.layers & instance.layers) == 0 || (light.layers & this._current_camera.layers) == 0)
+			if( (light.illuminated_layers & instance.layers) == 0 || (light.illuminated_layers & this._current_camera.layers) == 0)
 				continue;
 			var light_intensity = light.computeLightIntensity();
 			//light intensity too low?

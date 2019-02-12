@@ -41,12 +41,19 @@ function Light(o)
 
 	/**
 	* Layers mask, this layers define which objects are iluminated by this light
-	* @property layers
+	* @property illuminated_layers
 	* @type {Number}
 	* @default true
 	*/
-	this.layers = 0xFF;
+	this.illuminated_layers = 0xFF;
 
+	/**
+	* Layers mask, this layers define which objects affect the shadow map (cast shadows)
+	* @property shadows_layers
+	* @type {Number}
+	* @default true
+	*/
+	this.shadows_layers = 0xFF;
 
 	/**
 	* Near distance
@@ -469,12 +476,12 @@ Light.prototype.onResourceRenamed = function (old_name, new_name, resource)
 //Layer stuff
 Light.prototype.checkLayersVisibility = function( layers )
 {
-	return (this.layers & layers) !== 0;
+	return (this.illuminated_layers & layers) !== 0;
 }
 
 Light.prototype.isInLayer = function(num)
 {
-	return (this.layers & (1<<num)) !== 0;
+	return (this.illuminated_layers & (1<<num)) !== 0;
 }
 
 /**
@@ -727,6 +734,9 @@ Light.prototype.generateShadowmap = function (render_settings)
 	if(shadowmap_resolution == 0)
 		shadowmap_resolution = render_settings.default_shadowmap_resolution;
 
+	var tmp_layer = render_settings.layers;
+	render_settings.layers = this.shadows_layers;
+
 	var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type )
 	{
@@ -783,6 +793,7 @@ Light.prototype.generateShadowmap = function (render_settings)
 		LS.Renderer._current_target = null;
 	}
 
+	render_settings.layers = tmp_layer;
 	LS.Renderer.setRenderPass( COLOR_PASS );
 	LS.Renderer._current_light = null;
 }

@@ -602,9 +602,9 @@ Transform.prototype.getGlobalMatrix = function (out, fast)
 * @method getGlobalMatrix
 * @return {mat4} the matrix in array format
 */
-Transform.prototype.getGlobalMatrixRef = function ()
+Transform.prototype.getGlobalMatrixRef = function (fast)
 {
-	this.updateGlobalMatrix();
+	this.updateGlobalMatrix(fast);
 	return this._global_matrix;
 }
 

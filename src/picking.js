@@ -1,6 +1,6 @@
 ///@INFO: UNCOMMON
 /**
-* Picking is used to detect which element is below one pixel (used the GPU) or using raycast
+* Picking is used to detect which element is below one pixel (using the GPU) or using raycast
 *
 * @class Picking
 * @namespace LS
@@ -9,6 +9,8 @@
 var Picking = {
 
 	picking_color_offset: 10, //color difference between picking objects
+	_picking_points: [], //used during picking fetching
+	_picking_nodes: null, //created before picking
 
 	/**
 	* Renders the pixel and retrieves the color to detect which object it was, slow but accurate
@@ -178,12 +180,48 @@ var Picking = {
 		LEvent.trigger( LS.Renderer, "renderPicking", pos );
 
 		LS.Renderer.setRenderPass( COLOR_PASS );
+	},
+
+	addPickingPoint: function( position, size, info )
+	{
+		size = size || 5.0;
+		var color = LS.Picking.getNextPickingColor( info );
+		this._picking_points.push([ position,color,size]);
+	},
+
+	renderPickingPoints: function()
+	{
+		//render all the picking points 
+		if(this._picking_points.length)
+		{
+			var points = new Float32Array( this._picking_points.length * 3 );
+			var colors = new Float32Array( this._picking_points.length * 4 );
+			var sizes = new Float32Array( this._picking_points.length );
+			for(var i = 0; i < this._picking_points.length; i++)
+			{
+				points.set( this._picking_points[i][0], i*3 );
+				colors.set( this._picking_points[i][1], i*4 );
+				sizes[i] = this._picking_points[i][2];
+			}
+			LS.Draw.setPointSize(1);
+			LS.Draw.setColor([1,1,1,1]);
+			gl.disable( gl.DEPTH_TEST ); //because nodes are show over meshes
+			LS.Draw.renderPointsWithSize( points, colors, sizes );
+			gl.enable( gl.DEPTH_TEST );
+			this._picking_points.length = 0;
+		}
 	}
+
+	/*
+	visualize: function(v)
+	{
+		//to visualize picking buffer
+		if(v)
+			LS.Renderer.registerRenderPass( "color", { id: 1, render_instance: LS.Renderer.renderPickingPassInstance } );
+	}
+	*/
 };
 
 LS.Picking = Picking;
 
 
-//helper
-//to visualize picking buffer
-//LS.Renderer.registerRenderPass( "color", { id: 1, render_instance: LS.Renderer.renderPickingPassInstance } );

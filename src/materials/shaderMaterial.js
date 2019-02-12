@@ -372,6 +372,12 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	LS.Renderer.bindSamplers( this._samplers ); //material samplers
 	LS.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
 
+	//blocks for extra streams
+	if( instance.vertex_buffers["colors"] )
+		block_flags |= LS.Shaders.vertex_color_block.flag_mask;
+	if( instance.vertex_buffers["coords1"] )
+		block_flags |= LS.Shaders.coord1_block.flag_mask;
+
 	//for those cases
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );

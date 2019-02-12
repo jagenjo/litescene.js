@@ -1,12 +1,5 @@
 ///@INFO: ANIMATION
 
-//Interpolation methods
-LS.NONE = 0;
-LS.LINEAR = 1;
-LS.TRIGONOMETRIC = 2;
-LS.BEZIER = 3;
-LS.SPLINE = 4;
-
 /**
 * An Animation is a resource that contains samples of properties over time, similar to animation curves
 * Values could be associated to an specific node.
@@ -726,7 +719,7 @@ function Track(o)
 	this._type = null; //type of data (number, vec2, color, texture, etc)
 	this._type_index = null; //type in number format (to optimize)
 	/** 
-	* @property interpolation {Number} type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.BEZIER, LS.SPLICE
+	* @property interpolation {Number} type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.CUBIC, LS.SPLICE
 	**/
 	this.interpolation = LS.NONE;
 	/** 
@@ -1295,7 +1288,7 @@ Track.prototype.findTimeIndex = function(time)
 * Warning: if no result container is provided the same container is reused between samples to avoid garbage, be careful.
 * @method getSample
 * @param {number} time
-* @param {number} interpolation [optional] the interpolation method could be LS.NONE, LS.LINEAR, LS.BEZIER
+* @param {number} interpolation [optional] the interpolation method could be LS.NONE, LS.LINEAR, LS.CUBIC
 * @param {*} result [optional] the container where to store the data (in case is an array). IF NOT CONTAINER IS PROVIDED THE SAME ONE IS RETURNED EVERY TIME!
 * @return {*} data
 */
@@ -1348,9 +1341,9 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 
 		return LS.Animation.interpolateLinear( a[1], b[1], t, result, this._type, value_size, this );
 	}
-	else if(this.interpolation === LS.BEZIER)
+	else if(this.interpolation === LS.CUBIC)
 	{
-		//bezier not implemented for interpolators
+		//cubic not implemented for interpolators
 		if(value_size === 0 && LS.Interpolators[ this._type ] )
 		{
 			var func = LS.Interpolators[ this._type ];
@@ -1369,7 +1362,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 
 		if(this._type_index == Track.QUAT)
 		{
-			quat.slerp( result, b[1], a[1], t ); //force quats without bezier interpolation
+			quat.slerp( result, b[1], a[1], t ); //force quats without CUBIC interpolation
 			quat.normalize( result, result );
 		}
 		else if(this._type_index == Track.TRANS10)
@@ -1430,9 +1423,9 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 		var b_data = b.subarray(1, value_size + 1 );
 		return LS.Animation.interpolateLinear( a_data, b_data, t, result, this._type, value_size, this );
 	}
-	else if(this.interpolation === LS.BEZIER)
+	else if(this.interpolation === LS.CUBIC)
 	{
-		if( value_size === 0 ) //bezier not supported in interpolators
+		if( value_size === 0 ) //CUBIC not supported in interpolators
 			return a[1];
 
 		var pre_a = index > 0 ? data.subarray( (index-1) * offset, (index) * offset ) : a;
@@ -1733,7 +1726,6 @@ Animation.EvaluateHermiteSpline = function( p0, p1, pre_p0, post_p1, s )
 	var h2 = -2*s3 + 3*s2;              // calculate basis function 2
 	var h3 =   s3 - 2*s2 + s;         // calculate basis function 3
 	var h4 =   s3 -  s2;              // calculate basis function 4
-	
 	var t0 = p1 - pre_p0;
 	var t1 = post_p1 - p0;
 

@@ -47,6 +47,7 @@ function StandardMaterial(o)
 	this.bumpmap_factor = 1.0;
 
 	this.displacementmap_factor = 0.1;
+	this._texture_settings = new Uint8Array(9);
 
 	this.use_scene_ambient = true;
 
@@ -78,7 +79,8 @@ function StandardMaterial(o)
 		u_normal_info: vec2.create(),
 		u_detail_info: this._detail,
 		u_texture_matrix: this.uvs_matrix,
-		u_extra_color: this._extra
+		u_extra_color: this._extra,
+		u_texture_settings: this._texture_settings
 	};
 
 	this._samplers = [];
@@ -135,16 +137,21 @@ StandardMaterial.REFLECTIVITY_TEXTURE = "reflectivity";
 StandardMaterial.EXTRA_TEXTURE = "extra";
 StandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
 
+StandardMaterial.TEXTURES_INDEX = { "color":0, "opacity":1, "ambient":2, "specular":3, "emissive":4, "detail":5, "normal":6, "displacement":7, "bump":8, "reflectivity":9, "extra":10, "environment":11 };
+
 StandardMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
 StandardMaterial.prototype.renderShadowInstance = ShaderMaterial.prototype.renderShadowInstance;
 StandardMaterial.prototype.renderPickingInstance = ShaderMaterial.prototype.renderPickingInstance;
 
-
+//called from LS.Renderer.processVisibleData
 StandardMaterial.prototype.prepare = function( scene )
 {
 	var flags = this.flags;
 
 	var render_state = this._render_state;
+
+	if(!this._texture_settings) //HACK to fix BUG
+		this._texture_settings = this._uniforms.u_texture_settings = new Uint8Array(9);
 
 	//set flags in render state
 	render_state.cull_face = !flags.two_sided;
@@ -161,6 +168,16 @@ StandardMaterial.prototype.prepare = function( scene )
 			render_state.blendFunc0 = func[0];
 			render_state.blendFunc1 = func[1];
 		}
+	}
+
+	for(var i in this.textures)
+	{
+		var tex = this.textures[i];
+		if(!tex)
+			continue;
+		if(tex.index == null)
+			tex.index = StandardMaterial.TEXTURES_INDEX[i];
+		this._texture_settings[ tex.index ] = tex.uvs;
 	}
 
 	this._light_mode = this.flags.ignore_lights ? Material.NO_LIGHTS : 1;
@@ -185,21 +202,13 @@ StandardMaterial.FLAGS = {
 	ENVIRONMENT_CUBEMAP: 1<<12,
 	IRRADIANCE_CUBEMAP: 1<<13,
 
-	COLOR_TEXTURE_OPTIONS: 1<<16,
-	OPACITY_TEXTURE_OPTIONS: 1<<17,
-	SPECULAR_TEXTURE_OPTIONS: 1<<18,
-	REFLECTIVITY_TEXTURE_OPTIONS: 1<<19,
-	AMBIENT_TEXTURE_OPTIONS: 1<<20,
-	EMISSIVE_TEXTURE_OPTIONS: 1<<21,
-	NORMAL_TEXTURE_OPTIONS: 1<<22,
-	DISPLACEMENT_TEXTURE_OPTIONS: 1<<23,
-	EXTRA_TEXTURE_OPTIONS: 1<<24,
-
 	DEGAMMA_COLOR: 1<<26,
 	SPEC_ON_ALPHA: 1<<27,
 	SPEC_ON_TOP: 1<<28,
 	ALPHA_TEST: 1<<29
 }; //max is 32	
+
+
 
 StandardMaterial.shader_codes = {};
 
@@ -223,11 +232,8 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	}
 	if( this.textures.opacity )
 		code_flags |= FLAGS.OPACITY_TEXTURE;
-
 	if( this.textures.displacement )
 		code_flags |= FLAGS.DISPLACEMENT_TEXTURE;
-
-	//color textures are not necessary 
 	if( this.textures.normal )
 		code_flags |= FLAGS.NORMAL_TEXTURE;
 	if( this.textures.specular )
@@ -258,7 +264,7 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	//check if we already have this ShaderCode created
 	var shader_code = LS.StandardMaterial.shader_codes[ code_flags ];
 
-	//reuse shader codes when possible
+	//reuse shader codes when possible **************************************
 	if(shader_code)
 		return shader_code;
 
@@ -273,21 +279,31 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 		code.vs_local += "	vertex4.xyz += v_normal * texture2D( displacement_texture, v_uvs ).x * u_displacementmap_factor;\n";	
 
 	//uvs
-	code.fs += "vec2 uv0 = (vec3(IN.uv,1.0) * u_texture_matrix).xy;\n";
-	code.fs_shadows += "vec2 uv0 = (vec3(IN.uv,1.0) * u_texture_matrix).xy;\n";
+	var uvs_common = "\n\
+	uvs[0] = IN.uv;\n\
+	uvs[1] = IN.uv1;\n\
+	uvs[2] = (u_texture_matrix * vec3(uvs[0],1.0)).xy;\n\
+	#ifdef COORD1_BLOCK\n\
+		uvs[3] = (vec3(uvs[1],1.0) * u_texture_matrix).xy;\n\
+	#else\n\
+		uvs[3] = uvs[2];\n\
+	#endif\n";
+	code.fs += uvs_common;
+	code.fs_shadows += uvs_common;
 
 	if( code_flags & FLAGS.NORMAL_TEXTURE )
 	{
-		code.fs += "	vec3 normal_pixel = texture2D( normal_texture, uv0 ).xyz;\n\
+		code.fs += "vec2 normal_uv = getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["normal"]+"]);\n\
+		vec3 normal_pixel = texture2D( normal_texture, normal_uv ).xyz;\n\
 		normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
 		if( u_normal_info.y > 0.0 )\n\
-			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, uv0, normal_pixel ));\n\
+			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, normal_uv, normal_pixel ));\n\
 		o.Normal = normalize( mix( o.Normal, normal_pixel, u_normal_info.x ) );\n";
 	}
 
 	if( code_flags & FLAGS.COLOR_TEXTURE )
 	{
-		var str = "	vec4 tex_color = texture2D( color_texture, uv0 );\n";
+		var str = "	vec4 tex_color = texture2D( color_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["color"]+"] ) );\n";
 		code.fs += str;
 		code.fs_shadows += str;
 
@@ -300,26 +316,26 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	}
 	if( code_flags & FLAGS.OPACITY_TEXTURE )
 	{
-		var str =  "	o.Alpha *= texture2D( opacity_texture, uv0 ).x;\n";
+		var str =  "	o.Alpha *= texture2D( opacity_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["opacity"]+"]) ).x;\n";
 		code.fs += str;
 		code.fs_shadows += str;
 	}
 	if( code_flags & FLAGS.SPECULAR_TEXTURE )
 	{
-		code.fs += "	vec4 spec_info = texture2D( specular_texture, uv0 );\n\
+		code.fs += "	vec4 spec_info = texture2D( specular_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["specular"]+"]) );\n\
 	o.Specular *= spec_info.x;\n\
 	o.Gloss *= spec_info.y;\n";
 	}
 	if( code_flags & FLAGS.REFLECTIVITY_TEXTURE )
-		code.fs += "	o.Reflectivity *= texture2D( reflectivity_texture, uv0 ).x;\n";
+		code.fs += "	o.Reflectivity *= texture2D( reflectivity_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["reflectivity"]+"]) ).x;\n";
 	if( code_flags & FLAGS.EMISSIVE_TEXTURE )
-		code.fs += "	o.Emission *= texture2D( emissive_texture, uv0 ).xyz;\n";
+		code.fs += "	o.Emission *= texture2D( emissive_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["emissive"]+"]) ).xyz;\n";
 	if( code_flags & FLAGS.AMBIENT_TEXTURE )
-		code.fs += "	o.Ambient *= texture2D( ambient_texture, uv0 ).xyz;\n";
+		code.fs += "	o.Ambient *= texture2D( ambient_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["ambient"]+"]) ).xyz;\n";
 	if( code_flags & FLAGS.DETAIL_TEXTURE )
-		code.fs += "	o.Albedo += (texture2D( detail_texture, uv0 * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n";
+		code.fs += "	o.Albedo += (texture2D( detail_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["detail"]+"]) * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n";
 	if( code_flags & FLAGS.EXTRA_TEXTURE )
-		code.fs += "	if(u_light_info.z == 0.0) o.Extra = u_extra_color * texture2D( extra_texture, uv0 );\n";
+		code.fs += "	if(u_light_info.z == 0.0) o.Extra = u_extra_color * texture2D( extra_texture, getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["extra"]+"] ) );\n";
 
 	//flags
 	if( code_flags & FLAGS.ALPHA_TEST )
@@ -587,7 +603,23 @@ LS.Classes["newStandardMaterial"] = StandardMaterial;
 //LS.MaterialClasses.newStandardMaterial = StandardMaterial;
 
 //**********************************************
-
+var UVS_CODE = "\n\
+uniform int u_texture_settings[11];\n\
+\n\
+vec2 uvs[4];\n\
+vec2 getUVs(int index)\n\
+{\n\
+	if(index == 0)\n\
+		return uvs[0];\n\
+	if(index == 1)\n\
+		return uvs[1];\n\
+	if(index == 2)\n\
+		return uvs[2];\n\
+	if(index == 3)\n\
+		return uvs[3];\n\
+	return uvs[0];\n\
+}\n\
+";
 
 StandardMaterial.code_template = "\n\
 \n\
@@ -595,11 +627,20 @@ StandardMaterial.code_template = "\n\
 \\color.vs\n\
 \n\
 precision mediump float;\n\
+//global defines from blocks\n\
+#pragma shaderblock \"vertex_color\"\n\
+#pragma shaderblock \"coord1\"\n\
+\n\
 attribute vec3 a_vertex;\n\
 attribute vec3 a_normal;\n\
 attribute vec2 a_coord;\n\
-#ifdef USE_COLORS\n\
-attribute vec4 a_color;\n\
+#ifdef BLOCK_COORD1\n\
+	attribute vec2 a_coord1;\n\
+	varying vec2 v_uvs1;\n\
+#endif\n\
+#ifdef BLOCK_VERTEX_COLOR\n\
+	attribute vec4 a_color;\n\
+	varying vec4 v_vertex_color;\n\
 #endif\n\
 \n\
 //varyings\n\
@@ -643,6 +684,12 @@ void main() {\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
+	#ifdef BLOCK_COORD1\n\
+		v_uvs1 = a_coord1;\n\
+	#endif\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+		v_vertex_color = a_color;\n\
+	#endif\n\
 	\n\
 	//local deforms\n\
 	{{vs_local}}\n\
@@ -678,10 +725,20 @@ void main() {\n\
 \n\
 precision mediump float;\n\
 \n\
+//global defines from blocks\n\
+#pragma shaderblock \"vertex_color\"\n\
+#pragma shaderblock \"coord1\"\n\
+\n\
 //varyings\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+#ifdef BLOCK_COORD1\n\
+	varying vec2 v_uvs1;\n\
+#endif\n\
+#ifdef BLOCK_VERTEX_COLOR\n\
+	varying vec4 v_vertex_color;\n\
+#endif\n\
 \n\
 //globals\n\
 uniform vec3 u_camera_eye;\n\
@@ -710,14 +767,6 @@ uniform sampler2D detail_texture;\n\
 uniform sampler2D normal_texture;\n\
 uniform sampler2D extra_texture;\n\
 \n\
-uniform vec4 u_color_texture_settings;\n\
-uniform vec4 u_opacity_texture_settings;\n\
-uniform vec4 u_specular_texture_settings;\n\
-uniform vec4 u_ambient_texture_settings;\n\
-uniform vec4 u_emissive_texture_settings;\n\
-uniform vec4 u_reflectivity_texture_settings;\n\
-uniform vec4 u_normal_texture_settings;\n\
-\n\
 \n\
 #pragma shaderblock \"light\"\n\
 #pragma shaderblock \"light_texture\"\n\
@@ -728,10 +777,16 @@ uniform vec4 u_normal_texture_settings;\n\
 \n\
 #pragma shaderblock \"extraBuffers\"\n\
 \n\
+"+ UVS_CODE +"\n\
+\n\
 void surf(in Input IN, out SurfaceOutput o)\n\
 {\n\
 	o.Albedo = u_material_color.xyz;\n\
 	o.Alpha = u_material_color.a;\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+	o.Albedo *= IN.color.xyz;\n\
+	o.Alpha *= IN.color.a;\n\
+	#endif\n\
 	o.Normal = normalize( v_normal );\n\
 	o.Specular = u_specular.x;\n\
 	o.Gloss = u_specular.y;\n\
@@ -758,6 +813,12 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 void main() {\n\
 	Input IN = getInput();\n\
 	SurfaceOutput o = getSurfaceOutput();\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+		IN.color = v_vertex_color;\n\
+	#endif\n\
+	#ifdef BLOCK_COORD1\n\
+		IN.uv1 = v_uvs1;\n\
+	#endif\n\
 	surf(IN,o);\n\
 	Light LIGHT = getLight();\n\
 	applyLightTexture( IN, LIGHT );\n\
@@ -796,15 +857,13 @@ void main() {\n\
 	#endif\n\
 	#pragma event \"fs_final\"\n\
 }\n\
+\n\
 \\shadow.vs\n\
 \n\
 precision mediump float;\n\
 attribute vec3 a_vertex;\n\
 attribute vec3 a_normal;\n\
 attribute vec2 a_coord;\n\
-#ifdef USE_COLORS\n\
-attribute vec4 a_color;\n\
-#endif\n\
 \n\
 //varyings\n\
 varying vec3 v_pos;\n\
@@ -879,6 +938,9 @@ uniform vec4 u_material_color;\n\
 \n\
 uniform mat3 u_texture_matrix;\n\
 \n\
+"+ UVS_CODE +"\n\
+\n\
+\n\
 uniform sampler2D color_texture;\n\
 uniform sampler2D opacity_texture;\n\
 \n\
@@ -908,8 +970,8 @@ precision mediump float;\n\
 attribute vec3 a_vertex;\n\
 attribute vec3 a_normal;\n\
 attribute vec2 a_coord;\n\
-#ifdef USE_COLORS\n\
-attribute vec4 a_color;\n\
+#ifdef VERTEX_COLOR_BLOCK\n\
+	attribute vec4 a_color;\n\
 #endif\n\
 \n\
 //varyings\n\

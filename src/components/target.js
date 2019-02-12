@@ -31,7 +31,7 @@ Target.NEGY = 4;
 Target.POSZ = 5;
 Target.NEGZ = 6;
 
-Target["@node_id"] = { type: 'node' };
+Target["@node_id"] = { type: 'node_id' };
 Target["@front"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "-Y": Target.NEGY,"+Y": Target.POSY,"-X": Target.NEGX,"+X": Target.POSX }};
 Target["@up"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "-Y": Target.NEGY,"+Y": Target.POSY,"-X": Target.NEGX,"+X": Target.POSX }};
 

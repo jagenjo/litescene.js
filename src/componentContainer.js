@@ -14,7 +14,6 @@ function ComponentContainer()
 	//this function never will be called (because only the methods are attached to other classes)
 	//unless you instantiate this class directly, something that would be weird
 	this._components = [];
-	this._missing_components = null; //here we store info about components with missing info
 	//this._components_by_uid = {}; //TODO
 }
 
@@ -46,19 +45,18 @@ ComponentContainer.prototype.configureComponents = function( info )
 		else
 		{
 			//search for the class
-			var classObject = LS.Components[comp_class];
+			var classObject = LS.Components[ comp_class ];
 			if(!classObject){
 				console.error("Unknown component found: " + comp_class);
-				if(!this._missing_components)
-					this._missing_components = [];
-				comp_info[2] = i; //store index
-				this._missing_components.push( comp_info );
-				continue;
+				classObject = LS.MissingComponent;
 			}
 			//create component
-			comp = new classObject(); //comp_info[1]
+			comp = new classObject();
 			//attach to node
-			this.addComponent(comp);
+			this.addComponent( comp );
+
+			if( comp.constructor === LS.MissingComponent )
+				comp._comp_class = comp_class;
 		}
 
 		//what about configure the comp after adding it? 
@@ -124,24 +122,18 @@ ComponentContainer.prototype.serializeComponents = function( o, simplified )
 		if(comp.hasOwnProperty("_uid") && !obj.uid)
 			obj.uid = comp.uid;
 
-		var object_class = LS.getObjectClassName(comp);
-		if(LS.debug && object_class != obj.object_class )
-			console.warn("Component serialize without object_class:",object_class);
+		var object_class = null;
+		if( comp.constructor === LS.MissingComponent )
+			object_class = comp._comp_class;
+		else
+			object_class = LS.getObjectClassName( comp );
+
+		if( LS.debug && object_class != obj.object_class )
+			console.warn("Component serialize without object_class: ", object_class );
 		if(!obj.object_class)
 			obj.object_class = object_class; //enforce
 		
 		o.components.push([ object_class, obj ]);
-	}
-
-	//missing components are stored in another container and should be mergen with the rest of the components
-	if( this._missing_components && this._missing_components.length )
-	{
-		//try to copy in place (not perfect but this shouldnt happend very often)
-		for(var i = 0; i < this._missing_components.length; ++i )
-		{
-			var comp_info = this._missing_components[i];
-			o.components.splice( comp_info[2] || 0, 0, comp_info );
-		}
 	}
 }
 
@@ -273,7 +265,6 @@ ComponentContainer.prototype.removeAllComponents = function()
 {
 	while(this._components.length)
 		this.removeComponent( this._components[0] );
-	this._missing_components = null;
 }
 
 
@@ -281,22 +272,11 @@ ComponentContainer.prototype.removeAllComponents = function()
 * Returns if the container has a component of this class
 * @method hasComponent
 * @param {String|Class} component_class the component to search for, could be a string or the class itself
-* @param {Boolean} search_missing [optional] true if you want to search in the missing components too
 */
-ComponentContainer.prototype.hasComponent = function( component_class, search_missing )
+ComponentContainer.prototype.hasComponent = function( component_class )
 {
-	if(!this._components && !this._missing_components)
+	if(!this._components)
 		return false;
-
-	//search in missing components
-	if(search_missing && this._missing_components && this._missing_components.length)
-	{
-		if(component_class.constructor !== String) //weird case
-			component_class = LS.getClassName( component_class );
-		for(var i = 0, l = this._missing_components.length; i < l; ++i)
-			if( this._missing_components[i][0] == component_class )
-				return true;
-	}
 
 	//string
 	if( component_class.constructor === String )

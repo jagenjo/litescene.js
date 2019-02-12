@@ -478,6 +478,12 @@ var ResourcesManager = {
 	*/
 	getResourcesData: function( resource_names, allow_files )
 	{
+		if( resource_names.constructor !== Array )
+		{
+			console.error("getResourcesData expects Array");
+			return null;
+		}
+
 		var result = {};
 
 		for(var i = 0; i < resource_names.length; ++i)

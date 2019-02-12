@@ -181,21 +181,12 @@ Material.EMISSIVE_TEXTURE = "emissive";
 Material.ENVIRONMENT_TEXTURE = "environment";
 Material.IRRADIANCE_TEXTURE = "irradiance";
 
-Material.COORDS_UV0 = "0";
-Material.COORDS_UV1 = "1";
-Material.COORDS_UV_TRANSFORMED = "transformed";
-Material.COORDS_SCREEN = "screen";					//project to screen space
-Material.COORDS_SCREENCENTERED = "screen_centered";	//project to screen space and centers and corrects aspect
-Material.COORDS_FLIPPED_SCREEN = "flipped_screen";	//used for realtime reflections
-Material.COORDS_POLAR = "polar";					//use view vector as polar coordinates
-Material.COORDS_POLAR_REFLECTED = "polar_reflected";//use reflected view vector as polar coordinates
-Material.COORDS_POLAR_VERTEX = "polar_vertex";		//use normalized vertex as polar coordinates
-Material.COORDS_WORLDXZ = "worldxz";
-Material.COORDS_WORLDXY = "worldxy";
-Material.COORDS_WORLDYZ = "worldyz";
+Material.COORDS_UV0 = 0;
+Material.COORDS_UV1 = 1;
+Material.COORDS_UV0_TRANSFORMED = 2;
+Material.COORDS_UV1_TRANSFORMED = 3;
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_SCREENCENTERED, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
-Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
+Material.TEXTURE_COORDINATES = { "uv0":Material.COORDS_UV0, "uv1":Material.COORDS_UV1, "uv0_transformed":Material.COORDS_UV0_TRANSFORMED, "uv1_transformed":Material.COORDS_UV1_TRANSFORMED };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
@@ -394,9 +385,11 @@ Material.prototype.setProperty = function( name, value )
 			{
 				var tex = value[i];
 				if( tex && tex.constructor === String )
-					tex = { texture: tex, uvs: "0", wrap: 0, minFilter: 0, magFilter: 0 };
+					tex = { texture: tex, uvs: 0, wrap: 0, minFilter: 0, magFilter: 0 };
 				tex._must_update = true;
 				this.textures[i] = tex;
+				if( tex.uvs != null && tex.uvs.constructor === String )
+					tex.uvs = 0;
 				//this is to ensure there are no wrong characters in the texture name
 				if( this.textures[i] && this.textures[i].texture )
 					this.textures[i].texture = LS.ResourcesManager.cleanFullpath( this.textures[i].texture );
@@ -509,7 +502,7 @@ Material.prototype.setTexture = function( channel, texture, sampler_options ) {
 	if(!sampler)
 		this.textures[channel] = sampler = { 
 			texture: texture, 
-			uvs: Material.DEFAULT_UVS[channel] || "0", 
+			uvs: 0, 
 			wrap: 0, 
 			minFilter: 0, 
 			magFilter: 0,
@@ -545,7 +538,7 @@ Material.prototype.setTextureProperty = function( channel, property, value )
 	if(!sampler)
 	{
 		if(property == "texture")
-			this.textures[channel] = sampler = { texture: value, uvs: Material.DEFAULT_UVS[channel] || "0", wrap: 0, minFilter: 0, magFilter: 0 };
+			this.textures[channel] = sampler = { texture: value, uvs: 0, wrap: 0, minFilter: 0, magFilter: 0 };
 		return;
 	}
 

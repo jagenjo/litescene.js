@@ -460,7 +460,24 @@ BaseComponent.addExtraMethods = function( component )
 
 };
 
-
-
-
 LS.BaseComponent = BaseComponent;
+
+//Used when a component is missing
+function MissingComponent()
+{
+	this._last_serialization = null;
+	this._comp_class = "";
+}
+
+MissingComponent.prototype.configure = function(o)
+{
+	this.uid = o.uid;
+	this._last_serialization = o;
+}
+
+MissingComponent.prototype.serialize = function()
+{
+	return this._last_serialization;
+}
+
+LS.MissingComponent = MissingComponent;
