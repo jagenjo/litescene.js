@@ -13,6 +13,8 @@ But the most important element is to know the class ```LiteGUI.Inspector``` whic
 
 To know more about the Inspector, check the [guide about LiteGUI.Inspector](https://github.com/jagenjo/litegui.js/blob/master/guides/inspector.md)
 
+But you are free to add your own HTML code inside the inspector if you want.
+
 
 ## Public Vars
 
