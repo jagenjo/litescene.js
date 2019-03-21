@@ -18,11 +18,12 @@ But you are free to add your own HTML code inside the inspector if you want.
 
 ## Public Vars
 
-WebGLStudio creates a default interface for every public var contained inside a Component unless an specific function is created.
+WebGLStudio creates a default interface for every public var contained inside a Component unless an specific function is created
+(remember, public vars are the ones which names doesnt start with underscore).
 
 The problem with automatically generated interfaces is that they cannot know the true meaning of the vars to adapt the widgets. An String could be a text, a url, a resource path, a script, etc.
 
-This is why LiteScene allows to define properties per variable:
+This is why LiteScene allows to define properties per variable. You must create a property in the constructor class whose name is '@propertyname' and assign any LiteGUI widget properties to that:
 
 ```js
 function MyComponent(o)
