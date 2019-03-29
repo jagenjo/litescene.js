@@ -295,9 +295,13 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	{
 		code.fs += "vec2 normal_uv = getUVs( u_texture_settings["+StandardMaterial.TEXTURES_INDEX["normal"]+"]);\n\
 		vec3 normal_pixel = texture2D( normal_texture, normal_uv ).xyz;\n\
-		normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
 		if( u_normal_info.y > 0.0 )\n\
+		{\n\
+			normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
 			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, normal_uv, normal_pixel ));\n\
+		}\n\
+		else\n\
+			normal_pixel = normal_pixel * 2.0 - vec3(1.0);\n\
 		o.Normal = normalize( mix( o.Normal, normal_pixel, u_normal_info.x ) );\n";
 	}
 
@@ -728,6 +732,8 @@ precision mediump float;\n\
 //global defines from blocks\n\
 #pragma shaderblock \"vertex_color\"\n\
 #pragma shaderblock \"coord1\"\n\
+//#pragma shaderblock \"firstPass\"\n\
+//#pragma shaderblock \"lastPass\"\n\
 \n\
 //varyings\n\
 varying vec3 v_pos;\n\
@@ -869,6 +875,7 @@ attribute vec2 a_coord;\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+varying vec4 v_screenpos;\n\
 \n\
 //matrices\n\
 #ifdef BLOCK_INSTANCING\n\
@@ -894,6 +901,7 @@ uniform float u_point_size;\n\
 \n\
 //camera\n\
 uniform vec3 u_camera_eye;\n\
+uniform vec2 u_camera_planes;\n\
 \n\
 {{vs_out}}\n\
 \n\
@@ -919,8 +927,9 @@ void main() {\n\
 	#else\n\
 		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	#endif\n\
-  {{vs_global}}\n\
-	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+	{{vs_global}}\n\
+	v_screenpos = u_viewprojection * vec4(v_pos,1.0);\n\
+	gl_Position = v_screenpos;\n\
 }\n\
 \\shadow.fs\n\
 \n\
@@ -930,9 +939,11 @@ precision mediump float;\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+varying vec4 v_screenpos;\n\
 \n\
 //globals\n\
 uniform vec3 u_camera_eye;\n\
+uniform vec2 u_camera_planes;\n\
 uniform vec4 u_clipping_plane;\n\
 uniform vec4 u_material_color;\n\
 \n\
@@ -946,6 +957,7 @@ uniform sampler2D opacity_texture;\n\
 \n\
 #pragma snippet \"input\"\n\
 #pragma snippet \"surface\"\n\
+#pragma snippet \"PackDepth32\"\n\
 \n\
 void surf(in Input IN, out SurfaceOutput o)\n\
 {\n\
@@ -961,8 +973,14 @@ void main() {\n\
   Input IN = getInput();\n\
   SurfaceOutput o = getSurfaceOutput();\n\
   surf(IN,o);\n\
+  //float depth = length( IN.worldPos - u_camera_eye );\n\
+  //depth = linearDepth( depth, u_camera_planes.x, u_camera_planes.y );\n\
+  float depth = (v_screenpos.z / v_screenpos.w) * 0.5 + 0.5;\n\
+  //depth = linearDepthNormalized( depth, u_camera_planes.x, u_camera_planes.y );\n\
+  vec4 final_color;\n\
+  final_color = PackDepth32(depth);\n\
   {{fs_shadow_encode}}\n\
-  gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
+  gl_FragColor = final_color;\n\
 }\n\
 \\picking.vs\n\
 \n\

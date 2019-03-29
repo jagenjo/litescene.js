@@ -781,7 +781,11 @@ Transform.prototype.fromMatrix = (function() {
 		vec3.normalize( M.subarray(8,11), M.subarray(8,11) );
 
 		var M3 = mat3.fromMat4( temp_mat3, M );
-		mat3.transpose( M3, M3 );
+		quat.fromMat3AndQuat( this._rotation, M3 );
+
+		/* works with default fromMat3, not with fromMat3AndQuat
+		var M3 = mat3.fromMat4( temp_mat3, M );
+		mat3.transpose( M3, M3 ); //why transpose?!?!
 		quat.fromMat3( this._rotation, M3 );
 		quat.normalize( this._rotation, this._rotation );
 		//*/
@@ -1161,6 +1165,98 @@ Transform.prototype.lookAt = (function() {
 		this.fromMatrix(temp);
 		this.updateGlobalMatrix();
 		*/
+	}
+})();
+
+
+/**
+* Orients the transform to look at a position
+* @method orientTo
+* @param {vec3} target the position where to look at
+* @param {boolean} in_world tells if the target is in world coordinates (otherwise asume its in local coordinates)
+* @param {vec3} top [optional] a helper top vector, otherwise [0,1,0] is assumed
+* @param {vec3} right [optional] a helper right vector, otherwise [1,0,0] is assumed
+*/
+Transform.prototype.orientTo = (function() { 
+
+	//avoid garbage
+	var GM = mat4.create();
+	var temp = mat3.create();
+	var temp_pos = vec3.create();
+	//function
+	return function( pos, in_world, top, right )
+	{
+		right = right || LS.RIGHT;
+		top = top || LS.TOP;
+		//convert to local space
+		if(in_world && this._parent)
+		{
+			this._parent.getGlobalMatrix( GM );
+			var inv = mat4.invert(GM,GM);
+			if(!inv)
+				return;
+			mat4.multiplyVec3(temp_pos, inv, pos);
+		}
+		else
+			temp_pos.set( pos );
+		mat3.setColumn( temp, right, 0 );
+		mat3.setColumn( temp, top, 1 );
+		mat3.setColumn( temp, pos, 2 );
+		quat.fromMat3( this._rotation, temp );
+		this._must_update = true;
+	}
+})();
+
+/**
+* Orients the transform so the axis points in that direction
+* @method orientAxis
+* @param {vec3} vector the vector to use as axis
+* @param {number} axis a enum that could be LS.POSX, LS.POSY, LS.POSZ, LS.NEGX, LS.NEGY, LS.NEGZ
+*/
+Transform.prototype.orientAxis = (function() { 
+	//avoid garbage
+	var GM = mat4.create();
+	var temp = mat3.create();
+	//function
+	return function( vector, axis )
+	{
+		switch(axis)
+		{
+			case LS.POSX: 
+				mat3.setColumn( temp, vector, 0 ); //x
+				mat3.setColumn( temp, LS.TOP, 1 ); //y
+				mat3.setColumn( temp, LS.FRONT, 2 ); //z
+				break;
+			case LS.POSY:
+				mat3.setColumn( temp, LS.RIGHT, 0 ); //x
+				mat3.setColumn( temp, vector, 1 ); //y
+				mat3.setColumn( temp, LS.FRONT, 2 ); //z
+				break;
+			case LS.POSZ:
+				mat3.setColumn( temp, LS.RIGHT, 0 ); //x
+				mat3.setColumn( temp, LS.TOP, 1 ); //y
+				mat3.setColumn( temp, vector, 2 ); //z
+				break;
+			case LS.NEGX: 
+				mat3.setColumn( temp, vector, 0 ); //x
+				mat3.setColumn( temp, LS.BOTTOM, 1 ); //y
+				mat3.setColumn( temp, LS.BACK, 2 ); //z
+				break;
+			case LS.NEGY:
+				mat3.setColumn( temp, LS.LEFT, 0 ); //x
+				mat3.setColumn( temp, vector, 1 ); //y
+				mat3.setColumn( temp, LS.BACK, 2 ); //z
+				break;
+			case LS.NEGZ:
+				mat3.setColumn( temp, LS.LEFT, 0 ); //x
+				mat3.setColumn( temp, LS.BOTTOM, 1 ); //y
+				mat3.setColumn( temp, vector, 2 ); //z
+				break;
+			default:
+				return;
+		}
+		quat.fromMat3( this._rotation, temp );
+		this._must_update = true;
 	}
 })();
 

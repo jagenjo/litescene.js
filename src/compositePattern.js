@@ -53,6 +53,14 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		aux = aux._parentNode;
 	}
 
+	//siblings
+	if( node._parentNode && node._parentNode == this._parentNode && index !== undefined)
+	{
+		var prev_index = this._parentNode._children.indexOf( node );
+		if(prev_index < index) //in case it was in the position before
+			index--;
+	}
+
 	//has a parent
 	if(node._parentNode)
 		node._parentNode.removeChild(node, options);
@@ -77,7 +85,9 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	else if(index == undefined)
 		this._children.push(node);
 	else
+	{
 		this._children.splice(index,0,node);
+	}
 
 	//the same as scene but we called tree to make it more generic
 	var tree = this._in_tree;
@@ -348,6 +358,28 @@ Object.defineProperty( CompositePattern.prototype, "scene", {
 		throw("Scene cannot be set, you must use addChild in parent");
 	}
 });
+
+
+/**
+* get all nodes above this in his hierarchy (parent, parent of parent, ...)
+*
+* @method getAncestors
+* @param {Boolean} include_itself if it must include first itself
+* @return {Array} array containing all descendants
+*/
+CompositePattern.prototype.getAncestors = function( include_itself )
+{
+	var r = [];
+	var aux = this._parentNode;
+	if(include_itself)
+		r.push(this);
+	while( aux )
+	{
+		r.push(aux);
+		aux = aux._parentNode;
+	}
+	return r;
+}
 
 /**
 * get all nodes below this in the hierarchy (children and children of children)

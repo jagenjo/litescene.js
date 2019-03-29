@@ -10,6 +10,8 @@ function GraphMaterial(o)
 	this._shader_version = -1;
 	this._shader_flags = 0; //?
 
+	this._graphcode = null; //resource that contains the graph json
+
 	this._uniforms = {};
 	this._samplers = [];
 	this._properties = [];

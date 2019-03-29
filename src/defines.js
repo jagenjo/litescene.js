@@ -56,6 +56,13 @@ LS.IDENTITY = mat4.create();
 LS.WHITE = LS.ONES;
 LS.BLACK = LS.ZEROS;
 
+LS.POSX = 1;
+LS.POSY = 2;
+LS.POSZ = 3;
+LS.NEGX = 4;
+LS.NEGY = 5;
+LS.NEGZ = 6;
+
 //types
 LS.TYPES = {
 	BOOLEAN: "boolean",

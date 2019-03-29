@@ -28,10 +28,9 @@ function ReflectionProbe( o )
 	this._version = -1;
 
 	this._texture = null;
-	this._irradiance_texture = null;
+	this._irradiance_shs = new Float32Array( 3 * 9 );
 
 	this._tex_id = ":probe_" + ReflectionProbe.last_id;
-	this._tex_ir_id = ":probe_IR_" + ReflectionProbe.last_id;
 	ReflectionProbe.last_id++;
 	this._registered = false;
 
@@ -85,47 +84,36 @@ ReflectionProbe.prototype.onRemovedFromScene = function(scene)
 	
 	if(this._texture)
 		LS.ResourcesManager.unregisterResource( this._tex_id );
-	if(this._irradiance_texture)
-		LS.ResourcesManager.unregisterResource( this._tex_ir_id );
 
 	//TODO: USE POOL!!
 	this._texture = null;
-	this._irradiance_texture = null;
 
 	this.unregister( scene );
 }
 
-ReflectionProbe.prototype.afterSerialize = function(o)
+ReflectionProbe.prototype.onSerialize = function(o)
 {
-	if(this._irradiance_texture)
-		o.irradiance_info = ReflectionProbe.cubemapToObject( this._irradiance_texture );
+	o.irradiance_shs = typedArrayToArray( this._irradiance_shs );
 }
 
-ReflectionProbe.prototype.afterConfigure = function(o)
+ReflectionProbe.prototype.onConfigure = function(o)
 {
-	if(o.irradiance_info)
-	{
-		this._irradiance_texture = ReflectionProbe.objectToCubemap( o.irradiance_info, this._irradiance_texture, this.high_precision );
-		this.assignCubemaps();
-	}
+	if(o.irradiance_shs)
+		this._irradiance_shs.set( o.irradiance_shs );
 }
 
 ReflectionProbe.prototype.onRenderReflection = function( e )
 {
 	if( this._enabled )
-		this.updateTextures();
+		this.recompute();
 }
 
-ReflectionProbe.prototype.updateTextures = function( render_settings, force )
+ReflectionProbe.prototype.recompute = function( render_settings, force )
 {
 	if( !this._root || !this._root.scene )
 		return;
 
 	var scene = this._root.scene;
-
-	this._root.transform.getGlobalPosition( this._current );
-	//if ( vec3.distance( this._current, this._position ) < 0.1 )
-	//	force = true;
 
 	if( LS.ResourcesManager.isLoading() )
 		return;
@@ -137,13 +125,14 @@ ReflectionProbe.prototype.updateTextures = function( render_settings, force )
 	if ( this._texture && (scene._frame % this.refresh_rate) != 0 && !force )
 		return;
 
-	this.updateCubemap( this._current, render_settings );
+	this._root.transform.getGlobalPosition( this._current );
+	//if ( vec3.distance( this._current, this._position ) < 0.1 )
+	//	force = true;
 
-	if(this.generate_irradiance)
-		this.updateIrradiance();
+	this.updateCubemap( this._current, render_settings, force );
 }
 
-ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
+ReflectionProbe.prototype.updateCubemap = function( position, render_settings, generate_spherical_harmonics )
 {
 	render_settings = render_settings || LS.Renderer.default_render_settings;
 
@@ -186,12 +175,6 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 	}
 
 	//avoid reusing same irradiance from previous pass
-	var tmp = null;
-	if( LS.GlobalScene.info.textures.irradiance == this._irradiance_texture )
-	{
-		tmp = LS.GlobalScene.info.textures.irradiance;
-		LS.GlobalScene.info.textures.irradiance = null;
-	}
 
 	//fix: there was a problem because there was no texture bind in ENVIRONMENT_SLOT, this fix it
 	for(var i = 0; i < LS.Renderer._visible_instances.length; ++i)
@@ -199,9 +182,6 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 
 	//render all the scene inside the cubemap
 	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
-
-	if(tmp)
-		LS.GlobalScene.info.textures.irradiance = tmp;
 
 	texture._in_current_fbo = false;
 
@@ -216,73 +196,21 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 		LS.ResourcesManager.registerResource( this.texture_name, texture );
 	LS.ResourcesManager.registerResource( this._tex_id, texture );
 
-	//add probe to LS.Renderer
-	//TODO
-	//HACK
-	//if( scene.info )
-	//	scene.info.textures.environment = this._tex_id;
+	//compute SHs (VERY SLOW)
+	if(generate_spherical_harmonics)
+	{
+		//TODO: copy to lowres cubemap
+		var temp_texture = ReflectionProbe._temp_cubemap;
+		var texture_size = IrradianceCache.capture_cubemap_size;
+		var texture_settings = { type: gl.FLOAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
+		if( !temp_texture || temp_texture.width != texture_size || temp_texture.height != texture_size  )
+			ReflectionProbe._temp_cubemap = temp_texture = new GL.Texture( texture_size, texture_size, texture_settings );
+		texture.copyTo( temp_texture ); //downsample
+		this._irradiance_shs = IrradianceCache.computeSH( temp_texture );
+	}
 
 	//remove flags
 	render_settings.layers = old_layers;
-}
-
-ReflectionProbe.prototype.updateIrradiance = function()
-{
-	var scene = this._root.scene;
-	if(!scene)
-		return;
-
-	if(!this._texture)
-		this.updateCubemap();
-
-	if(!this._texture)
-		return;
-
-	var cubemap = this._texture;
-	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
-
-	//create textures for high and low
-	if(!ReflectionProbe._downscale_cubemap)
-	{
-		ReflectionProbe._downscale_cubemap = new GL.Texture( 32, 32, { texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
-		ReflectionProbe._downscale_cubemap_high = new GL.Texture( 32, 32, { type: gl.HIGH_PRECISION_FORMAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
-	}
-
-	var downscale_cubemap = this.high_precision ? ReflectionProbe._downscale_cubemap_high : ReflectionProbe._downscale_cubemap;
-
-	//downscale
-	cubemap.copyTo( downscale_cubemap );
-	
-	//blur
-	var temp_texture = GL.Texture.getTemporary( downscale_cubemap.width, downscale_cubemap.height, downscale_cubemap );
-
-	var origin = downscale_cubemap;
-	var destination = temp_texture;
-
-	for(var i = 0; i < 8; ++i)
-	{
-		origin.applyBlur( i,i,1, destination );
-		var tmp = origin;
-		origin = destination;
-		destination = tmp;
-	}
-	destination = origin;
-
-	//downscale again
-	var irradiance_cubemap = this._irradiance_texture;
-	if(!irradiance_cubemap || irradiance_cubemap.type != type)
-		irradiance_cubemap = this._irradiance_texture = new GL.Texture( 4, 4, { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
-	destination.copyTo( irradiance_cubemap );
-
-	//blur again
-	for(var i = 0; i < 4; ++i)
-		irradiance_cubemap.applyBlur( i,i,1 );
-
-	this.assignCubemaps();
-
-	GL.Texture.releaseTemporary( temp_texture );
-
-	return irradiance_cubemap;
 }
 
 //assigns the cubemaps to the scene global
@@ -290,9 +218,6 @@ ReflectionProbe.prototype.assignCubemaps = function( scene )
 {
 	if(this._texture)
 		LS.ResourcesManager.registerResource( this._tex_id, this._texture );
-
-	if(this._irradiance_texture)
-		LS.ResourcesManager.registerResource( this._tex_ir_id, this._irradiance_texture );
 }
 
 /**
@@ -377,70 +302,6 @@ ReflectionProbe.prototype.renderProbe = function( visualize_irradiance, picking_
 	LS.Draw.pop();
 }
 
-//this functions transform the irradiance info into data so it can be stored in the JSON directly
-ReflectionProbe.cubemapToObject = function( cubemap )
-{
-	var faces = [];
-	for( var i = 0; i < 6; ++i )
-	{
-		var data = typedArrayToArray( cubemap.getPixels(i) );
-		faces.push( data );
-	}
-	return {
-		texture_type: cubemap.texture_type,
-		size: cubemap.width,
-		format: cubemap.format,
-		faces: faces
-	};
-}
-
-ReflectionProbe.objectToCubemap = function( data, out, high_precision )
-{
-	var type = high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
-	if(!out)
-		out = new GL.Texture( data.size, data.size, { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: GL.RGBA });
-	for(var i = 0; i < data.faces.length; ++i )
-	{
-		var data_typed;
-		if(type == gl.FLOAT)
-			data_typed = new Float32Array( data.faces[i] );
-		else if(type == gl.HIGH_PRECISION_FORMAT)
-			data_typed = new Uint16Array( data.faces[i] );
-		else //if(type == gl.UNSIGNED_BYTE)
-			data_typed = new Uint8Array( data.faces[i] );
-		out.setPixels( data_typed, true, i == 5, i );
-	}
-	return out;
-}
-
-
-
-/*
-ReflectionProbe.cubemapToIrradiance = function( origin_cubemap, destination_cubemap )
-{
-	var iterations = Math.log(origin_cubemap.width) / Math.log(2);
-
-	var width = origin_cubemap.width;
-	var temp_textures = [];
-	var origin = origin_cubemap;
-	var dest = null;
-	for( var i = 0; i < iterations; ++i)
-	{
-		width = width >> 1;
-		if(width <= 8)
-			break;
-		var temp = GL.Texture.getTemporary( width, width, destination_cubemap );
-		temp_textures.push( temp );
-		origin.applyBlur(0.5,0.5,1, temp);
-		origin = temp;
-	}
-
-	temp.copyTo( destination_cubemap );
-	for(var i = 0; i < temp_textures.length; ++i)
-		GL.Texture.releaseTemporary( temp_textures[i] );
-}
-*/
-
 /**
 * Static method to update all the reflection probes active in the scene
 *
@@ -456,7 +317,7 @@ ReflectionProbe.updateAll = function( scene, render_settings )
 	for(var i = 0; i < scene._reflection_probes.length; ++i)
 	{
 		var probe = scene._reflection_probes[i];
-		probe.updateTextures( render_settings, true );
+		probe.recompute( render_settings, true );
 	}
 }
 
@@ -479,7 +340,7 @@ LS.registerComponent( ReflectionProbe );
 function IrradianceCache( o )
 {
 	this.enabled = true;
-	this.size = vec3.fromValues(10,10,10);
+	this.size = vec3.fromValues(10,10,10); //grid size
 	this.subdivisions = new Uint8Array([4,1,4]);
 	this.layers = 0xFF; //layers that can contribute to the irradiance
 	this.force_two_sided = false;
@@ -550,7 +411,7 @@ IrradianceCache.prototype.onRemovedFromScene = function(scene)
 	LEvent.unbind( scene, "fillSceneUniforms", this.fillSceneUniforms, this);
 }
 
-IrradianceCache.prototype.afterConfigure = function(o)
+IrradianceCache.prototype.onConfigure = function(o)
 {
 	if(!this.cache_filename)
 		return; //???
@@ -615,9 +476,9 @@ IrradianceCache.prototype.recompute = function( camera )
 	var final_cubemap_size = IrradianceCache.final_cubemap_size;
 	var texture_size = IrradianceCache.capture_cubemap_size; //default is 64
 	var texture_settings = { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
-	var texture = this._temp_cubemap;
+	var texture = IrradianceCache._temp_cubemap;
 	if( !texture || texture.width != texture_size || texture.height != texture_size || texture.type != texture_settings.type )
-		this._temp_cubemap = texture = new GL.Texture( texture_size, texture_size, texture_settings );
+		IrradianceCache._temp_cubemap = texture = new GL.Texture( texture_size, texture_size, texture_settings );
 
 	//first render
 	if( !LS.Renderer._visible_instances )
@@ -663,8 +524,8 @@ IrradianceCache.prototype.recompute = function( camera )
 		if(!cubemap || cubemap.type != texture_settings.type || cubemap.width != final_cubemap_size )
 			this._irradiance_cubemaps[ i ] = cubemap = new GL.Texture( final_cubemap_size, final_cubemap_size, texture_settings );
 
-		this.captureIrradiance( position, cubemap, render_settings );
-		this._irradiance_shs[i] = this.computeSH( cubemap );
+		IrradianceCache.captureIrradiance( position, cubemap, render_settings, this.near, this.far, this.background_color, true, IrradianceCache._temp_cubemap );
+		this._irradiance_shs[i] = IrradianceCache.computeSH( cubemap );
 
 		i+=1;
 		generated+=1;
@@ -695,28 +556,30 @@ IrradianceCache.prototype.recompute = function( camera )
 	render_settings.layers = old_layers;
 }
 
-IrradianceCache.prototype.captureIrradiance = function( position, output_cubemap, render_settings )
+//captures the illumination to a cubemap
+IrradianceCache.captureIrradiance = function( position, output_cubemap, render_settings, near, far, bg_color, force_two_sided, temp_cubemap )
 {
+	temp_cubemap = temp_cubemap;
+
 	LS.Renderer.clearSamplers();
 
 	//disable IR cache first
 	LS.Renderer.disableFrameShaderBlock("applyIrradiance");
 
-	if( this.force_two_sided )
+	if( force_two_sided )
 		render_settings.force_two_sided = true;
 
 	//render all the scene inside the cubemap
-	LS.Renderer.renderToCubemap( position, 0, this._temp_cubemap, render_settings, this.near, this.far, this.background_color );
+	LS.Renderer.renderToCubemap( position, 0, temp_cubemap, render_settings, near, far, bg_color );
 
-	if( this.force_two_sided )
+	if( force_two_sided )
 		render_settings.force_two_sided = false;
 
 	//downsample
-	//ReflectionProbe.cubemapToIrradiance( this._temp_cubemap, output_cubemap );
-	this._temp_cubemap.copyTo( output_cubemap );
+	temp_cubemap.copyTo( output_cubemap );
 }
 
-IrradianceCache.prototype.computeSH = function( cubemap )
+IrradianceCache.computeSH = function( cubemap )
 {
 	//read 6 images from cubemap
 	var faces = [];
@@ -734,6 +597,8 @@ IrradianceCache.prototype.encodeCacheInTexture = function()
 
 	var sh_temp_texture_type = gl.FLOAT; //HIGH_PRECISION_FORMAT
 	var sh_texture_type = gl.HIGH_PRECISION_FORMAT;
+	if( !GL.FBO.testSupport( sh_texture_type, gl.RGB ) )
+		sh_texture_type = gl.FLOAT;
 
 	//create texture
 	if( !this._sh_texture || this._sh_texture.height != this._irradiance_shs.length || this._sh_texture.type != sh_texture_type )
@@ -745,8 +610,11 @@ IrradianceCache.prototype.encodeCacheInTexture = function()
 	///prepare data
 	var data = new Float32Array( this._irradiance_shs.length * 27 );
 	for(var i = 0; i < this._irradiance_shs.length; ++i)
-		data.set( this._irradiance_shs[i], i*27 );
-
+	{
+		var shs = this._irradiance_shs[i];
+		if(shs) //if you do not regenerate all there could be missing SHs
+			data.set( shs, i*27 );
+	}
 	
 	//upload to GPU
 	if( sh_texture_type == sh_temp_texture_type )
@@ -766,6 +634,7 @@ IrradianceCache.prototype.encodeCacheInTexture = function()
 	mat4.invert( matrix, matrix );
 }
 
+/*
 IrradianceCache.prototype.getIrradiance = function( position, normal, out )
 {	
 	out = out || vec3.create();
@@ -789,6 +658,7 @@ IrradianceCache.prototype.getIrradiance = function( position, normal, out )
 	//TODO: read coeffs
 	return out;
 }
+*/
 
 IrradianceCache.prototype.getSizeInBytes = function()
 {
@@ -861,7 +731,8 @@ IrradianceCache.prototype.toData = function()
 	for( var i = 0; i < shs.length; ++i)
 	{
 		var sh = shs[i];
-		float32view.set( sh, 16 + i*9*3 );
+		if(sh)
+			float32view.set( sh, 16 + i*9*3 );
 	}
 
 	return data;

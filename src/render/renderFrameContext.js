@@ -38,6 +38,7 @@ function RenderFrameContext( o )
 		this.configure(o);
 }
 
+
 RenderFrameContext.current = null;
 RenderFrameContext.stack = [];
 
@@ -62,7 +63,10 @@ RenderFrameContext["@precision"] = { widget: "combo", values: {
 
 RenderFrameContext["@format"] = { widget: "combo", values: { 
 		"RGB": GL.RGB,
-		"RGBA": GL.RGBA
+		"RGBA": GL.RGBA,
+		"LUMINANCE": GL.LUMINANCE,
+		"LUMINANCE_ALPHA": GL.LUMINANCE_ALPHA,
+		"ALPHA": GL.ALPHA
 	}
 };
 
@@ -153,6 +157,12 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 		default:
 			type = this.precision; break; //used for custom formats
 	}
+
+	//check support
+	if( type == GL.HALF_FLOAT_OES && !GL.FBO.testSupport( type, format ) )
+		format = gl.RGBA;
+	if( type == GL.HALF_FLOAT_OES && !GL.FBO.testSupport( type, format ) )
+		type = gl.FLOAT;
 
 	var textures = this._textures;
 

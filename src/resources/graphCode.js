@@ -1,5 +1,6 @@
 /**
-* This is a class to contain the code from a graph, it doesnt execute the graph (this is done in GraphComponent)
+* This is a class to contain the code from a graph, it doesnt execute the graph (this is done in GraphComponent or GraphMaterial)
+* but it stores an instance of the graph that is never executed, this is used in the GraphMaterial
 * It is here so different GraphComponent can share the same Graph structure and it can be stored in a JSON
 * 
 * @class GraphCode
@@ -18,6 +19,7 @@ function GraphCode( data )
 		type: GraphCode.LOGIC_GRAPH
 	}
 	this._version = 0;
+	//this._shader_code is created in case is a shader_code
 
 	if(data)
 		this.setData( data, true );
@@ -110,24 +112,22 @@ GraphCode.prototype.setData = function( data, skip_modified_flag )
 	}
 }
 
-GraphCode.prototype.getData = function()
-{
+GraphCode.prototype.getData = function() {
 	var data = this.graph.serialize();
 	data.object_class = "GraphCode";
 	data.extra = this.extra;
 	return data;
 }
 
-GraphCode.prototype.getDataToStore = function(){
+GraphCode.prototype.getDataToStore = function() {
 	return JSON.stringify( this.getData() );
 }
 
-GraphCode.prototype.getCategory = function()
-{
+GraphCode.prototype.getCategory = function() {
 	return "Graph";
 }
 
-//sends changes in this graphcode to all nodes  using this graph
+//sends changes in this graphcode to all nodes using this graph
 GraphCode.prototype.propagate = function()
 {
 	var filename = this.fullpath || this.filename;
@@ -145,7 +145,8 @@ GraphCode.prototype.propagate = function()
 	}
 }
 
-//used in materials
+//used in graph materials
+//as_string for debug
 GraphCode.prototype.getShaderCode = function( as_string )
 {
 	if( this._shader_code && this._code_version == this._graph._version && !as_string )
@@ -154,8 +155,13 @@ GraphCode.prototype.getShaderCode = function( as_string )
 	if(!this._shader_code)
 		this._shader_code = new LS.ShaderCode();
 
-	var final_code = LS.SurfaceMaterial.code_template;
+	//find final node
+	//assuming a SurfaceShader here
+	var surface_node = this._graph.findNodesByClass("shader/surface");
+	if(!surface_node)
+		return null;
 
+	var final_code = LS.SurfaceMaterial.code_template;
 	var context = { uniforms: [] };
 	var graph_code = "";
 

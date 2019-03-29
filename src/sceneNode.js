@@ -175,7 +175,7 @@ Object.defineProperty( SceneNode.prototype, 'is_static', {
 	set: function(v)
 	{
 		this.flags.is_static = v;
-		if( this._children )
+		if( v && this._children )
 		for(var i = 0; i < this._children.length; ++i )
 			this._children[i].is_static = v;
 	},

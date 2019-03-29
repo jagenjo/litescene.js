@@ -2,9 +2,8 @@
 if(typeof(LiteGraph) != "undefined")
 {
 	var SHADER_COLOR = "#2a363b";
-	var SHADER_BGCOLOR = "#3f4a4e";
+	var SHADER_BGCOLOR = "#444";
 	var SHADER_TITLE_TEXT_COLOR = "#AAA";
-
 
 	var getInputLinkID = LiteGraph.getInputLinkID = function getInputLinkID( node, num )
 	{
@@ -123,11 +122,14 @@ if(typeof(LiteGraph) != "undefined")
 
 		type = typeToGLSL[type] || type;
 
-		var exec_code = "if( lang != \"glsl\" ) return \"\";\n";
-		exec_code += "var output = LiteGraph.getOutputLinkID( this, 0, true );\n";
-		exec_code += "if(this.properties.uniform)\n 	{ context.uniforms.push({ name: this.properties.uniform, link_name: output, type: \""+type+"\", value: this.properties.value });\n return \"\";	}";
-		exec_code += "return \"\\t "+type+" \"+output+\" = "+type+"(\"+String(this.properties.value)+\");\\n\";\n";
-		ctor.prototype.onGetCode = new Function( "lang","context", exec_code );
+		var getcode_code = "if( lang != \"glsl\" ) return \"\";\n";
+		getcode_code += "var output = LiteGraph.getOutputLinkID( this, 0, true );\n";
+		getcode_code += "if(this.properties.uniform)\n 	{ context.uniforms.push({ name: this.properties.uniform, link_name: output, type: \""+type+"\", value: this.properties.value });\n return \"\";	}";
+		getcode_code += "return \"\\t "+type+" \"+output+\" = "+type+"(\"+String(this.properties.value)+\");\\n\";\n";
+		ctor.prototype.onGetCode = new Function( "lang","context", getcode_code );
+
+		var exec_code = "this.setOutputDataType( 0, \""+type+"\" );\n";
+		ctor.prototype.onExecute = new Function( exec_code );
 				
 		LiteGraph.registerShaderNode( original_type.toLowerCase(), ctor );
 		ctor.title = original_type;
@@ -147,7 +149,7 @@ if(typeof(LiteGraph) != "undefined")
 		return ctor;
 	}
 
-	createShaderConstantNode("number", 1 );
+	createShaderConstantNode("float", 1 );
 	createShaderConstantNode("vec2", [0,0] );
 	createShaderConstantNode("vec3", [0,0,0] );
 	createShaderConstantNode("color", [1,1,1] );
@@ -156,7 +158,7 @@ if(typeof(LiteGraph) != "undefined")
 	createShaderConstantNode("mat3", [1,0,0,0,1,0,0,0,1] );
 	createShaderConstantNode("mat4", [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1] );
 
-	function createShaderOperationNode( name, inputs, output, op_code )
+	function createShaderOperationNode( name, inputs, output, op_code, title )
 	{
 		if(inputs.length >= 10)
 			throw("cannot be used with more than 10 vars, regexp not supporting it");
@@ -179,6 +181,9 @@ if(typeof(LiteGraph) != "undefined")
 		exec_code += "	var output = LiteGraph.getOutputLinkID(this, 0, true);\n";
 		exec_code += "	return \"\\t  "+(typeToGLSL[output] || output)+" \"+output+\" = "+op_code+";\\n\";\n";
 		ctor.prototype.onGetCode = new Function( "lang", exec_code );
+
+		if(title)
+			ctor.prototype.getTitle = new Function( " return \"" + title + "\";" );
 				
 		ctor.title = name;
 		ctor.filter = "shader";
@@ -187,27 +192,27 @@ if(typeof(LiteGraph) != "undefined")
 		return ctor;
 	}
 
-	createShaderOperationNode("Add Float", ["number","number"], "number", "@0 + @1" ).title = "A+B";
-	createShaderOperationNode("Add Vec3", ["vec3","vec3"], "vec3", "@0 + @1" );
-	createShaderOperationNode("Sub Vec3", ["vec3","vec3"], "vec3", "@0 - @1" );
-	createShaderOperationNode("Sub Float", ["number","number"], "number", "@0 - @1" ).title = "A-B";
-	createShaderOperationNode("Normalize Vec2", ["vec2"], "vec2", "normalize(@0)" );
-	createShaderOperationNode("Normalize Vec3", ["vec3"], "vec3", "normalize(@0)" );
-	createShaderOperationNode("Exp Float", ["number"], "number", "exp(@0)" );
-	createShaderOperationNode("Pow Float", ["number","number"], "number", "pow(@0,@1)" );
-	createShaderOperationNode("Pow Vec3", ["vec3","number"], "vec3", "pow(@0,@1)" );
-	createShaderOperationNode("Float->Vec3", ["number"], "vec3", "vec3(@0)" );
-	createShaderOperationNode("Dot", ["vec3","vec3"], "number", "dot(@0,@1)" );
+	createShaderOperationNode("Add Float", ["float","float"], "float", "@0 + @1", "A+B" );
+	createShaderOperationNode("Add Vec3", ["vec3","vec3"], "vec3", "@0 + @1", "A+B" );
+	createShaderOperationNode("Sub Vec3", ["vec3","vec3"], "vec3", "@0 - @1", "A-B" );
+	createShaderOperationNode("Sub Float", ["float","float"], "float", "@0 - @1", "A-B" );
+	createShaderOperationNode("Normalize Vec2", ["vec2"], "vec2", "normalize(@0)", "normalize" );
+	createShaderOperationNode("Normalize Vec3", ["vec3"], "vec3", "normalize(@0)", "normalize"  );
+	createShaderOperationNode("Exp Float", ["float"], "float", "exp(@0)", "exp" );
+	createShaderOperationNode("Pow Float", ["float","float"], "float", "pow(@0,@1)", "pow" );
+	createShaderOperationNode("Pow Vec3", ["vec3","float"], "vec3", "pow(@0,@1)", "pow" );
+	createShaderOperationNode("Float->Vec3", ["float"], "vec3", "vec3(@0)", "vec3" );
+	createShaderOperationNode("Dot", ["vec3","vec3"], "float", "dot(@0,@1)", "dot" );
 
 	function LGraphShaderSurface()
 	{
 		this.addInput("Albedo","vec3");
 		this.addInput("Emission","vec3");
 		this.addInput("Normal","vec3");
-		this.addInput("Specular","number");
-		this.addInput("Gloss","number");
-		this.addInput("Reflectivity","number");
-		this.addInput("Alpha","number");
+		this.addInput("Specular","float");
+		this.addInput("Gloss","float");
+		this.addInput("Reflectivity","float");
+		this.addInput("Alpha","float");
 		this.size = [90,110];
 
 		this.properties = {};
@@ -224,6 +229,17 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		if( lang != "glsl" )
 			return "";
+
+		/* created from GraphCode so it can add the graph code in between
+		var surface_code = "void surf( in Input IN, inout SurfaceOutput o ) {\n\
+		o.Albedo = vec3(1.0) * IN.color.xyz;\n\
+		o.Normal = IN.worldNormal;\n\
+		o.Emission = vec3(0.0);\n\
+		o.Specular = 1.0;\n\
+		o.Gloss = 40.0;\n\
+		o.Reflectivity = 0.0;\n\
+		o.Alpha = IN.color.a;\n";
+		*/
 
 		var code = "\n";
 		var input = getInputLinkID( this, 0 );

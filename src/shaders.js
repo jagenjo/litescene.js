@@ -441,7 +441,10 @@ GLSLCode.prototype.parse = function()
 				continue;
 			}
 			if( method.parse.call( this, pragma_info, t ) === false )
+			{
+				//current_fragment.push("\n"); //add line to current fragment lines
 				continue;
+			}
 			this.fragments.push( pragma_info ); //add pragma fragment
 		}
 		else
@@ -479,7 +482,10 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags, context )
 
 		var pragma_method = GLSLCode.pragma_methods[ fragment.action ];
 		if(!pragma_method || !pragma_method.getCode )
+		{
+			code += "\n";
 			continue;
+		}
 
 		var r = pragma_method.getCode.call( this, shader_type, fragment, block_flags, context );
 		if( r )
@@ -615,7 +621,7 @@ GLSLCode.pragma_methods["shaderblock"] = {
 			return null;
 		}
 
-		var code = "";
+		var code = "\n";
 
 		//add the define BLOCK_name only if enabled
 		if( shader_block.flag_mask & block_flags )
@@ -835,6 +841,31 @@ LS.Shaders.registerSnippet("getFlatNormal","\n\
 				}\n\
 			#endif\n\
 	");
+
+
+LS.Shaders.registerSnippet("PackDepth32","\n\
+			\n\
+			float linearDepth(float z, float near, float far)\n\
+			{\n\
+				return (z - near) / (far - near);\n\
+			}\n\
+			float linearDepthNormalized(float z, float near, float far)\n\
+			{\n\
+				float z_n = 2.0 * z - 1.0;\n\
+				return 2.0 * near * far / (far + near - z_n * (far - near));\n\
+			}\n\
+			\n\
+			//packs depth normalized \n\
+			vec4 PackDepth32(float depth)\n\
+			{\n\
+			  const vec4 bitShift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );\n\
+			  const vec4 bitMask = vec4( 0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0 );\n\
+			  vec4 comp = fract(depth * bitShift);\n\
+			  comp -= comp.xxyz * bitMask;\n\
+			  return comp;\n\
+			}\n\
+");
+
 
 LS.Shaders.registerSnippet("perturbNormal","\n\
 			#ifdef STANDARD_DERIVATIVES\n\

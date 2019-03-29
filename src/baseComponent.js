@@ -54,8 +54,8 @@ BaseComponent.prototype.configure = function(o)
 		this.uid = o.uid;
 	LS.cloneObject( o, this, false, true ); 
 
-	if( this.afterConfigure )
-		this.afterConfigure( o );
+	if( this.onConfigure )
+		this.onConfigure( o );
 }
 
 /**
@@ -71,8 +71,8 @@ BaseComponent.prototype.serialize = function()
 	if(!o.object_class)
 		o.object_class = LS.getObjectClassName( this );
 
-	if( this.afterSerialize )
-		this.afterSerialize( o );
+	if( this.onSerialize )
+		this.onSerialize( o );
 
 	return o;
 }

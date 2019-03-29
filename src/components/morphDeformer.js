@@ -20,6 +20,13 @@ function MorphDeformer(o)
 	this.mode = MorphDeformer.AUTOMATIC;
 
 	/**
+	* if true the meshes will be treated as a increment over the base mesh, not as an absolute mesh
+	* @property delta_meshes {Boolean} 
+	* @default MorphDeformer.AUTOMATIC;
+	*/
+	this.delta_meshes = false;
+
+	/**
 	* An array with every morph targets info in the form of { mesh: mesh_name, weight: number }
 	* @property morph_targets {Array}
 	* @default [];
@@ -33,6 +40,10 @@ function MorphDeformer(o)
 		if(MorphDeformer.max_supported_morph_targets_using_streams === undefined)
 			MorphDeformer.max_supported_morph_targets_using_streams = (gl.getParameter( gl.MAX_VERTEX_ATTRIBS ) - 6) / 2; //6 reserved for vertex, normal, uvs, uvs2, weights, bones. 
 	}
+
+	
+	this._stream_weights = new Float32Array( 4 );
+	this._uniforms = { u_morph_weights: this._stream_weights, u_morph_info: 0 };
 
 	if(o)
 		this.configure(o);
@@ -250,9 +261,7 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 	}
 
 	var weights = this._stream_weights;
-	if(!weights)
-		weights = this._stream_weights = new Float32Array( 4 );
-	else if( !weights.fill ) //is an Array?
+	if( !weights.fill ) //is an Array?
 	{
 		for(var i = 0; i < weights.length; ++i)
 			weights[i] = 0;
@@ -261,10 +270,11 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 		weights.fill(0); //fill first because morphs_weights could have zero length
 	weights.set( morphs_weights );
 	RI.uniforms["u_morph_weights"] = weights;
+	RI.uniforms["u_morph_info"] = this.delta_meshes ? 1 : 0;
 
 	//SHADER BLOCK
 	RI.addShaderBlock( MorphDeformer.shader_block ); //global
-	RI.addShaderBlock( LS.MorphDeformer.morphing_streams_block, { u_morph_weights: weights } );
+	RI.addShaderBlock( LS.MorphDeformer.morphing_streams_block, this._uniforms );
 	RI.removeShaderBlock( LS.MorphDeformer.morphing_texture_block );
 }
 
@@ -314,7 +324,6 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 		if(!normals_buffer)
 			continue;
 
-		//create texture
 		if(!vertices_buffer._texture)
 			vertices_buffer._texture = this.createGeometryTexture( vertices_buffer );
 		if(!normals_buffer._texture)
@@ -322,11 +331,10 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 
 		//LS.RM.textures[":debug_morph_vertex_" + i] = vertices_buffer._texture;
 		//LS.RM.textures[":debug_morph_normal_" + i] = normals_buffer._texture;
-
 		morphs_textures.push( { weight: morph.weight, vertices: vertices_buffer._texture, normals: normals_buffer._texture } );
 	}
 
-	//blend all morphs targets in one texture
+	//accumulate all morphs targets in two textures that contains the final vertex and final normal
 
 	var shader = this.getMorphTextureShader();
 	shader.uniforms({ u_base_texture: 0, u_morph_texture: 1 });
@@ -486,22 +494,46 @@ MorphDeformer.prototype.applyMorphBySoftware = function( RI, valid_morphs )
 	}
 
 	//fill them 
-	for(var i = 0, l = vertices.length; i < l; i += 3)
+	if(this.delta_meshes)
 	{
-		var v = vertices.subarray(i,i+3);
-		var n = normals.subarray(i,i+3);
-
-		for(var j = 0; j < num_morphs; ++j)
+		for(var i = 0, l = vertices.length; i < l; i += 3)
 		{
-			var m_v = morphs_vertices[j];
-			var m_n = morphs_normals[j];
-			var w = morphs_weights[j];
-			v[0] += (m_v[i] - base_vertices[i]) * w;
-			v[1] += (m_v[i+1] - base_vertices[i+1]) * w;
-			v[2] += (m_v[i+2] - base_vertices[i+2]) * w;
-			n[0] += (m_n[i] - base_normals[i]) * w;
-			n[1] += (m_n[i+1] - base_normals[i+1]) * w;
-			n[2] += (m_n[i+2] - base_normals[i+2]) * w;
+			var v = vertices.subarray(i,i+3);
+			var n = normals.subarray(i,i+3);
+
+			for(var j = 0; j < num_morphs; ++j)
+			{
+				var m_v = morphs_vertices[j];
+				var m_n = morphs_normals[j];
+				var w = morphs_weights[j];
+				v[0] += m_v[i]* w;
+				v[1] += m_v[i+1] * w;
+				v[2] += m_v[i+2] * w;
+				n[0] += m_n[i] * w;
+				n[1] += m_n[i+1] * w;
+				n[2] += m_n[i+2] * w;
+			}
+		}
+	}
+	else
+	{
+		for(var i = 0, l = vertices.length; i < l; i += 3)
+		{
+			var v = vertices.subarray(i,i+3);
+			var n = normals.subarray(i,i+3);
+
+			for(var j = 0; j < num_morphs; ++j)
+			{
+				var m_v = morphs_vertices[j];
+				var m_n = morphs_normals[j];
+				var w = morphs_weights[j];
+				v[0] += (m_v[i] - base_vertices[i]) * w;
+				v[1] += (m_v[i+1] - base_vertices[i+1]) * w;
+				v[2] += (m_v[i+2] - base_vertices[i+2]) * w;
+				n[0] += (m_n[i] - base_normals[i]) * w;
+				n[1] += (m_n[i+1] - base_normals[i+1]) * w;
+				n[2] += (m_n[i+2] - base_normals[i+2]) * w;
+			}
 		}
 	}
 
@@ -529,14 +561,33 @@ MorphDeformer._blend_shader_fragment_code = "\n\
 	}\n\
 ";
 
-MorphDeformer.prototype.getMorphTextureShader  = function()
+MorphDeformer._delta_blend_shader_fragment_code = "\n\
+	precision highp float;\n\
+	uniform sampler2D u_morph_texture;\n\
+	uniform float u_weight;\n\
+	varying vec2 v_coord;\n\
+	void main() {\n\
+		gl_FragColor = u_weight * texture2D(u_morph_texture, v_coord);\n\
+		gl_FragColor.w = 1.0;\n\
+	}\n\
+";
+
+MorphDeformer.prototype.getMorphTextureShader = function()
 {
+	if(this.delta_meshes)
+	{
+		if(!this._delta_blend_shader)
+			this._delta_blend_shader = new GL.Shader( Shader.SCREEN_VERTEX_SHADER, MorphDeformer._delta_blend_shader_fragment_code );
+		return this._delta_blend_shader;
+	}
+
 	if(!this._blend_shader)
 		this._blend_shader = new GL.Shader( Shader.SCREEN_VERTEX_SHADER, MorphDeformer._blend_shader_fragment_code );
 	return this._blend_shader;
 }
 
-MorphDeformer.prototype.createGeometryTexture = function( data_buffer )
+//transfers the geometry to a texture
+MorphDeformer.prototype.createGeometryTexture = function( data_buffer, texture )
 {
 	var stream_data = data_buffer.data;
 	var buffer = stream_data.buffer;
@@ -550,9 +601,45 @@ MorphDeformer.prototype.createGeometryTexture = function( data_buffer )
 
 	var buffer_padded = new Float32Array( width * height * 3 );
 	buffer_padded.set( stream_data );
-	
-	var texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer_padded, no_flip: true });
+	if(!texture || texture.width != width || texture.height != height )
+		texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer_padded, no_flip: true });
+	else
+		texture.uploadData( buffer_padded );
 	return texture;
+}
+
+//in case the textures has been modyfied
+MorphDeformer.prototype.recomputeGeometryTextures = function()
+{
+	var RI = this._last_RI;
+	if(!RI)
+		return;
+
+	var base_mesh = RI.mesh;
+	var base_vertices_buffer = base_mesh.vertexBuffers["vertices"];
+	var base_normals_buffer = base_mesh.vertexBuffers["normals"];
+
+	//create textures for the base mesh
+	base_vertices_buffer._texture = this.createGeometryTexture( base_vertices_buffer, base_vertices_buffer._texture );
+	base_normals_buffer._texture = this.createGeometryTexture( base_normals_buffer, base_normals_buffer._texture );
+
+	var valid_morphs = this._valid_morphs;
+	if(!valid_morphs)
+		return;
+
+	for(var i = 0; i < valid_morphs.length; ++i)
+	{
+		var morph = valid_morphs[i];
+		var morph_mesh = morph.mesh;
+
+		var vertices_buffer = morph_mesh.vertexBuffers["vertices"];
+		if( vertices_buffer && vertices_buffer._texture )
+			this.createGeometryTexture( vertices_buffer, vertices_buffer._texture );
+
+		var normals_buffer = morph_mesh.vertexBuffers["normals"];
+		if( normals_buffer && normals_buffer._texture )
+			this.createGeometryTexture( normals_buffer, normals_buffer._texture );
+	}
 }
 
 /**
@@ -698,7 +785,7 @@ MorphDeformer.prototype.getBaseMesh = function()
 }
 
 /**
-* Removes innecesary morph targets and removes data from mesh that is already in the base mesh
+* Removes innecesary morph targets and removes data from mesh that is already in the base mesh (uvs and indices)
 * @method optimizeMorphTargets
 */
 MorphDeformer.prototype.optimizeMorphTargets = function()
@@ -798,11 +885,17 @@ MorphDeformer.morph_streams_enabled_shader_code = "\n\
 	attribute vec3 a_normal_morph3;\n\
 	\n\
 	uniform vec4 u_morph_weights;\n\
+	uniform float u_morph_info;\n\
 	\n\
 	void applyMorphing( inout vec4 position, inout vec3 normal )\n\
 	{\n\
-		vec3 original_vertex = position.xyz;\n\
-		vec3 original_normal = normal.xyz;\n\
+		vec3 original_vertex = vec3(0.0);\n\
+		vec3 original_normal = vec3(0.0);\n\
+		if( u_morph_info == 0.0 )\n\
+		{\n\
+			original_vertex = position.xyz;\n\
+			original_normal = normal.xyz;\n\
+		}\n\
 		\n\
 		if(u_morph_weights[0] != 0.0)\n\
 		{\n\

@@ -649,7 +649,8 @@ FXGraphComponent.prototype.onAddedToScene = function( scene )
 	if(!this._graph) //in case it wasnt connected
 		return;
 	this._graph._scene = scene;
-	LEvent.bind( scene, "enableFrameContext", this.onBeforeRender, this );
+	LEvent.bind( scene, "beforeRender", this.onBeforeRender, this );
+	LEvent.bind( scene, "enableFrameContext", this.onEnableContext, this );
 	LEvent.bind( scene, "showFrameContext", this.onAfterRender, this );
 }
 
@@ -658,7 +659,8 @@ FXGraphComponent.prototype.onRemovedFromScene = function( scene )
 	if(!this._graph) //in case it wasnt connected
 		return;
 	this._graph._scene = null;
-	LEvent.unbind( scene, "enableFrameContext", this.onBeforeRender, this );
+	LEvent.unbind( scene, "beforeRender", this.onBeforeRender, this );
+	LEvent.unbind( scene, "enableFrameContext", this.onEnableContext, this );
 	LEvent.unbind( scene, "showFrameContext", this.onAfterRender, this );
 
 	LS.ResourcesManager.unregisterResource( ":color_" + this.uid );
@@ -666,8 +668,13 @@ FXGraphComponent.prototype.onRemovedFromScene = function( scene )
 	LS.ResourcesManager.unregisterResource( ":extra_" + this.uid );
 }
 
-
 FXGraphComponent.prototype.onBeforeRender = function(e, render_settings)
+{
+	if(this.enabled && this._graph) //used to read back from textures to avoid stalling
+		this._graph.sendEventToAllNodes("onPreRenderExecute");
+}
+
+FXGraphComponent.prototype.onEnableContext = function(e, render_settings)
 {
 	this._last_camera = LS.Renderer._main_camera; //LS.Renderer._current_camera;
 
@@ -725,9 +732,6 @@ FXGraphComponent.prototype.enableCameraFBO = function(e, render_settings )
 	var viewport = this._viewport = camera.getLocalViewport( null, this._viewport );
 	this.frame.enable( render_settings, viewport );
 	render_settings.ignore_viewports = true;
-
-	if(this._graph)
-		this._graph.sendEventToAllNodes("onPreRenderExecute");
 }
 
 FXGraphComponent.prototype.showCameraFBO = function(e, render_settings )

@@ -403,7 +403,10 @@ RenderState.enable = function( state, prev, render_settings )
 	if(!prev)
 	{
 		//faces
-		gl.frontFace( state.front_face );
+		if(LS.Renderer._reverse_faces)
+			gl.frontFace( state.front_face == GL.CCW ? GL.CW : GL.CCW );
+		else
+			gl.frontFace( state.front_face );
 		if(state.cull_face && !force_two_sided )
 			gl.enable( gl.CULL_FACE );
 		else
@@ -451,9 +454,16 @@ RenderState.enable = function( state, prev, render_settings )
 		return;
 	}
 
+	//***********************************************
+
 	//faces
-	if( prev.front_face !== state.front_face )
-		gl.frontFace( state.front_face );
+	if(LS.Renderer._reverse_faces)
+		gl.frontFace( state.front_face == GL.CCW ? GL.CW : GL.CCW );
+	else
+	{
+		if( prev.front_face !== state.front_face )
+			gl.frontFace( state.front_face );
+	}
 	if( prev.cull_face !== state.cull_face || force_two_sided )
 	{
 		if( state.cull_face && !force_two_sided )

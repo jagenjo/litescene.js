@@ -3,6 +3,7 @@
 ../src/utils/wbin.js
 ../src/utils/lscript.js
 
+# core
 ../src/core.js
 ../src/defines.js
 ../src/network.js
@@ -54,18 +55,18 @@
 ../src/render/debug.js
 ../src/render/draw.js
 ../src/render/deformer.js
+../src/render/shadows.js
 
 ../src/picking.js
 ../src/physics.js
 
+# basic
 ../src/components/transform.js
 ../src/components/camera.js
 ../src/components/cameraFX.js
 ../src/components/frameFX.js
 ../src/components/light.js
-../src/components/lightFX.js
 ../src/components/meshRenderer.js
-../src/components/skinnedMeshRenderer.js
 ../src/components/morphDeformer.js
 ../src/components/skinDeformer.js
 ../src/components/svgRenderer.js
@@ -77,6 +78,11 @@
 ../src/components/spriteAtlas.js
 ../src/components/sceneInclude.js
 
+# deprecated
+#../src/components/lightFX.js
+#../src/components/skinnedMeshRenderer.js
+
+# useful
 ../src/components/annotations.js
 ../src/components/animator.js
 ../src/components/cameraController.js
@@ -94,14 +100,11 @@
 ../src/components/linesRenderer.js
 ../src/components/playAnimation.js
 ../src/components/realtimeReflector.js
-../src/components/reflectionProbe.js
+../src/components/probes.js
 ../src/components/script.js
-../src/components/terrainRenderer.js
 ../src/components/cloner.js
-../src/components/VRCameraController.js
 ../src/components/poser.js
 ../src/components/spline.js
-../src/components/threeJS.js
 ../src/components/canvas3d.js
 ../src/components/videoPlayer.js
 ../src/components/interactiveController.js
@@ -111,18 +114,21 @@
 
 ../src/render/basePipeline.js
 
+../src/player.js
+
+# base formats
 ../src/formats.js
-../src/parsers/parserASE.js
-../src/parsers/parserBVH.js
-../src/parsers/collada.js
-../src/parsers/parserDAE.js
 ../src/parsers/parserDDS.js
-../src/parsers/parserJSMESH.js
 ../src/parsers/parserOBJ.js
 ../src/parsers/parserSTL.js
 ../src/parsers/parserTGA.js
 
-../src/player.js
+# extra formats
+../src/parsers/collada.js
+../src/parsers/parserDAE.js
+../src/parsers/parserBVH.js
+../src/parsers/parserASE.js
+../src/parsers/parserJSMESH.js
 
 ../src/utils.js
 ../src/outro.js

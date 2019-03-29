@@ -1,10 +1,11 @@
 // Collada.js  https://github.com/jagenjo/collada.js
 // Javi Agenjo 2015 
 // Specification from https://www.khronos.org/collada/wiki
+var _collada;
 
 (function(global){
 
-var isWorker = global.document === undefined;
+var isWorker = typeof(window) == "undefined" && typeof(exports) == "undefined";
 var DEG2RAD = Math.PI * 2 / 360;
 
 //global temporal variables
@@ -35,7 +36,7 @@ if( isWorker )
 }
 
 //Collada parser
-global.Collada = {
+global.Collada = _collada = {
 
 	libsPath: "./",
 	workerPath: "./",
@@ -2948,6 +2949,7 @@ global.Collada = {
 	}
 };
 
+var Collada = global.Collada;
 
 //add worker launcher
 if(!isWorker)
@@ -3087,4 +3089,6 @@ if(isWorker)
 	}, false);
 }
 
-})( typeof(window) != "undefined" ? window : self );
+//})( typeof(window) != "undefined" ? window : self );
+})( typeof(window) != "undefined" ? window : ( typeof(exports) != "undefined" ? exports : self ) );
+

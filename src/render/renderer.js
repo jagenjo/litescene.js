@@ -22,6 +22,8 @@ var Renderer = {
 	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
 	default_point_size: 1, //point size in pixels (could be overwritte by render instances)
 
+	render_profiler: false,
+
 	_global_viewport: vec4.create(), //the viewport we have available to render the full frame (including subviewports), usually is the 0,0,gl.canvas.width,gl.canvas.height
 	_full_viewport: vec4.create(), //contains info about the full viewport available to render (current texture size or canvas size)
 
@@ -34,6 +36,7 @@ var Renderer = {
 	_global_textures: {}, //used to speed up fetching global textures
 	_global_shader_blocks: [], //used to add extra shaderblocks to all objects in the scene (it gets reseted every frame)
 	_global_shader_blocks_flags: 0, 
+	_reverse_faces: false,
 
 	_queues: [], //render queues in order
 
@@ -47,11 +50,26 @@ var Renderer = {
 	_active_samples: [],
 
 	//stats
+	_frame_time: 0,
 	_frame_cpu_time: 0,
 	_rendercalls: 0, //calls to instance.render
 	_rendered_instances: 0, //instances processed
 	_rendered_passes: 0,
 	_frame: 0,
+	_last_time: 0,
+
+	//using timer queries
+	gpu_times: {
+		total: 0,
+		shadows: 0,
+		reflections: 0,
+		main: 0,
+		postpo: 0,
+		gui: 0
+	},
+
+	_timer_queries: {},
+	_waiting_queries: false,
 
 	//settings
 	_collect_frequency: 1, //used to reuse info (WIP)
@@ -164,6 +182,7 @@ var Renderer = {
 	resetState: function()
 	{
 		this._is_rendering_frame = false;
+		this._reverse_faces = false;
 	},
 
 	//used to store which is the current full viewport available (could be different from the canvas in case is a FBO or the camera has a partial viewport)
@@ -207,7 +226,10 @@ var Renderer = {
 		scene._frame += 1; //done at the beginning just in case it crashes
 		this._frame += 1;
 		scene._must_redraw = false;
+
 		var start_time = getTime();
+		this._frame_time = start_time - this._last_time;
+		this._last_time = start_time;
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 		this._rendered_passes = 0;
@@ -217,6 +239,10 @@ var Renderer = {
 			this._global_textures[i] = null;
 		if(!this._current_pass)
 			this._current_pass = COLOR_PASS;
+		this._reverse_faces = false;
+
+		//extract info about previous frame
+		this.resolveQueries();
 
 		//to restore from a possible exception (not fully tested, remove if problem)
 		if(!render_settings.ignore_reset)
@@ -236,7 +262,9 @@ var Renderer = {
 		this._global_viewport.set( gl.viewport_data );
 
 		//Event: beforeRender used in actions that could affect which info is collected for the rendering
+		this.startGPUQuery("beforeRender");
 		LEvent.trigger( scene, "beforeRender", render_settings );
+		this.endGPUQuery();
 
 		//get render instances, cameras, lights, materials and all rendering info ready (computeVisibility)
 		this.processVisibleData( scene, render_settings, cameras );
@@ -255,13 +283,17 @@ var Renderer = {
 		//TODO
 
 		//Event: renderShadowmaps helps to generate shadowMaps that need some camera info (which could be not accessible during processVisibleData)
+		this.startGPUQuery("shadows");
 		LEvent.trigger(scene, "renderShadows", render_settings );
+		this.endGPUQuery();
 
 		//Event: afterVisibility allows to cull objects according to the main camera
 		LEvent.trigger(scene, "afterVisibility", render_settings );
 
 		//Event: renderReflections in case some realtime reflections are needed, this is the moment to render them inside textures
+		this.startGPUQuery("reflections");
 		LEvent.trigger(scene, "renderReflections", render_settings );
+		this.endGPUQuery();
 
 		//Event: beforeRenderMainPass in case a last step is missing
 		LEvent.trigger(scene, "beforeRenderMainPass", render_settings );
@@ -279,10 +311,16 @@ var Renderer = {
 
 		//disable and show final FX context
 		if(render_settings.render_fx)
+		{
+			this.startGPUQuery("postpo");
 			LEvent.trigger( scene, "showFrameContext", render_settings );
+			this.endGPUQuery();
+		}
 
 		//renderGUI
+		this.startGPUQuery("gui");
 		this.renderGUI( render_settings );
+		this.endGPUQuery();
 
 		//profiling must go here
 		this._frame_cpu_time = getTime() - start_time;
@@ -295,6 +333,9 @@ var Renderer = {
 
 		//coroutines
 		LS.triggerCoroutines("render");
+
+		if(this.render_profiler)
+			this.renderProfiler();
 	},
 
 	/**
@@ -318,11 +359,16 @@ var Renderer = {
 			LEvent.trigger(current_camera, "enableFrameContext", render_settings );
 
 			//main render
+			this.startGPUQuery("main");
 			this.renderFrame( current_camera, render_settings ); 
+			this.endGPUQuery();
 
+			//show buffer on the screen
+			this.startGPUQuery("postpo");
 			LEvent.trigger(current_camera, "showFrameContext", render_settings );
 			LEvent.trigger(current_camera, "afterRenderFrame", render_settings );
 			LEvent.trigger(scene, "afterRenderFrame", render_settings );
+			this.endGPUQuery();
 		}
 	},
 
@@ -800,7 +846,11 @@ var Renderer = {
 		render_settings = render_settings || this.default_render_settings;
 		LEvent.trigger( scene, "renderShadows", render_settings );
 		for(var i = 0; i < this._visible_lights.length; ++i)
-			this._visible_lights[i].prepare( render_settings );
+		{
+			var light = this._visible_lights[i];
+			light.prepare( render_settings );
+			light.onGenerateShadowmap();
+		}
 	},
 
 	mergeSamplers: function( samplers, result )
@@ -1029,6 +1079,9 @@ var Renderer = {
 				this._main_camera = new LS.Camera(); // ??
 		}
 
+
+		var nearest_reflection_probe = scene.findNearestReflectionProbe( this._main_camera.getEye() );
+
 		instances = instances || scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();
 		var camera_eye = camera.getEye( this._temp_cameye );
@@ -1068,7 +1121,7 @@ var Renderer = {
 
 			//find nearest reflection probe
 			if( scene._reflection_probes.length && !this._ignore_reflection_probes )
-				instance._nearest_reflection_probe = scene.findNearestReflectionProbe( instance.center );
+				instance._nearest_reflection_probe = nearest_reflection_probe;//scene.findNearestReflectionProbe( instance.center );
 			else
 				instance._nearest_reflection_probe = null;
 
@@ -1431,6 +1484,123 @@ var Renderer = {
 		if(index != -1)
 			this._global_shader_blocks.splice( index, 1 );
 		this._global_shader_blocks_flags &= ~( shader_block.flag_mask ); //disable bit
+	},
+
+	//time queries for profiling
+	_current_query: null,
+
+	startGPUQuery: function( name )
+	{
+		if(!gl.extensions["disjoint_timer_query"]) //if not supported
+			return;
+		if(this._waiting_queries)
+			return;
+		var ext = gl.extensions["disjoint_timer_query"];
+		var query = this._timer_queries[ name ];
+		if(!query)
+			query = this._timer_queries[ name ] = ext.createQueryEXT();
+		ext.beginQueryEXT( ext.TIME_ELAPSED_EXT, query );
+		this._current_query = query;
+	},
+
+	endGPUQuery: function()
+	{
+		if(!gl.extensions["disjoint_timer_query"]) //if not supported
+			return;
+		if(this._waiting_queries)
+			return;
+		var ext = gl.extensions["disjoint_timer_query"];
+		ext.endQueryEXT( ext.TIME_ELAPSED_EXT );
+		this._current_query = null;
+	},
+
+	resolveQueries: function()
+	{
+		if(!gl.extensions["disjoint_timer_query"]) //if not supported
+			return;
+
+		//var err = gl.getError();
+		//if(err != gl.NO_ERROR)
+		//	console.log("GL_ERROR: " + err );
+
+		var ext = gl.extensions["disjoint_timer_query"];
+
+		var last_query = this._timer_queries["gui"];
+		if(!last_query)
+			return;
+
+		var available = ext.getQueryObjectEXT( last_query, ext.QUERY_RESULT_AVAILABLE_EXT );
+		if(!available)
+		{
+			this._waiting_queries = true;
+			return;
+		}
+	
+		var disjoint = gl.getParameter( ext.GPU_DISJOINT_EXT );
+		if(!disjoint)
+		{
+			var total = 0;
+			for(var i in this._timer_queries)
+			{
+				var query = this._timer_queries[i];
+				// See how much time the rendering of the object took in nanoseconds.
+				var timeElapsed = ext.getQueryObjectEXT( query, ext.QUERY_RESULT_EXT ) * 10e-6; //to milliseconds;
+				total += timeElapsed;
+				this.gpu_times[ i ] = timeElapsed;
+				//ext.deleteQueryEXT(query);
+				//this._timer_queries[i] = null;
+			}
+			this.gpu_times.total = total;
+		}
+
+		this._waiting_queries = false;
+	},
+
+	profiler_text: [],
+
+	renderProfiler: function()
+	{
+		if(!gl.canvas.canvas2DtoWebGL_enabled)
+			return;
+
+		var text = this.profiler_text;
+		var ext = gl.extensions["disjoint_timer_query"];
+
+		if(this._frame % 5 == 0)
+		{
+			text.length = 0;
+			var fps = 1000 / this._frame_time;
+			text.push( fps.toFixed(2) + " FPS" );
+			text.push( "CPU: " + this._frame_cpu_time.toFixed(2) + " ms" );
+			text.push( " - RIs: " + this._rendered_instances );
+			text.push( " - Draws: " + this._rendercalls );
+
+			if( ext )
+			{
+				text.push( "GPU: " + this.gpu_times.total.toFixed(2) );
+				text.push( " - PreRender: " + this.gpu_times.beforeRender.toFixed(2) );
+				text.push( " - Shadows: " + this.gpu_times.shadows.toFixed(2) );
+				text.push( " - Scene: " + this.gpu_times.main.toFixed(2) );
+				text.push( " - Postpo: " + this.gpu_times.postpo.toFixed(2) );
+				text.push( " - GUI: " + this.gpu_times.gui.toFixed(2) );
+			}
+			else
+				text.push( "GPU: ???");
+		}
+
+		var ctx = gl;
+		ctx.save();
+		ctx.translate( gl.canvas.width - 200, gl.canvas.height - 240 );
+		ctx.globalAlpha = 0.7;
+		ctx.font = "14px Tahoma";
+		ctx.fillStyle = "black";
+		ctx.fillRect(0,0,200,240);
+		ctx.fillStyle = "white";
+		ctx.fillText( "Profiler", 20, 20 );
+		ctx.fillStyle = "#AFA";
+		for(var i = 0; i < text.length; ++i)
+			ctx.fillText( text[i], 20,50 + 20 * i );
+		ctx.restore();
 	},
 
 	/**

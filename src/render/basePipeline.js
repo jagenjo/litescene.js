@@ -131,7 +131,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#pragma shaderblock \"lastPass\"\n\
 	#pragma shaderblock \"applyIrradiance\"\n\
 	#pragma shaderblock \"attenuation\"\n\
-	#pragma shaderblock SHADOWBLOCK \"testShadow\"\n\
+	#pragma shaderblock \"testShadow\"\n\
 	\n\
 	//Light is separated in two functions, computeLight (how much light receives the object) and applyLight (compute resulting final color)\n\
 	// FINAL LIGHT EQUATION, takes all the info from FinalLight and computes the final color \n\
@@ -214,6 +214,8 @@ Light._enabled_fs_shaderblock_code = "\n\
 ";
 
 Light._disabled_shaderblock_code = "\n\
+	#pragma shaderblock \"firstPass\"\n\
+	#pragma shaderblock \"lastPass\"\n\
 	#pragma snippet \"input\"\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
@@ -305,7 +307,7 @@ var light_texture_block = Light.light_texture_block = new LS.ShaderBlock("light_
 light_texture_block.addCode( GL.FRAGMENT_SHADER, Light._light_texture_fragment_enabled_code, Light._light_texture_fragment_disabled_code );
 light_texture_block.register();
 
-
+/*
 // OMNI LIGHT SHADOWMAP *****************************************
 Light._shadowmap_cubemap_code = "\n\
 	#define SHADOWMAP_ACTIVE\n\
@@ -446,7 +448,7 @@ shadowmapping_2D_soft_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_ena
 shadowmapping_2D_soft_block.register();
 Light.shadowmapping_2D_soft_block = shadowmapping_2D_soft_block;
 //Light.registerShadowType( "soft", shadowmappingsoft_block );
-
+*/
 
 // ENVIRONMENT *************************************
 var environment_code = "\n\

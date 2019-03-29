@@ -275,6 +275,8 @@ Canvas3D.prototype.projectMouse = function()
 		this._mouse[2] = cam_dist;
 
 		var ray = camera.getRay( x, y );
+		if(!ray) //??
+			return;
 
 		var temp = vec3.create();
 		var plane_normal = this.root.transform.localVectorToGlobal( LS.FRONT, temp );

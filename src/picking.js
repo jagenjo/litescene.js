@@ -12,6 +12,13 @@ var Picking = {
 	_picking_points: [], //used during picking fetching
 	_picking_nodes: null, //created before picking
 
+	//picking
+	_pickingMap: null,
+	_picking_color: new Uint8Array(4),
+	_picking_depth: 0,
+	_picking_next_color_id: 0,
+	_picking_render_settings: new RenderSettings(),
+
 	/**
 	* Renders the pixel and retrieves the color to detect which object it was, slow but accurate
 	* @method getNodeAtCanvasPosition
@@ -90,14 +97,6 @@ var Picking = {
 		this._picking_nodes[ this._picking_next_color_id ] = info;
 		return vec4.fromValues( byte_pick_color[0] / 255, byte_pick_color[1] / 255, byte_pick_color[2] / 255, 1 );
 	},
-
-	//picking
-	_pickingMap: null,
-	_picking_color: new Uint8Array(4),
-	_picking_depth: 0,
-	_picking_next_color_id: 0,
-	_picking_nodes: {},
-	_picking_render_settings: new RenderSettings(),
 
 	//x,y must be in canvas coordinates (0,0 is bottom-left)
 	getPickingColorFromBuffer: function( scene, camera, x, y, layers )

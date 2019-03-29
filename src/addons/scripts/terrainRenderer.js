@@ -47,8 +47,6 @@ TerrainRenderer.prototype.onAddedToNode = function(node)
 TerrainRenderer.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
-	if(this._root.mesh == this._mesh)
-		delete this._root["mesh"];
 }
 
 TerrainRenderer.prototype.getResources = function(res)
@@ -169,7 +167,7 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 
 	if(!this._mesh)
 	{
@@ -182,10 +180,9 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 	RI.material = this._root.getMaterial();
 	RI.setMesh( this._mesh, this.primitive );
 	
-	this._root.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-	RI.applyNodeFlags();
+	RI.fromNode( this._root );
 	
 	instances.push(RI);
 }

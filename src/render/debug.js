@@ -92,7 +92,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 	if( settings.render_grid && settings.grid_alpha > 0 )
 		this.renderGrid();
 
-	if(settings.render_origin)
+	if( settings.render_origin )
 	{
 		LS.Draw.setColor([0.3,0.3,0.3,1.0]);
 		LS.Draw.push();
@@ -104,7 +104,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 		LS.Draw.pop();
 	}
 
-	if(settings.render_components)
+	if( settings.render_components )
 	{
 		//Node components
 		for(var i = 0, l = scene._nodes.length; i < l; ++i)
@@ -156,7 +156,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 			//this.renderPoint( pos, true, this.colors.bone );
 		}
 
-		if(settings.render_axis)
+		if( settings.render_axis )
 		{
 			LS.Draw.push();
 			LS.Draw.multMatrix(global);
@@ -166,14 +166,14 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 		}
 	}
 
-	if(settings.render_colliders)
+	if( settings.render_colliders )
 		this.renderColliders( scene );
-	if(settings.render_paths)
+	if( settings.render_paths )
 		this.renderPaths( scene );
 
 	//Render primitives (points, lines, text) ***********************
 
-	if(this._points.length)
+	if( this._points.length )
 	{
 		LS.Draw.setPointSize(4);
 		LS.Draw.setColor([1,1,1,1]);
@@ -182,7 +182,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 		this._points_color.length = 0;
 	}
 
-	if(this._points_nodepth.length)
+	if( this._points_nodepth.length )
 	{
 		LS.Draw.setPointSize(4);
 		LS.Draw.setColor([1,1,1,1]);
@@ -193,7 +193,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 		this._points_color_nodepth.length = 0;
 	}
 
-	if(this._lines.length)
+	if( this._lines.length )
 	{
 		gl.disable( gl.DEPTH_TEST );
 		LS.Draw.setColor([1,1,1,1]);
@@ -203,7 +203,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 		this._lines_color.length = 0;
 	}
 
-	if(this.debug_points.length)
+	if( this.debug_points.length )
 	{
 		LS.Draw.setPointSize(5);
 		LS.Draw.setColor([1,0,1,1]);
@@ -211,7 +211,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 	}
 
 	//this require Canvas2DtoWebGL library
-	if(settings.render_names && gl.start2D)
+	if( settings.render_names && gl.start2D )
 	{
 		gl.disable( gl.DEPTH_TEST );
 		var camera2D = this.camera2D;
@@ -241,7 +241,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 	}
 
 	//DEBUG
-	if(settings.render_axis && selected_node) //render axis for all nodes
+	if(settings.render_axis && selected_node && selected_node.transform ) //render axis for all nodes
 	{
 		LS.Draw.push();
 		var Q = selected_node.transform.getGlobalRotation();

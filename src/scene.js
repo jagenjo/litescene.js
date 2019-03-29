@@ -46,7 +46,6 @@ function Scene()
 	this.animation = null;
 
 	//FEATURES NOT YET FULLY IMPLEMENTED
-	this._paths = []; //FUTURE FEATURE: to store splines I think
 	this._local_resources = {}; //used to store resources that go with the scene
 	this.texture_atlas = null;
 
@@ -197,6 +196,7 @@ Scene.prototype.clear = function()
 	this._cameras.length = 0;
 	this._colliders.length = 0;
 	this._reflection_probes.length = 0;
+	this._local_resources = {};
 
 	this.init();
 	/**
@@ -258,6 +258,9 @@ Scene.prototype.configure = function( scene_info )
 
 	if( scene_info.preloaded_resources )
 		this.preloaded_resources = LS.cloneObject( scene_info.preloaded_resources );
+
+	if( scene_info.local_resources )
+		this._local_resources = scene_info.local_resources;
 
 	if( scene_info.layer_names )
 		this.layer_names = scene_info.layer_names.concat();
@@ -321,6 +324,7 @@ Scene.prototype.serialize = function( simplified  )
 	o.external_scripts = this.external_scripts.concat();
 	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
 	o.texture_atlas = LS.cloneObject( this.texture_atlas );
+	o.local_resources = LS.cloneObject( this._local_resources );
 
 	if( this._editor )
 		o.editor = this._editor;
@@ -377,7 +381,6 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		this.loadScripts( scripts, function(){ inner_success( data ); }, inner_error );
 	else
 		inner_success( data );
-
 
 	function inner_success( response )
 	{
@@ -450,6 +453,8 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 
 	var extension = LS.ResourcesManager.getExtension( url );
 	var format_info = LS.Formats.getFileFormatInfo( extension );
+	if(!format_info) //hack, to avoid errors
+		format_info = { dataType: "json" };
 
 	//request scene file using our own library
 	LS.Network.request({
@@ -638,17 +643,24 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 	for(var i in scripts)
 	{
 		var script_url = scripts[i];
-		var res = LS.ResourcesManager.getResource( script_url );
-		if(!res || force_reload)
+		var is_external = this.external_scripts.indexOf( script_url ) != -1;
+		if( !is_external )
 		{
-			final_scripts.push( LS.ResourcesManager.getFullURL( script_url ) );
-			continue;
-		}
+			var res = LS.ResourcesManager.getResource( script_url );
+			if(!res || force_reload)
+			{
+				var final_url = LS.ResourcesManager.getFullURL( script_url );
+				final_scripts.push( final_url );
+				continue;
+			}
 
-		var blob = new Blob([res.data],{encoding:"UTF-8", type: 'text/plain;charset=UTF-8'});
-		var objectURL = URL.createObjectURL( blob );
-		final_scripts.push( objectURL );
-		revokable.push( objectURL );
+			var blob = new Blob([res.data],{encoding:"UTF-8", type: 'text/plain;charset=UTF-8'});
+			var objectURL = URL.createObjectURL( blob );
+			final_scripts.push( objectURL );
+			revokable.push( objectURL );
+		}
+		else
+			final_scripts.push( script_url );
 	}
 
 	LS.Network.requestScript( final_scripts, inner_complete, on_error );
@@ -1264,6 +1276,10 @@ Scene.prototype.getResources = function( resources, as_array, skip_in_pack, skip
 		if(resource.getResources)
 			resource.getResources(resources);
 	}
+
+	//Hack: sometimes some component add this shit
+	delete resources[""];
+	delete resources["null"];
 
 	//return as object
 	if(!as_array)

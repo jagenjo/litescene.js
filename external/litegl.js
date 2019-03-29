@@ -15,6 +15,8 @@ global.requestAnimationFrame = global.requestAnimationFrame || global.mozRequest
 
 GL.blockable_keys = {"Up":true,"Down":true,"Left":true,"Right":true};
 
+GL.reverse = null;
+
 //some consts
 GL.LEFT_MOUSE_BUTTON = 1;
 GL.MIDDLE_MOUSE_BUTTON = 2;
@@ -409,8 +411,8 @@ if(!String.prototype.hasOwnProperty("hashCode"))
 
 //avoid errors when Typed array is expected and regular array is found
 //Array.prototype.subarray = Array.prototype.slice;
-if(!Array.prototype.hasOwnProperty("subarray"))
-	Object.defineProperty(Array.prototype, "subarray", { value: Array.prototype.slice, enumerable: false });
+//if(!Array.prototype.hasOwnProperty("subarray"))
+//	Object.defineProperty(Array.prototype, "subarray", { value: Array.prototype.slice, enumerable: false });
 
 if(!Array.prototype.hasOwnProperty("clone"))
 	Object.defineProperty(Array.prototype, "clone", { value: Array.prototype.concat, enumerable: false });
@@ -1950,7 +1952,97 @@ quat.fromMat4 = function(out,m)
 	quat.normalize(out,out);
 }
 
-quat.fromMat4.lookAt = (function(){ 
+//col according to common matrix notation, here are stored as rows
+vec3.getMat3Column = function(out, m, index )
+{
+	out[0] = m[index*3];
+	out[1] = m[index*3 + 1];
+	out[2] = m[index*3 + 2];
+	return out;
+}
+
+mat3.setColumn = function(out, v, index )
+{
+	out[index*3] = v[0];
+	out[index*3+1] = v[1];
+	out[index*3+2] = v[2];
+	return out;
+}
+
+
+//http://matthias-mueller-fischer.ch/publications/stablePolarDecomp.pdf
+//reusing the previous quaternion as an indicator to keep perpendicularity
+quat.fromMat3AndQuat = (function(){
+	var temp_mat3 = mat3.create();
+	var temp_quat = quat.create();
+	var Rcol0 = vec3.create();
+	var Rcol1 = vec3.create();
+	var Rcol2 = vec3.create();
+	var Acol0 = vec3.create();
+	var Acol1 = vec3.create();
+	var Acol2 = vec3.create();
+	var RAcross0 = vec3.create();
+	var RAcross1 = vec3.create();
+	var RAcross2 = vec3.create();
+	var omega = vec3.create();
+	var axis = mat3.create();
+
+	return function( q, A, max_iter )
+	{
+		max_iter = max_iter || 25;
+		for (var iter = 0; iter < max_iter; ++iter)
+		{
+			var R = mat3.fromQuat( temp_mat3, q );
+			vec3.getMat3Column(Rcol0,R,0);
+			vec3.getMat3Column(Rcol1,R,1);
+			vec3.getMat3Column(Rcol2,R,2);
+			vec3.getMat3Column(Acol0,A,0);
+			vec3.getMat3Column(Acol1,A,1);
+			vec3.getMat3Column(Acol2,A,2);
+			vec3.cross( RAcross0, Rcol0, Acol0 );
+			vec3.cross( RAcross1, Rcol1, Acol1 );
+			vec3.cross( RAcross2, Rcol2, Acol2 );
+			vec3.add( omega, RAcross0, RAcross1 );
+			vec3.add( omega, omega, RAcross2 );
+			var d = 1.0 / Math.abs( vec3.dot(Rcol0,Acol0) + vec3.dot(Rcol1,Acol1) + vec3.dot(Rcol2,Acol2) ) + 1.0e-9;
+			vec3.scale( omega, omega, d );
+			var w = vec3.length(omega);
+			if (w < 1.0e-9)
+				break;
+			vec3.scale(omega,omega,1/w); //normalize
+			quat.setAxisAngle( temp_quat, omega, w );
+			quat.mul( q, temp_quat, q );
+			quat.normalize(q,q);
+		}
+		return q;
+	};
+})();
+
+//http://number-none.com/product/IK%20with%20Quaternion%20Joint%20Limits/
+quat.rotateToFrom = (function(){ 
+	var tmp = vec3.create();
+	return function(out, v1, v2)
+	{
+		out = out || quat.create();
+		var axis = vec3.cross(tmp, v1, v2);
+		var dot = vec3.dot(v1, v2);
+		if( dot < -1 + 0.01){
+			out[0] = 0;
+			out[1] = 1; 
+			out[2] = 0; 
+			out[3] = 0; 
+			return out;
+		}
+		out[0] = axis[0] * 0.5;
+		out[1] = axis[1] * 0.5; 
+		out[2] = axis[2] * 0.5; 
+		out[3] = (1 + dot) * 0.5; 
+		quat.normalize(out, out); 
+		return out;    
+	}
+})();
+
+quat.lookAt = (function(){ 
 	var axis = vec3.create();
 	
 	return function( out, forwardVector, up )
@@ -2031,6 +2123,31 @@ GL.Buffer = function Buffer( target, data, spacing, stream_type, gl ) {
 
 	if(this.data && this.gl)
 		this.upload(stream_type);
+}
+
+/**
+* binds the buffer to a attrib location
+* @method bind
+* @param {number} location the location of the shader  (from shader.attributes[ name ])
+*/
+GL.Buffer.prototype.bind = function( location, gl )
+{
+	gl = gl || this.gl;
+
+	gl.bindBuffer( gl.ARRAY_BUFFER, this.buffer );
+	gl.enableVertexAttribArray( location );
+	gl.vertexAttribPointer( location, this.spacing, this.buffer.gl_type, false, 0, 0);
+}
+
+/**
+* unbinds the buffer from an attrib location
+* @method unbind
+* @param {number} location the location of the shader
+*/
+GL.Buffer.prototype.unbind = function( location, gl )
+{
+	gl = gl || this.gl;
+	gl.disableVertexAttribArray( location );
 }
 
 /**
@@ -4894,17 +5011,35 @@ global.Texture = GL.Texture = function Texture( width, height, options, gl ) {
 	if(options.anisotropic && gl.extensions["EXT_texture_filter_anisotropic"])
 		gl.texParameterf( GL.TEXTURE_2D, gl.extensions["EXT_texture_filter_anisotropic"].TEXTURE_MAX_ANISOTROPY_EXT, options.anisotropic);
 
+	var type = this.type;
 	var pixel_data = options.pixel_data;
 	if(pixel_data && !pixel_data.buffer)
 	{
 		if( this.texture_type == GL.TEXTURE_CUBE_MAP )
 		{
-			for(var i = 0; i < pixel_data.length; ++i)
-				pixel_data[i] = new (this.type == gl.FLOAT ? Float32Array : Uint8Array)( pixel_data[i] );
+			if(pixel_data[0].constructor === Number) //special case, specify just one face and copy it
+			{
+				pixel_data = toTypedArray( pixel_data );
+				pixel_data = [pixel_data,pixel_data,pixel_data,pixel_data,pixel_data,pixel_data]; 
+			}
+			else
+				for(var i = 0; i < pixel_data.length; ++i)
+					pixel_data[i] = toTypedArray( pixel_data[i] );
 		}
 		else
-			pixel_data = new (this.type == gl.FLOAT ? Float32Array : Uint8Array)( pixel_data );
+			pixel_data = toTypedArray( pixel_data );
 		this.data = pixel_data;
+	}
+
+	function toTypedArray( data )
+	{
+		if(data.constructor !== Array)
+			return data;
+		if( type == GL.FLOAT)
+			return new Float32Array( data );
+		if( type == GL.HALF_FLOAT_OES)
+			return new Uint16Array( data );
+		return new Uint8Array( data );
 	}
 
 	//gl.TEXTURE_1D is not supported by WebGL...
@@ -4934,7 +5069,7 @@ global.Texture = GL.Texture = function Texture( width, height, options, gl ) {
 	else if(this.texture_type == GL.TEXTURE_3D)
 	{
 		if(this.gl.webgl_version == 1)
-			throw("TEXTURE_3D not supported in WebGL 1. Enable WebGL 2 in the context by pasing webgl2:true");
+			throw("TEXTURE_3D not supported in WebGL 1. Enable WebGL 2 in the context by passing webgl2:true to the context");
 		if(!options.depth)
 			throw("3d texture depth must be set in the options.depth");
 		gl.texImage3D( GL.TEXTURE_3D, 0, this.internalFormat, width, height, options.depth, 0, this.format, this.type, pixel_data || null );
@@ -5196,7 +5331,7 @@ Texture.prototype.uploadImage = function( image, options )
 * Uploads data to the GPU (data must have the appropiate size)
 * @method uploadData
 * @param {ArrayBuffer} data
-* @param {Object} options [optional] upload options (premultiply_alpha, no_flip, cubemap_face)
+* @param {Object} options [optional] upload options (premultiply_alpha, no_flip, cubemap_face, mipmap_level)
 */
 Texture.prototype.uploadData = function( data, options, skip_mipmaps )
 {
@@ -5206,6 +5341,11 @@ Texture.prototype.uploadData = function( data, options, skip_mipmaps )
 	var gl = this.gl;
 	this.bind();
 	Texture.setUploadOptions(options, gl);
+	var mipmap_level = options.mipmap_level || 0;
+	var width = this.width;
+	var height = this.height;
+	width = width >> mipmap_level; 
+	height = height >> mipmap_level;
 
 	if( this.type == GL.HALF_FLOAT_OES && data.constructor === Float32Array )
 		console.warn("cannot uploadData to a HALF_FLOAT texture from a Float32Array, must be Uint16Array. To upload it we recomment to create a FLOAT texture, upload data there and copy to your HALF_FLOAT.");
@@ -5213,14 +5353,14 @@ Texture.prototype.uploadData = function( data, options, skip_mipmaps )
 	if( this.texture_type == GL.TEXTURE_2D )
 	{
 		if(data.buffer && data.buffer.constructor == ArrayBuffer)
-			gl.texImage2D(this.texture_type, 0, this.format, this.width, this.height, 0, this.format, this.type, data);
+			gl.texImage2D(this.texture_type, mipmap_level, this.format, width, height, 0, this.format, this.type, data);
 		else
-			gl.texImage2D(this.texture_type, 0, this.format, this.format, this.type, data);
+			gl.texImage2D(this.texture_type, mipmap_level, this.format, this.format, this.type, data);
 	}
 	else if( this.texture_type == GL.TEXTURE_3D )
-		gl.texImage3D(this.texture_type, 0, this.format, this.width, this.height, this.depth, 0, this.format, this.type, data);
+		gl.texImage3D( this.texture_type, mipmap_level, this.format, width, height, this.depth >> mipmap_level, 0, this.format, this.type, data);
 	else if( this.texture_type == GL.TEXTURE_CUBE_MAP )
-		gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + (options.cubemap_face || 0), 0, this.format, this.width, this.height, 0, this.format, this.type, data);
+		gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + (options.cubemap_face || 0), mipmap_level, this.format, width, height, 0, this.format, this.type, data);
 	else
 		throw("cannot uploadData for this texture type");
 
@@ -6143,19 +6283,20 @@ Texture.fromMemory = function( width, height, pixels, options) //format in optio
 	Texture.setUploadOptions(options);
 	texture.bind();
 
-	try {
-		gl.texImage2D( gl.TEXTURE_2D, 0, texture.format, width, height, 0, texture.format, texture.type, pixels );
-		texture.width = width;
-		texture.height = height;
-		texture.data = pixels;
-	} catch (e) {
-		if (location.protocol == 'file:') {
-		  throw 'image not loaded for security reasons (serve this page over "http://" instead)';
-		} else {
-		  throw 'image not loaded for security reasons (image must originate from the same ' +
-			'domain as this page or use Cross-Origin Resource Sharing)';
-		}
+	if(pixels.constructor === Array)
+	{
+		if(options.type == gl.FLOAT)
+			pixels = new Float32Array( pixels );
+		else if(options.type == GL.HALF_FLOAT || options.type == GL.HALF_FLOAT_OES) 
+			pixels = new Uint16Array( pixels ); //gl.UNSIGNED_SHORT_4_4_4_4 is only for texture that are SHORT per pixel, not per channel!
+		else 
+			pixels = new Uint8Array( pixels );
 	}
+
+	gl.texImage2D( gl.TEXTURE_2D, 0, texture.format, width, height, 0, texture.format, texture.type, pixels );
+	texture.width = width;
+	texture.height = height;
+	texture.data = pixels;
 	if (options.minFilter && options.minFilter != gl.NEAREST && options.minFilter != gl.LINEAR) {
 		gl.generateMipmap(gl.TEXTURE_2D);
 		texture.has_mipmaps = true;
@@ -6358,11 +6499,11 @@ Texture.generateCubemapCrossFacesInfo = function(width, column)
 * @param {Function} on_complete callback
 * @return {Texture} the texture
 */
-Texture.cubemapFromURL = function(url, options, on_complete) {
+Texture.cubemapFromURL = function( url, options, on_complete ) {
 	options = options || {};
+	options = Object.create(options); //creates a new options using the old one as prototype
 	options.texture_type = gl.TEXTURE_CUBE_MAP;
 	var texture = options.texture || new GL.Texture(1, 1, options);
-	options = Object.create(options); //creates a new options using the old one as prototype
 
 	texture.bind();
 	Texture.setUploadOptions(options);
@@ -6393,12 +6534,13 @@ Texture.cubemapFromURL = function(url, options, on_complete) {
 /**
 * returns an ArrayBuffer with the pixels in the texture, they are fliped in Y
 * @method getPixels
+* @param {number} cubemap_face [optional] the index of the cubemap face to read (ignore if texture_2D)
+* @param {number} mipmap level [optional, default is 0]
 * @return {ArrayBuffer} the data ( Uint8Array, Uint16Array or Float32Array )
 */
-Texture.prototype.getPixels = function( cubemap_face, legacy_parameter )
+Texture.prototype.getPixels = function( cubemap_face, mipmap_level )
 {
-	if(legacy_parameter !== undefined)
-		throw("legacy parameter, not longer supported");
+	mipmap_level = mipmap_level || 0;
 	var gl = this.gl;
 	var v = gl.getViewport();
 	var old_fbo = gl.getParameter( gl.FRAMEBUFFER_BINDING );
@@ -6416,12 +6558,14 @@ Texture.prototype.getPixels = function( cubemap_face, legacy_parameter )
 
 	var buffer = null;
 
-	gl.viewport(0, 0, this.width, this.height);
+	var width = this.width >> mipmap_level;
+	var height = this.height >> mipmap_level;
+	gl.viewport(0, 0, width, height);
 
 	if(this.texture_type == gl.TEXTURE_2D)
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.handler, 0);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.handler, mipmap_level);
 	else if(this.texture_type == gl.TEXTURE_CUBE_MAP)
-		gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + (cubemap_face || 0), this.handler, 0);
+		gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + (cubemap_face || 0), this.handler, mipmap_level);
 
 	var channels = this.format == gl.RGB ? 3 : 4;
 	channels = 4; //WEBGL DOES NOT SUPPORT READING 3 CHANNELS ONLY, YET...
@@ -6429,13 +6573,13 @@ Texture.prototype.getPixels = function( cubemap_face, legacy_parameter )
 	//type = gl.UNSIGNED_BYTE; //WEBGL DOES NOT SUPPORT READING FLOAT seems, YET... 23/5/18 now it seems it does now
 
 	if(type == gl.UNSIGNED_BYTE)
-		buffer = new Uint8Array( this.width * this.height * channels );
+		buffer = new Uint8Array( width * height * channels );
 	else if(type == GL.HALF_FLOAT || type == GL.HALF_FLOAT_OES) //previously half float couldnot be read
-		buffer = new Uint16Array( this.width * this.height * channels ); //gl.UNSIGNED_SHORT_4_4_4_4 is only for texture that are SHORT per pixel, not per channel!
+		buffer = new Uint16Array( width * height * channels ); //gl.UNSIGNED_SHORT_4_4_4_4 is only for texture that are SHORT per pixel, not per channel!
 	else 
-		buffer = new Float32Array( this.width * this.height * channels );
+		buffer = new Float32Array( width * height * channels );
 
-	gl.readPixels( 0,0, this.width, this.height, channels == 3 ? gl.RGB : gl.RGBA, type, buffer ); //NOT SUPPORTED FLOAT or RGB BY WEBGL YET
+	gl.readPixels( 0,0, width, height, channels == 3 ? gl.RGB : gl.RGBA, type, buffer ); //NOT SUPPORTED FLOAT or RGB BY WEBGL YET
 
 	//restore
 	gl.bindFramebuffer(gl.FRAMEBUFFER, old_fbo );
@@ -6996,6 +7140,7 @@ FBO.prototype.update = function( skip_disable )
 
 	var target = gl.webgl_version == 1 ? gl.FRAMEBUFFER : gl.DRAW_FRAMEBUFFER;
 
+	//detach anything bindede
 	gl.framebufferRenderbuffer( target, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null );
 	gl.framebufferRenderbuffer( target, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, null );
 	//detach color too?
@@ -7102,7 +7247,7 @@ FBO.prototype.update = function( skip_disable )
 
 	//check completion
 	var complete = gl.checkFramebufferStatus( target );
-	if(complete !== gl.FRAMEBUFFER_COMPLETE)
+	if(complete !== gl.FRAMEBUFFER_COMPLETE) //36054: GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT
 		throw("FBO not complete: " + complete);
 
 	//restore state
@@ -7185,6 +7330,28 @@ FBO.prototype.delete = function()
 {
 	gl.deleteFramebuffer( this.handler );
 	this.handler = null;
+}
+
+//WebGL 1.0 support for certaing FBOs is not very clear and can crash sometimes
+FBO.supported = {};
+//type: gl.FLOAT, format: gl.RGBA
+FBO.testSupport = function( type, format ) {
+	var name = type +":" + format;
+	if( FBO.supported[ name ] != null );
+		return FBO.supported[ name ];
+
+	var tex = new GL.Texture(1,1,{ format: format, type: type });
+	try
+	{
+		var fbo = new GL.FBO([tex]);
+	}
+	catch (err)
+	{
+		console.warn("This browser WEBGL implementation doesn't support this FBO format: " + GL.reverse[type] + " " + GL.reverse[format] );
+		return FBO.supported[ name ] = false;
+	}
+	FBO.supported[ name ] = true;
+	return true;
 }
 
 
@@ -7794,9 +7961,9 @@ Shader.prototype.drawBuffers = function( vertexBuffers, indexBuffer, mode, range
 
 Shader._instancing_arrays = [];
 
-Shader.prototype.drawInstanced = function( mesh, primitive, indices, instanced_uniforms, range_start, range_length )
+Shader.prototype.drawInstanced = function( mesh, primitive, indices, instanced_uniforms, range_start, range_length, num_intances )
 {
-	if(range_length == 0)
+	if(range_length === 0)
 		return;
 
 	//bind buffers
@@ -7839,7 +8006,7 @@ Shader.prototype.drawInstanced = function( mesh, primitive, indices, instanced_u
 	//range rendering
 	var offset = 0; //in bytes
 	if(range_start > 0) //render a polygon range
-		offset = range_start; //in bytes (Uint16 == 2 bytes)
+		offset = range_start; 
 
 	if (indexBuffer)
 		length = indexBuffer.buffer.length - offset;
@@ -7921,6 +8088,9 @@ Shader.prototype.drawInstanced = function( mesh, primitive, indices, instanced_u
 		}
 		index+=1;
 	}
+
+	if( num_intances )
+		batch_length = num_intances;
 
 	if( ext ) //webgl 1.0
 	{
@@ -8747,6 +8917,7 @@ GL.create = function(options) {
 	gl.extensions["EXT_frag_depth"] = gl.getExtension("EXT_frag_depth") || gl.getExtension("WEBKIT_EXT_frag_depth") || gl.getExtension("MOZ_EXT_frag_depth");
 	gl.extensions["WEBGL_lose_context"] = gl.getExtension("WEBGL_lose_context") || gl.getExtension("WEBKIT_WEBGL_lose_context") || gl.getExtension("MOZ_WEBGL_lose_context");
 	gl.extensions["ANGLE_instanced_arrays"] = gl.getExtension("ANGLE_instanced_arrays");
+	gl.extensions["disjoint_timer_query"] = gl.getExtension("EXT_disjoint_timer_query");
 
 	//for float textures
 	gl.extensions["OES_texture_float_linear"] = gl.getExtension("OES_texture_float_linear");
@@ -8785,6 +8956,15 @@ GL.create = function(options) {
 	}
 	else
 		console.warn("Creating LiteGL context over the same canvas twice");
+
+	//reverse names helper (assuming no names repeated)
+	if(!GL.reverse)
+	{
+		GL.reverse = {}; 
+		for(var i in gl)
+			if( gl[i] && gl[i].constructor === Number )
+				GL.reverse[ gl[i] ] = i;
+	}
 	
 	//just some checks
 	if(typeof(glMatrix) == "undefined")
@@ -9157,7 +9337,6 @@ GL.create = function(options) {
 
 	function onkey(e, prevent_default)
 	{
-		//trace(e);
 		e.eventType = e.type; //type cannot be overwritten, so I make a clone to allow me to overwrite
 
 		var target_element = e.target.nodeName.toLowerCase();
@@ -9255,6 +9434,8 @@ GL.create = function(options) {
 		var gamepads = getGamepads.call(navigator);
 		if(!this.gamepads)
 			this.gamepads = [];
+
+		//iterate to generate events
 		for(var i = 0; i < 4; i++)
 		{
 			var gamepad = gamepads[i]; //current state
@@ -9262,18 +9443,18 @@ GL.create = function(options) {
 			if(gamepad && !skip_mapping)
 				addGamepadXBOXmapping(gamepad);
 
-			var old_gamepad = this.gamepads[i]; //old state
-
 			//launch connected gamepads events
-			if(!old_gamepad && gamepad)
+			if(gamepad && !gamepad.prev_buttons)
 			{
+				gamepad.prev_buttons = new Uint8Array(32);
 				var event = new CustomEvent("gamepadconnected");
 				event.eventType = event.type;
-				event.gamepad = gamepad;;
+				event.gamepad = gamepad;
 				if(this.ongamepadconnected)
 					this.ongamepadconnected(event);
 				LEvent.trigger(gl,"gamepadconnected",event);
 			}
+			/*
 			else if(old_gamepad && !gamepad)
 			{
 				var event = new CustomEvent("gamepaddisconnected");
@@ -9283,6 +9464,7 @@ GL.create = function(options) {
 					this.ongamepaddisconnected(event);
 				LEvent.trigger(gl,"gamepaddisconnected",event);
 			}
+			*/
 
 			//seek buttons changes to trigger events
 			if(gamepad)
@@ -9290,8 +9472,10 @@ GL.create = function(options) {
 				for(var j = 0; j < gamepad.buttons.length; ++j)
 				{
 					var button = gamepad.buttons[j];
-					if( button.pressed && (!old_gamepad || !old_gamepad.buttons[j].pressed))
+					button.was_pressed = false;
+					if( button.pressed && !gamepad.prev_buttons[j] )
 					{
+						button.was_pressed = true;
 						var event = new CustomEvent("gamepadButtonDown");
 						event.eventType = event.type;
 						event.button = button;
@@ -9301,7 +9485,7 @@ GL.create = function(options) {
 							gl.onbuttondown(event);
 						LEvent.trigger(gl,"buttondown",event);
 					}
-					else if( !button.pressed && (old_gamepad && old_gamepad.buttons[j].pressed))
+					else if( !button.pressed && gamepad.prev_buttons[j] )
 					{
 						var event = new CustomEvent("gamepadButtonUp");
 						event.eventType = event.type;
@@ -9312,6 +9496,8 @@ GL.create = function(options) {
 							gl.onbuttondown(event);
 						LEvent.trigger(gl,"buttonup",event);
 					}
+
+					gamepad.prev_buttons[j] = button.pressed ? 1 : 0;
 				}
 			}
 		}
@@ -9322,7 +9508,7 @@ GL.create = function(options) {
 	function addGamepadXBOXmapping(gamepad)
 	{
 		//xbox controller mapping
-		var xbox = { axes:[], buttons:{}, hat: ""};
+		var xbox = gamepad.xbox || { axes:[], buttons:{}, hat: ""};
 		xbox.axes["lx"] = gamepad.axes[0];
 		xbox.axes["ly"] = gamepad.axes[1];
 		xbox.axes["rx"] = gamepad.axes[2];

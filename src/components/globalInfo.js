@@ -4,6 +4,7 @@ function GlobalInfo(o)
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
 	this._render_settings = null;
 	this._textures = {};
+	this._irradiance = null; //in SH form of float32(3*9)
 
 	if(o)
 		this.configure(o);
@@ -48,6 +49,26 @@ Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 	enumerable: true
 });
 
+
+GlobalInfo.prototype.computeIrradiance = function( position, near, far, background_color )
+{
+	if(!LS.Components.IrradianceCache)
+		throw("cannot compute, no LS.Components.IrradianceCache component found");
+
+	position = position || vec3.create();
+	var texture_size = LS.Components.IrradianceCache.capture_cubemap_size; //default is 64
+	var texture_settings = { type: gl.FLOAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
+	var cubemap = new GL.Texture( LS.Components.IrradianceCache.final_cubemap_size, LS.Components.IrradianceCache.final_cubemap_size, texture_settings );
+	var temp_cubemap = new GL.Texture( texture_size, texture_size, texture_settings );
+	LS.Components.IrradianceCache.captureIrradiance( position, cubemap, render_settings, near || 0.1, far || 1000, background_color || [0,0,0,1], true, temp_cubemap );
+	this._irradiance = LS.Components.IrradianceCache.computeSH( cubemap );
+	console.log( "IR factor", this._irradiance );
+}
+
+GlobalInfo.prototype.clearIrradiance = function()
+{
+	this._irradiance = null;
+}
 
 GlobalInfo.icon = "mini-icon-bg.png";
 GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);

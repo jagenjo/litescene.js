@@ -278,7 +278,6 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 		if(old.value === undefined)
 			continue;
 
-
 		//validate (avoids error if we change the type of a uniform and try to reassign a value)
 		if( !old.internal && shader && !new_prop.is_texture ) //textures are not validated (because they are samplers, not values)
 		{
@@ -308,6 +307,8 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 			new_prop.value = old.value;
 	}
 }
+
+ShaderMaterial.nolights_vec4 = new Float32Array([0,0,0,1]);
 
 //called from LS.Renderer when rendering an instance
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings, pass )
@@ -382,6 +383,27 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
 
+	if( pass == SHADOW_PASS )
+	{
+		//global flags (like environment maps, irradiance, etc)
+		block_flags |= LS.Shaders.firstpass_block.flag_mask;
+		block_flags |= LS.Shaders.lastpass_block.flag_mask;
+		//extract shader compiled
+		var shader = shader_code.getShader( pass.name, block_flags ); //pass.name
+		if(!shader)
+			return false;
+
+		//assign
+		shader.uniformsArray( [ scene._uniforms, camera._uniforms, renderer_uniforms, this._uniforms, instance.uniforms ] ); //removed, why this was in?? light ? light._uniforms : null, 
+
+		//render
+		gl.disable( gl.BLEND );
+		instance.render( shader, this._primitive != -1 ? this._primitive : undefined );
+		renderer._rendercalls += 1;
+	
+		return true;
+	}
+
 	//add flags related to lights
 	var lights = null;
 
@@ -404,7 +426,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		block_flags |= LS.Shaders.lastpass_block.flag_mask;
 
 		//extract shader compiled
-		var shader = shader_code.getShader( pass.name, block_flags );
+		var shader = shader_code.getShader( null, block_flags ); //pass.name
 		if(!shader)
 		{
 			//var shader = shader_code.getShader( "surface", block_flags );
@@ -414,10 +436,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		//assign
 		shader.uniformsArray( [ scene._uniforms, camera._uniforms, renderer_uniforms, this._uniforms, instance.uniforms ] ); //removed, why this was in?? light ? light._uniforms : null, 
 
-		shader.setUniform( "u_light_info", LS.ZEROS4 );
+		shader.setUniform( "u_light_info", ShaderMaterial.nolights_vec4 );
 		if( ignore_lights )
 			shader.setUniform( "u_ambient_light", LS.ONES );
-
 
 		//render
 		instance.render( shader, this._primitive != -1 ? this._primitive : undefined );

@@ -69,7 +69,11 @@ function enableWebGLCanvas( canvas, options )
 		extra_macros.EXTRA_PROJECTION = "";
 
 	//used to store font atlas textures (images are not stored here)
-	var textures = {};
+	var textures = gl.WebGLCanvas.textures_atlas = {};
+	gl.WebGLCanvas.clearAtlas = function()
+	{
+		textures = gl.WebGLCanvas.textures_atlas = {};
+	}
 
 	var vertex_shader = "\n\
 			precision highp float;\n\
@@ -245,15 +249,9 @@ function enableWebGLCanvas( canvas, options )
 
 	ctx.transform = function(a,b,c,d,e,f) {
 		var m = tmp_mat3;
-		m[0] = a;
-		m[1] = c;
-		m[2] = e;
-		m[3] = b;
-		m[4] = d;
-		m[5] = f;
-		m[6] = 0;
-		m[7] = 0;
-		m[8] = 1;
+
+        m[0] = a; m[1] = b; m[2] = 0; m[3] = c; m[4] = d; m[5] = 0; m[6] = e; m[7] = f; m[8] = 1; //fix
+		//m[0] = a; m[1] = c;	m[2] = e; m[3] = b;	m[4] = d; m[5] = f;	m[6] = 0; m[7] = 0;	m[8] = 1;
 
 		mat3.multiply( this._matrix, this._matrix, m );
 		global_angle = Math.atan2( this._matrix[0], this._matrix[1] );
@@ -261,15 +259,10 @@ function enableWebGLCanvas( canvas, options )
 
 	ctx.setTransform = function(a,b,c,d,e,f) {
 		var m = this._matrix;
-		m[0] = a;
-		m[1] = c;
-		m[2] = e;
-		m[3] = b;
-		m[4] = d;
-		m[5] = f;
-		m[6] = 0;
-		m[7] = 0;
-		m[8] = 1;
+
+		m[0] = a; m[1] = b; m[2] = 0; m[3] = c; m[4] = d; m[5] = 0; m[6] = e; m[7] = f; m[8] = 1; //fix
+		//m[0] = a; m[1] = c;	m[2] = e; m[3] = b;	m[4] = d; m[5] = f;	m[6] = 0; m[7] = 0;	m[8] = 1;
+
 		//this._matrix.set([a,c,e,b,d,f,0,0,1]);
 		global_angle = Math.atan2( this._matrix[0], this._matrix[1] );
 	}
@@ -366,7 +359,7 @@ function enableWebGLCanvas( canvas, options )
 		return getTexture( img );
 	}
 
-	//to craete gradients
+	//to create gradients
 	function WebGLCanvasGradient(x,y,x2,y2)
 	{
 		this.id = (ctx._last_gradient_id++) % ctx._max_gradients;
@@ -1276,13 +1269,13 @@ function enableWebGLCanvas( canvas, options )
 				{
 					ctx.save();
 					ctx.beginPath();
-					ctx.rect( Math.floor(x)+0.5,Math.floor(y)+0.5, char_size-2, char_size-2 );
+					ctx.rect( Math.floor(x)+0.5, Math.floor(y)+0.5, char_size-2, char_size-2 );
 					ctx.clip();
-					ctx.fillText(character,Math.floor(x+char_size*xoffset),Math.floor(y+char_size+yoffset),char_size);
+					ctx.fillText( character, Math.floor(x+char_size*xoffset), Math.floor(y+char_size+yoffset), char_size );
 					ctx.restore();
 				}
 				else
-					ctx.fillText(character,Math.floor(x+char_size*xoffset),Math.floor(y+char_size+yoffset),char_size);
+					ctx.fillText( character, Math.floor(x+char_size*xoffset), Math.floor(y+char_size+yoffset), char_size );
 				x += char_size; //cannot pack chars closer because rendering points, no quads
 				if((x + char_size) > canvas.width)
 				{
@@ -1314,9 +1307,7 @@ function enableWebGLCanvas( canvas, options )
 			}
 		}
 
-		//console.log("Font Atlas Generated:", ((getTime() - now)*0.001).toFixed(2),"s");
-
-		texture = GL.Texture.fromImage( canvas, { magFilter: imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST, minFilter: imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST, premultiply_alpha: false, anisotropic: 8 } );
+		texture = GL.Texture.fromImage( canvas, { format: gl.ALPHA, magFilter: imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST, minFilter: imageSmoothingEnabled ? gl.NEAREST_MIPMAP_LINEAR : gl.NEAREST, premultiply_alpha: false, anisotropic: 8 } );
 		texture.info = info; //font generation info
 
 		return textures[texture_name] = texture;
