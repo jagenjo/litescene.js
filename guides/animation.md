@@ -6,41 +6,41 @@ This is used for the skeletal animation but it can be used to animate other prop
 
 The animation system works by storing tracks with keyframes that contain the time and the values to apply.
 
-When we want to apply an animation we use the PlayAnimation component.
+When we want to apply an animation we use the ```LS.Components.PlayAnimation``` component.
 
 You can use the WebGLStudio timeline editor to edit any animation in the scene.
 
 ## The LS.Animation and LS.Animation.Take ##
 
-Animations are stored in a big container called ```LS.Animation``` that behaves like a Resource.
+Animations are stored in a big container called ```LS.Animation``` that behaves like a ```LS.Resource``` (can be stored, loaded, etc).
 
 Instead of storing the tracks per animation, we store them in another container called ```LS.Animation.Take```, this way one animation could contain several subanimations (takes).
 
-By default we usually use the take named 'default'.
+By default every animation has a take called 'default'.
 
 Every ```LS.Animation.Take``` contains a list of ```LS.Animation.Track```, and the total duration of the take.
 
-Because every scene usually needs to have an animation track, to make it easier, you can have one global animation track stored in the scene itself (it is referenced as ```"@scene"``` animation).
+Because every scene usually needs to have an animation, to make it easier, you can have one global animation stored with the scene itself (it is referenced as ```"@scene"``` animation) without having to use an external one.
 
-To create it you can call ```LS.GlobalScene.createAnimation()``` and this track will be saved with the scene.
+To create it you can call ```LS.GlobalScene.createAnimation()``` and this animation will be saved with the scene.
 
 ## LS.Animation.Track
 
 Every track contains all the info to modify one property of the scene as time goes.
 
-They contain a locator, a list of keyframes, and information about the interpolation method.
+They contain a **locator**, a list of keyframes, and information about the interpolation method.
 
 There are two types of track:
-- Property tracks: every keyframe represents a value to assign to the property specified in the track locator.
-- Event tracks: every keyframe contain info about an event or a function call that should be performed 
+- **Property tracks**: every keyframe represents a value to assign to the property specified in the track locator.
+- **Event tracks**: every keyframe contain info about an event or a function call that should be performed 
 
 ## Locators
 
 Every track has a string called the locator which identifies the property in the scene affected by the animation track.
 
-Some examples: ```root/transform/x```,```mynode/MeshRenderer/enabled``` or ```@NODE-f7cac-865-1ecf644-5\@COMP-f7cac-865-1ecf644-3\size```.
+Some examples of locators are: ```root/transform/x```,```mynode/MeshRenderer/enabled``` or ```@NODE-f7cac-865-1ecf644-5\@COMP-f7cac-865-1ecf644-3\size```.
 
-The locator is usually (but not always) divided in three parts:
+The locator is usually (but not always) divided in three parts separated by a slash character:
  * **node**: could be the UID or the name of the node
  * **component**: to specify which component, could be the UID or the class name of the component (in case of multiple only the first found is used)
  * **property**: to specify the name of the property
@@ -57,7 +57,7 @@ node.transform.getLocator("x"); //returns "@NODE_uid/@COMP-uid/x"
 
 There are two ways to play an animation track, through the ```LS.Components.PlayAnimation``` component, or programatically calling the ```applyTracks``` methods in the ```LS.Animation.Take```.
 
-Use the PlayAnimation if you just want to launch an animation. If you want to play several an interpolate then we recommend calling the applyTracks manually.
+Use the ```LS.Components.PlayAnimation``` if you just want to launch an animation. If you want to play several an interpolate then we recommend calling the method take.applyTracks manually.
 
 ## PlayAnimation
 
@@ -73,7 +73,7 @@ Also to avoid sudden changes when switching from one animation to another, it al
 
 ## applyTracks
 
-The ```LS.Animation.Take``` contains a method called ```applyTracks```. This method receives several parameters:
+The ```LS.Animation.Take``` contains a method called ```applyTracks```. This method is in charge of sample the value from every track and apply it to every property referenced in their locators. It receives several parameters:
 
 ```js
 var animation = LS.ResourcesManager.getResource("myanim.wbin"); //assuming is already loaded

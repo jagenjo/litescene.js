@@ -251,9 +251,13 @@ You must add also the path to the component in the deploy_files.txt inside the u
 
 If you have created your own component class from within an script and by any reason when loading a scene the system cannot find the component specified in the JSON of the scene (maybe the component changed its name, or the script wasnt loaded), the data wont be lost an it will be stored aside so it stays in the JSON if you serialize that again.
 
+## Inspector 
+
+When creating a Component that could be configured from the WebGLStudio editor, you usually want to have control over the widgets that represent every data that the user can modify. There are some specific methods you can use to control how a component is displayed in the editor. Check [this guide about editor interface](custom_editor_interfaces.md)
+
 ## Useful API methods
 
-To know better some useful system methods, check [this guide about API methods in LiteScene](https://github.com/jagenjo/litescene.js/blob/master/guides/useful_API_methods.md)
+To know better some useful system methods, check [this guide about API methods in LiteScene](useful_API_methods.md)
 
 ## Documentation ##
 
