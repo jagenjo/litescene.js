@@ -122,30 +122,11 @@ The ```ShaderMaterial``` and the ```StandardMaterial```
 
 #### ShaderMaterial rendering
 
-This is the simplest one, when rendering an instance that has a ShaderMaterial applied to it then Renderer will call the render function of the material.
-The ShaderMaterial finds the Shader, passes the uniforms, and calls the render method in the RenderInstance.
-
-This is the most straight forward shader, but it has some limitations. Because the shader assumes a fixed set of parameters, when rendering this instance it wont be affected by the surroundings.
-
-This means that it won't have shadows or be affected by the scene lights or get any modifiers applied to it (like Skinning or Morphing)  unless the shader specifies it.
-
-But it is the one that has the best performance.
+This is the base material for rendering. It fetches a ShaderCode from the ResourcesManager, compiles the shader taking into account the enabled ShaderBlocks and then does a multipass rendering based on the number of lights affecting the object.
 
 #### StandardMaterial rendering
 
-Sometimes we don't want to take care of the shader, we just want to specify some properties and let the render pipeline decide which is the best shader to apply.
-
-In those situations the system has to be aware of the different modifiers to apply to the shader based in all the actors in the scene, like:
-1. lights: because lights could have different type, or have shadowmaps, or projector textures, or special shaders.
-1. nodes: because nodes can have deformers applied to them (skinning, morph targets)
-1. scene: because maybe there is a clipping plane
-1. renderer: because maybe the renderer is using an special pipeline
-
-All those actors can affect the shader, changing its behaviour. So an StandardMaterial cannot have an specific shader applied to it.
-
-Instead, the render pipeline computes the shader based on all those actors and renders the RenderInstance with the final shader.
-
-This process is slower than using a fixed shader but ensures that people with no knowledge about shader coding can create its own materials easily.
+Sometimes you do not want to worry about the shader applied to a material, you just want to change the properties and expect the system to select a matching shader. In that case your must use StandardMaterial, it internally uses a ShaderMaterial but it builds a shader dynamically based on the properties of the material.
 
 ### Multi light rendering
 
