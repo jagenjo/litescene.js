@@ -25,7 +25,6 @@ Object.defineProperty( GlobalInfo.prototype, 'textures', {
 	enumerable: true
 });
 
-
 Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 	set: function( v )
 	{
@@ -60,6 +59,7 @@ GlobalInfo.prototype.computeIrradiance = function( position, near, far, backgrou
 	var texture_settings = { type: gl.FLOAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
 	var cubemap = new GL.Texture( LS.Components.IrradianceCache.final_cubemap_size, LS.Components.IrradianceCache.final_cubemap_size, texture_settings );
 	var temp_cubemap = new GL.Texture( texture_size, texture_size, texture_settings );
+	//renders scene to cubemap
 	LS.Components.IrradianceCache.captureIrradiance( position, cubemap, render_settings, near || 0.1, far || 1000, background_color || [0,0,0,1], true, temp_cubemap );
 	this._irradiance = LS.Components.IrradianceCache.computeSH( cubemap );
 	console.log( "IR factor", this._irradiance );

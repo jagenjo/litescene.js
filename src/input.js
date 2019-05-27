@@ -1,4 +1,4 @@
-
+///@INFO: BASE
 /**
 * Input is a static class used to read the input state (keyboard, mouse, gamepad, etc)
 *
@@ -6,6 +6,12 @@
 * @namespace LS
 * @constructor
 */
+
+//help info:
+//mouse.mousey 0 is top
+//mouse.canvasy 0 is bottom
+//mouse.y is mousey
+
 var Input = {
 	mapping: {
 
@@ -189,8 +195,12 @@ var Input = {
 			e.canvasy = e.mousey = (gl.canvas.height * 0.5)|0;
 		}
 
-		this.Mouse.x = this.Mouse.mousex = this.Mouse.canvasx = e.canvasx;
-		this.Mouse.y = this.Mouse.mousex = this.Mouse.canvasy = e.canvasy;
+		//mousey is from top
+		this.Mouse.x = this.Mouse.mousex = e.mousex;
+		this.Mouse.y = this.Mouse.mousey = e.mousey;
+		//canvasy is from bottom
+		this.Mouse.canvasx = e.canvasx;
+		this.Mouse.canvasy = e.canvasy;
 
 		//save it in case we need to know where was the last click
 		if(e.type == "mousedown")
@@ -239,16 +249,17 @@ var Input = {
 		return this.Mouse.isInsideRect(x,y,width,height,flip_y);
 	},
 
-	isEventInRect: function( e, area, offset )
+	//uses {x,y}, instead of mousex,mousey
+	isEventInRect: function( mouse, area, offset )
 	{
-		var offsetx = 0;
-		var offsety = 0;
+		var x = mouse.mousex != null ? mouse.mousex : mouse.x;
+		var y = mouse.mousey != null ? mouse.mousey : mouse.y;
 		if(offset)
 		{
-			offsetx = offset[0];
-			offsety = offset[1];
+			x -= offset[0];
+			y -= offset[1];
 		}
-		return ( (e.mousex - offsetx) >= area[0] && (e.mousex - offsetx) < (area[0] + area[2]) && (e.mousey - offsety) >= area[1] && (e.mousey - offsety) < (area[1] + area[3]) );
+		return ( x >= area[0] && x < (area[0] + area[2]) && y >= area[1] && y < (area[1] + area[3]) );
 	},
 
 	/**

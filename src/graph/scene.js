@@ -117,7 +117,7 @@ if(typeof(LiteGraph) != "undefined")
 	global.LGraphSceneNode = function()
 	{
 		this.properties = { node_id: "" };
-		this.size = [100,20];
+		this.size = [140,30];
 		this._node = null;
 	}
 
@@ -338,7 +338,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.properties = { material_id: "", node_id: "" };
 		this.addInput("Material","Material");
-		this.size = [100,20];
+		this.size = [100,30];
 	}
 
 	LGraphMaterial.title = "Material";
@@ -535,20 +535,38 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("in");
 		this.addOutput("out");
-		this.size = [80,20];
-		this.properties = {locator:""};
+		this.properties = { locator: "", cache_object: true };
+		this._locator_split = null;
+		this._locator_info = null;
 	}
 
 	LGraphLocatorProperty.title = "Property";
 	LGraphLocatorProperty.desc = "A property of a node or component of the scene specified by its locator string";
 
-	LGraphLocatorProperty.prototype.getLocatorInfo = function()
+	LGraphLocatorProperty.prototype.getLocatorInfo = function( force )
 	{
-		var locator = this.properties.locator;
-		if(!this.properties.locator)
-			return;
-		var scene = this.graph._scene || LS.GlobalScene;
-		return this._locator_info = scene.getPropertyInfo( locator );
+		if(!this._locator_split)
+			return null;
+		if( !force && this.properties.cache_object && this._locator_info )
+			return this._locator_info;
+		if( !this.graph )
+			return null;
+		var scene = this.graph._scene || LS.GlobalScene; //subgraphs do not have an scene assigned
+		this._locator_info = scene.getPropertyInfoFromPath( this._locator_split );
+		if(this._locator_info && this.inputs && this.inputs.length)
+			this.inputs[0].type = this._locator_info.type;
+		return this._locator_info;
+	}
+
+	LGraphLocatorProperty.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name == "locator")
+		{
+			if( value )
+				this._locator_split = value.split("/");
+			else
+				this._locator_split = null;
+		}
 	}
 
 	LGraphLocatorProperty.prototype.onAction = function( action, param )
@@ -558,13 +576,19 @@ if(typeof(LiteGraph) != "undefined")
 		LSQ.setFromInfo( info, !LSQ.getFromInfo( info ) );
 	}
 
+	LGraphLocatorProperty.prototype.getTitle = function()
+	{
+		if( (!this.title || this.title == LGraphLocatorProperty.title) && this._locator_info)
+			return this._locator_info.name;
+		return this.title || LGraphLocatorProperty.title;
+	}
+
 	LGraphLocatorProperty.prototype.onExecute = function()
 	{
 		var info = this.getLocatorInfo();
 
 		if(info && info.target)
 		{
-			this.title = info.name;
 			if( this.inputs.length && this.inputs[0].link !== null )
 				LSQ.setFromInfo( info, this.getInputData(0) );
 			if( this.outputs.length && this.outputs[0].links && this.outputs[0].links.length )
@@ -572,20 +596,26 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
-	/*
-	LGraphLocatorProperty.prototype.onGetInputs = function()
+	LGraphLocatorProperty.prototype.onInspect = function( inspector )
 	{
-		var r = [["Toggle",LiteGraph.ACTION]];
-		var info = this.getLocatorInfo();
+		var info = this.getLocatorInfo(true);
 		if(!info)
-			return r;
-		var properties = LS.getObjectProperties( info.target );
-		for(var i in properties)
-			r.push([i,properties[i]]);
-		return r;
+			return;
+		inspector.addSeparator();
+		var type = info.type;
+		var var_info = null;
+		if( info.target && info.target.constructor["@" + info.name] )
+		{
+			var_info = info.target.constructor["@" + info.name];
+			if( var_info.widget )
+				type = var_info.widget;
+			else if( var_info.type )
+				type = var_info.type;
+		}
+		inspector.add( type, info.name, info.value, { callback: function(v){
+			LS.setObjectProperty( info.target, info.name, v );
+		}});
 	}
-	LGraphLocatorProperty.prototype.onGetOutputs = LGraphLocatorProperty.prototype.onGetInputs;
-	*/
 
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
 

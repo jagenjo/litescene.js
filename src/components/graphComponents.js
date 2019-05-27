@@ -8,6 +8,8 @@ if(typeof(LGraphTexture) != "undefined")
 	LGraphTexture.getTexturesContainer = function() { return LS.ResourcesManager.textures };
 	LGraphTexture.storeTexture = function(name, texture) { return LS.ResourcesManager.registerResource(name, texture); };
 	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
+
+	LiteGraph.allow_scripts = LS.allow_scripts; //let graphs that contain code execute it
 }
 
 
@@ -18,6 +20,18 @@ if( typeof(LGAudio) != "undefined" )
 		return LS.RM.getFullURL(url);
 	}
 }
+
+if(typeof(LiteGraph) != "undefined")
+{
+	LiteGraph.onNodeTypeReplaced = function(name,ctor,old)
+	{
+		var comps = LS.GlobalScene.findNodeComponents( LS.Components.GraphComponent );
+		comps = comps.concat( LS.GlobalScene.findNodeComponents( LS.Components.FXGraphComponent ) );
+		for(var i = 0; i < comps.length; ++i)
+			comps[i].graph.checkNodeTypes();
+	}
+}
+
 
 
 /**
@@ -31,6 +45,7 @@ function GraphComponent(o)
 	this.enabled = true;
 	this.from_file = false;
 	this.force_redraw = false;
+	this.title = null;
 	this._filename = null;
 	this._graphcode = null;
 	this._graph_properties = null;
@@ -132,6 +147,8 @@ GraphComponent.prototype.configure = function(o)
 		this.uid = o.uid;
 	if(o.enabled != null)
 		this.enabled = !!o.enabled;
+	if(o.title)
+		this.title = String(o.title);
 	if(o.from_file)
 	{
 		this.from_file = true;
@@ -183,6 +200,7 @@ GraphComponent.prototype.serialize = function()
 	return { 
 		object_class: "GraphComponent",
 		uid: this.uid,
+		title: this.title,
 		enabled: this.enabled, 
 		from_file: this.from_file,
 		force_redraw: this.force_redraw , 
@@ -227,6 +245,7 @@ GraphComponent.prototype.onAddedToScene = function( scene )
 	LEvent.bind( scene , "beforeRenderMainPass", this.onSceneEvent, this );
 	LEvent.bind( scene , "beforeRenderScene", this.onSceneEvent, this );
 	LEvent.bind( scene , "update", this.onSceneEvent, this );
+	LEvent.bind( scene , "renderGUI", this.onRenderGUI, this );
 }
 
 GraphComponent.prototype.onRemovedFromScene = function( scene )
@@ -240,6 +259,7 @@ GraphComponent.prototype.onRemovedFromScene = function( scene )
 	LEvent.unbind( scene, "beforeRenderMainPass", this.onSceneEvent, this );
 	LEvent.unbind( scene, "beforeRenderScene", this.onSceneEvent, this );
 	LEvent.unbind( scene, "update", this.onSceneEvent, this );
+	LEvent.unbind( scene, "renderGUI", this.onRenderGUI, this );
 }
 
 GraphComponent.prototype.onResourceRenamed = function( old_name, new_name, resource )
@@ -247,6 +267,13 @@ GraphComponent.prototype.onResourceRenamed = function( old_name, new_name, resou
 	if( old_name == this._filename)
 		this._filename = new_name;
 	this._graph.sendEventToAllNodes("onResourceRenamed",[ old_name, new_name, resource ]);
+}
+
+GraphComponent.prototype.onRenderGUI = function( e, canvas )
+{
+	if(!this.enabled)
+		return;
+	this._graph.sendEventToAllNodes("onRenderGUI", canvas );
 }
 
 GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
@@ -412,6 +439,12 @@ GraphComponent.prototype.setPropertyValue = function( property, value )
 	}
 }
 
+GraphComponent.prototype.getComponentTitle = function()
+{
+	return this.title;
+}
+
+
 LS.registerComponent( GraphComponent );
 
 
@@ -428,6 +461,7 @@ function FXGraphComponent(o)
 	this.frame = new LS.RenderFrameContext();
 	this.use_antialiasing = false;
 	this.use_node_camera = false;
+	this.title = null;
 
 	if(typeof(LGraphTexture) == "undefined")
 		return console.error("Cannot use FXGraphComponent if LiteGraph is not installed");
@@ -512,6 +546,8 @@ FXGraphComponent.prototype.configure = function(o)
 
 	this.uid = o.uid;
 	this.enabled = !!o.enabled;
+	if(o.title)
+		this.title = o.title;
 	this.use_antialiasing = !!o.use_antialiasing;
 	this.use_node_camera = !!o.use_node_camera;
 	if(o.frame)
@@ -564,6 +600,7 @@ FXGraphComponent.prototype.serialize = function()
 		object_class: "FXGraphComponent",
 		uid: this.uid,
 		enabled: this.enabled,
+		title: this.title,
 		use_antialiasing: this.use_antialiasing,
 		frame: this.frame.serialize(),
 		use_node_camera: this.use_node_camera,
@@ -619,6 +656,7 @@ FXGraphComponent.prototype.setPropertyValue = function( property, value )
 	}
 }
 
+FXGraphComponent.prototype.onRenderGUI = GraphComponent.prototype.onRenderGUI;
 
 FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
 {
@@ -642,6 +680,16 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 		return;
 	this._graph._scenenode = null;
 	//LEvent.unbind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
+}
+
+FXGraphComponent.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene , "renderGUI", this.onRenderGUI, this );
+}
+
+FXGraphComponent.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene , "renderGUI", this.onRenderGUI, this );
 }
 
 FXGraphComponent.prototype.onAddedToScene = function( scene )
@@ -804,6 +852,8 @@ FXGraphComponent.prototype.applyGraph = function()
 	//execute graph
 	this._graph.runStep(1, LS.catch_exceptions );
 }
+
+FXGraphComponent.prototype.getComponentTitle = GraphComponent.prototype.getComponentTitle;
 
 LS.registerComponent( FXGraphComponent );
 

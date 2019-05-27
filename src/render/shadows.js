@@ -1,6 +1,6 @@
-///@INFO: UNCOMMON
-//Shadows are complex because there are too many combinations: SPOT/DIRECT,OMNI or DEPTH_COMPONENT,RGBA or HARD,SOFT,VARIANCE
-//It would be nice to have classes that can encapsulate different shadowmap algorithms so they are easy to develop
+///@INFO: COMMON
+// Shadows are complex because there are too many combinations: SPOT/DIRECT,OMNI or DEPTH_COMPONENT,RGBA or HARD,SOFT,VARIANCE
+// This class encapsulates the shadowmap generation, and also how how it is read from the shader (using a ShaderBlock)
 
 function Shadowmap( light )
 {
@@ -13,7 +13,7 @@ function Shadowmap( light )
 	this.texture = null;
 	this.fbo = null;
 	this.shadow_params = vec4.create(); //1.0 / this.texture.width, this.shadow_bias, this.near, closest_far
-	this.reverse_faces = true; 
+	this.reverse_faces = false; //improves quality in some cases
 }
 
 Shadowmap.use_shadowmap_depth_texture = true;

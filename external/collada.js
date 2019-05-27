@@ -604,8 +604,11 @@ global.Collada = _collada = {
 			{
 				//warning: I detected that some nodes could have a controller but they are not referenced here.  ??
 				var url = xmlchild.getAttribute("url");
-				url = url.replace(/\./gi,"\\."); //url could contain dots which invalidates the querySelector, we need to escape them
-				var xmlcontroller = this._xmlroot.querySelector("controller" + url);
+				var safe_url = url.replace(/\./gi,"\\."); //url could contain dots which invalidates the querySelector, we need to escape them
+				var xmlcontroller = this._xmlroot.querySelector("controller" + safe_url);
+
+				if( !xmlcontroller ) //search manually because ids could have invalid characters that querySelector doesnt support
+					xmlcontroller = this.searchManuallyById( "library_controllers", url.substr(1) ); //remove #
 
 				if(!xmlcontroller)
 				{
@@ -702,6 +705,20 @@ global.Collada = _collada = {
 		}
 		this.readNodeInfo( xmlnode2, scene, level+1, flip);
 		return true;
+	},
+
+	searchManuallyById: function( base_node_selector, id )
+	{
+		var xmlbase = this._xmlroot.querySelector( base_node_selector );
+		if(!xmlbase)
+			return null;
+		for(var i = 0; i < xmlbase.childNodes.length; ++i)
+		{
+			var xmlchild = xmlbase.childNodes[i];
+			if( xmlchild.id == id )
+				return xmlchild;
+		}
+		return null;
 	},
 
 	//if you want to rename some material names

@@ -620,6 +620,14 @@ Scene.getScriptsList = function( scene, allow_local, full_paths )
 //reloads external and global scripts taking into account if they come from wbins
 Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
 {
+	if(!LS.allow_scripts)
+	{
+		console.error("LiteScene.allow_scripts is set to false, so scripts imported into this scene are ignored.");
+		if(on_complete)
+			on_complete();
+		return;
+	}
+
 	//get a list of scripts (they cannot be fullpaths)
 	scripts = scripts || LS.Scene.getScriptsList( this, true );
 

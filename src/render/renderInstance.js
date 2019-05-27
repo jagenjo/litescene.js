@@ -379,6 +379,23 @@ RenderInstance.prototype.addShaderBlock = function( block, uniforms )
 	return this.shader_blocks.length - 1;
 }
 
+RenderInstance.prototype.disableShaderBlock = function( block )
+{
+	if( ! (block.flag_mask & this.shader_block_flags) )
+		return;
+
+	for(var i = 0; i < this.shader_blocks.length; ++i)
+	{
+		if(!this.shader_blocks[i])
+			continue;
+		if( this.shader_blocks[i].block !== block )
+			continue;
+		this.shader_block_flags &= ~block.flag_mask;
+		break;
+	}
+}
+
+
 RenderInstance.prototype.removeShaderBlock = function( block )
 {
 	if( ! (block.flag_mask & this.shader_block_flags) )

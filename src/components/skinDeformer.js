@@ -119,13 +119,11 @@ SkinDeformer.prototype.getBoneMatrices = function( ref_mesh )
 		}
 		else
 		{
-			var inv = joint[1];
+			var inv = joint[1]; //inv bind pose pf the joint
 			mat4.multiply( m, mat, inv );
-			if(ref_mesh.bind_matrix)
+			if(ref_mesh.bind_matrix) //not sure why this
 				mat4.multiply( m, m, ref_mesh.bind_matrix);
 		}
-
-		//bones[i].push( m ); //multiply by the inv bindpose matrix
 	}
 
 	return bones;
@@ -289,8 +287,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		this.applySoftwareSkinning( mesh, this._skinned_mesh );
 
 		RI.setMesh( this._skinned_mesh, this.primitive );
-		//remove the flags to avoid recomputing shaders
-		RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
+		this.disableSkinning( RI );
 	}
 
 	if( this.ignore_transform )

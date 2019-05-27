@@ -55,8 +55,6 @@ Transform.UP = vec3.fromValues(0,1,0);
 Transform.RIGHT = vec3.fromValues(1,0,0);
 Transform.FRONT = vec3.fromValues(0,0,-1);
 
-
-Transform["@position"] = { type: "position"};
 Transform["@rotation"] = { type: "quat"};
 Transform["@data"] = { type: "trans10" };
 

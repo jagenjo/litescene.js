@@ -819,7 +819,6 @@ const float Pi = 3.141592654;\n\
 const float CosineA0 = Pi;\n\
 const float CosineA1 = (2.0 * Pi) / 3.0;\n\
 const float CosineA2 = Pi * 0.25;\n\
-#define float3 vec3\n\
 \n\
 struct SH9\n\
 {\n\
@@ -828,10 +827,10 @@ struct SH9\n\
 \n\
 struct SH9Color\n\
 {\n\
-    float3 c[9];\n\
+    vec3 c[9];\n\
 };\n\
 \n\
-void SHCosineLobe(in float3 dir, out SH9 sh)\n\
+void SHCosineLobe(in vec3 dir, out SH9 sh)\n\
 {\n\
 	\n\
     // Band 0\n\
@@ -854,14 +853,14 @@ void SHCosineLobe(in float3 dir, out SH9 sh)\n\
 	\n\
 }\n\
 \n\
-vec3 ComputeSHIrradiance(in float3 normal, in SH9Color radiance)\n\
+vec3 ComputeSHIrradiance(in vec3 normal, in SH9Color radiance)\n\
 {\n\
     // Compute the cosine lobe in SH, oriented about the normal direction\n\
     SH9 shCosine;\n\
 	SHCosineLobe(normal, shCosine);\n\
 	\n\
     // Compute the SH dot product to get irradiance\n\
-    float3 irradiance = vec3(0.0);\n\
+    vec3 irradiance = vec3(0.0);\n\
 	#ifndef SH_LOW\n\
 	const int num = 9;\n\
 	#else\n\
@@ -873,7 +872,7 @@ vec3 ComputeSHIrradiance(in float3 normal, in SH9Color radiance)\n\
     return irradiance;\n\
 }\n\
 \n\
-float3 ComputeSHDiffuse(in float3 normal, in SH9Color radiance)\n\
+vec3 ComputeSHDiffuse(in vec3 normal, in SH9Color radiance)\n\
 {\n\
     // Diffuse BRDF is albedo / Pi\n\
     return ComputeSHIrradiance( normal, radiance ) * (1.0 / Pi);\n\
@@ -901,7 +900,6 @@ void main()\n\
 	gl_FragColor = vec4( max( vec3(0.001), ComputeSHDiffuse( normal, coeffs ) ), 1.0 );\n\
 }\n\
 ";
-
 
 var cubemapFaceNormals = [
   [ [0, 0, -1], [0, -1, 0], [1, 0, 0] ],  // posx
@@ -1134,7 +1132,35 @@ var irradiance_disabled_code = "\n\
 	}\n\
 ";
 
+//uniform grid
 var irradiance_block = new LS.ShaderBlock("applyIrradiance");
 ShaderMaterial.irradiance_block = irradiance_block;
 irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
 irradiance_block.register( true );
+
+var irradiance_single_code = "\n\
+	uniform vec3 u_sh_coeffs[9];\n\
+	" + IrradianceCache.include_code + "\n\
+	void applyIrradiance( in Input IN, in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
+	{\n\
+		SH9Color coeffs;\n\
+		coeffs.c[0] = u_sh_coeffs[0];\n\
+		coeffs.c[1] = u_sh_coeffs[1];\n\
+		coeffs.c[2] = u_sh_coeffs[2];\n\
+		coeffs.c[3] = u_sh_coeffs[3];\n\
+		coeffs.c[4] = u_sh_coeffs[4];\n\
+		coeffs.c[5] = u_sh_coeffs[5];\n\
+		coeffs.c[6] = u_sh_coeffs[6];\n\
+		coeffs.c[7] = u_sh_coeffs[7];\n\
+		coeffs.c[8] = u_sh_coeffs[8];\n\
+		vec3 irr_color = ComputeSHDiffuse( o.Normal, coeffs );\n\
+		FINALLIGHT.Ambient = o.Ambient * irr_color;\n\
+	}\n\
+";
+
+//single
+var irradiance_single_block = new LS.ShaderBlock("applyIrradianceSingle");
+ShaderMaterial.irradiance_single_block = irradiance_single_block;
+irradiance_single_block.addCode( GL.FRAGMENT_SHADER, irradiance_single_code, irradiance_disabled_code );
+irradiance_single_block.register( true );
+

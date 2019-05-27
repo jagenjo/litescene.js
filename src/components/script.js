@@ -258,7 +258,7 @@ Script.prototype.processCode = function( skip_events, reset_state )
 		}
 	}
 
-	if(!this._root || LS.Script.block_execution )
+	if( !this._root || LS.Script.block_execution || !LS.allow_scripts )
 		return true;
 
 	//unbind old stuff

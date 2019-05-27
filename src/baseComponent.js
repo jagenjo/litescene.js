@@ -260,7 +260,7 @@ BaseComponent.prototype.getPropertyInfoFromPath = function( path )
 		}
 	}
 
-	if(v === undefined && this[ varname ] === undefined )
+	if( v === undefined && Object.hasOwnProperty( this, varname ) )//this[ varname ] === undefined )
 		return null;
 
 	//if we dont have a value yet then take it directly from the object

@@ -64,6 +64,7 @@ var LS = {
 	_uid_prefix: "@", //WARNING: must be one character long
 	debug: false, //enable to see verbose output
 	allow_static: true, //used to disable static instances in the editor
+	allow_scripts: true, //if true, then Script components and Graphs can contain code
 
 	//for HTML GUI
 	_gui_element: null,

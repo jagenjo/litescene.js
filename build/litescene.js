@@ -895,6 +895,7 @@ var LS = {
 	_uid_prefix: "@", //WARNING: must be one character long
 	debug: false, //enable to see verbose output
 	allow_static: true, //used to disable static instances in the editor
+	allow_scripts: true, //if true, then Script components and Graphs can contain code
 
 	//for HTML GUI
 	_gui_element: null,
@@ -2621,7 +2622,7 @@ var Network = {
 
 LS.Network = Network;
 ///@FILE:../src/input.js
-
+///@INFO: BASE
 /**
 * Input is a static class used to read the input state (keyboard, mouse, gamepad, etc)
 *
@@ -2629,6 +2630,12 @@ LS.Network = Network;
 * @namespace LS
 * @constructor
 */
+
+//help info:
+//mouse.mousey 0 is top
+//mouse.canvasy 0 is bottom
+//mouse.y is mousey
+
 var Input = {
 	mapping: {
 
@@ -2812,8 +2819,12 @@ var Input = {
 			e.canvasy = e.mousey = (gl.canvas.height * 0.5)|0;
 		}
 
-		this.Mouse.x = this.Mouse.mousex = this.Mouse.canvasx = e.canvasx;
-		this.Mouse.y = this.Mouse.mousex = this.Mouse.canvasy = e.canvasy;
+		//mousey is from top
+		this.Mouse.x = this.Mouse.mousex = e.mousex;
+		this.Mouse.y = this.Mouse.mousey = e.mousey;
+		//canvasy is from bottom
+		this.Mouse.canvasx = e.canvasx;
+		this.Mouse.canvasy = e.canvasy;
 
 		//save it in case we need to know where was the last click
 		if(e.type == "mousedown")
@@ -2862,16 +2873,17 @@ var Input = {
 		return this.Mouse.isInsideRect(x,y,width,height,flip_y);
 	},
 
-	isEventInRect: function( e, area, offset )
+	//uses {x,y}, instead of mousex,mousey
+	isEventInRect: function( mouse, area, offset )
 	{
-		var offsetx = 0;
-		var offsety = 0;
+		var x = mouse.mousex != null ? mouse.mousex : mouse.x;
+		var y = mouse.mousey != null ? mouse.mousey : mouse.y;
 		if(offset)
 		{
-			offsetx = offset[0];
-			offsety = offset[1];
+			x -= offset[0];
+			y -= offset[1];
 		}
-		return ( (e.mousex - offsetx) >= area[0] && (e.mousex - offsetx) < (area[0] + area[2]) && (e.mousey - offsety) >= area[1] && (e.mousey - offsety) < (area[1] + area[3]) );
+		return ( x >= area[0] && x < (area[0] + area[2]) && y >= area[1] && y < (area[1] + area[3]) );
 	},
 
 	/**
@@ -3554,9 +3566,10 @@ var GUI = {
 	* @param {Boolean} value if the checkbox is on or off
 	* @param {String|GL.Texture} content an string or image in case the checkbox is on
 	* @param {String|GL.Texture} content_off an string or image in case the checkbox is off 
+	* @param {Boolean} circle if true the checkboxes are circles instead of squares
 	* @return {Boolean} the current state of the checkbox (will be different from value if it was pressed)
 	*/
-	Toggle: function( area, value, content, content_off )
+	Toggle: function( area, value, content, content_off, circle )
 	{
 		if(!area)
 			throw("No area");
@@ -3596,13 +3609,23 @@ var GUI = {
 			{
 				ctx.fillStyle = this.GUIStyle.color;
 				ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+				ctx.textAlign = "left";
 				ctx.fillText( content, area[0] + margin + this._offset[0], area[1] + area[3] * 0.75 + this._offset[1]);
 
 				var w = area[3] * 0.6;
 				ctx.fillStyle = this.GUIStyle.backgroundColor;
-				ctx.fillRect( area[0] + area[2] - margin*1.5 - w + this._offset[0], area[1] + margin*0.5 + this._offset[1], w+margin, area[3] - margin );
+				var x = area[0] + area[2] - margin*1.5 - w + this._offset[0];
+				var y = area[1] + margin*0.5 + this._offset[1];
+
+				if(circle)
+					ctx.fillCircle( x, y, area[3] - margin );
+				else
+					ctx.fillRect(x, y, w+margin, area[3] - margin );
 				ctx.fillStyle = value ? this.GUIStyle.selected : "#000";
-				ctx.fillRect( area[0] + area[2] - margin - w + this._offset[0], area[1] + margin + this._offset[1], w, area[3] - margin*2 );
+				if(circle)
+					ctx.fillCircle( area[0] + area[2] - margin - w + this._offset[0], area[1] + margin + this._offset[1], area[3] - margin*2 );
+				else
+					ctx.fillRect( area[0] + area[2] - margin - w + this._offset[0], area[1] + margin + this._offset[1], w, area[3] - margin*2 );
 			}
 		}
 
@@ -3777,6 +3800,7 @@ var GUI = {
 			ctx.fillStyle = this.GUIStyle.color;
 			ctx.font = (area[3]*0.5).toFixed(0) + "px " + this.GUIStyle.font;
 			ctx.fillText( value.toFixed(2), area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.7 + this._offset[1] );
+			ctx.textAlign = "left";
 		}
 
 		return value;
@@ -7486,36 +7510,6 @@ Material.prototype.registerMaterial = function(name)
 Material.prototype.getCategory = function()
 {
 	return this.category || "Material";
-}
-
-Material.prototype.updatePreview = function(size, options)
-{
-	options = options || {};
-
-	var res = {};
-	this.getResources(res);
-
-	for(var i in res)
-	{
-		var resource = LS.ResourcesManager.resources[i];
-		if(!resource)
-		{
-			console.warn("Cannot generate preview with resources missing.");
-			return null;
-		}
-	}
-
-	if(LS.GlobalScene.info.textures.environment)
-		options.environment = LS.GlobalScene.info.textures.environment;
-
-	size = size || 256;
-	var preview = LS.Renderer.renderMaterialPreview( this, size, options, this._preview );
-	if(!preview)
-		return;
-
-	this._preview = preview;
-	if(preview.toDataURL)
-		this._preview_url = preview.toDataURL("image/png");
 }
 
 Material.prototype.getLocator = function()
@@ -11909,7 +11903,7 @@ BaseComponent.prototype.getPropertyInfoFromPath = function( path )
 		}
 	}
 
-	if(v === undefined && this[ varname ] === undefined )
+	if( v === undefined && Object.hasOwnProperty( this, varname ) )//this[ varname ] === undefined )
 		return null;
 
 	//if we dont have a value yet then take it directly from the object
@@ -12401,6 +12395,11 @@ function Animation(o)
 		this.configure(o);
 }
 
+LS.Classes["Animation"] = LS.Animation = Animation;
+
+//Animation.KEYFRAME_ANIMATION = 0;
+//Animation.CLIP_ANIMATION = 1;
+
 Animation.EXTENSION = "wbin";
 Animation.DEFAULT_SCENE_NAME = "@scene";
 Animation.DEFAULT_DURATION = 10;
@@ -12674,8 +12673,6 @@ Animation.prototype.assignToNode = function(node)
 }
 
 
-
-LS.Classes["Animation"] = LS.Animation = Animation;
 
 /**  
 * Represents a set of animations
@@ -12957,82 +12954,6 @@ Take.prototype.optimizeTracks = function()
 	return num;
 }
 
-//assigns the same translation to all nodes?
-Take.prototype.matchTranslation = function( root )
-{
-	var num = 0;
-
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-
-		if(track._type != "trans10" && track._type != "mat4")
-			continue;
-
-		if( !track._property_path || !track._property_path.length )
-			continue;
-
-		var node = LSQ.get( track._property_path[0], root );
-		if(!node)
-			continue;
-		
-		var position = node.transform.position;
-		var offset = track.value_size + 1;
-
-		var data = track.data;
-		var num_samples = data.length / offset;
-		if(track._type == "trans10")
-		{
-			for(var j = 0; j < num_samples; ++j)
-				data.set( position, j*offset + 1 );
-		}
-		else if(track._type == "mat4")
-		{
-			for(var j = 0; j < num_samples; ++j)
-				data.set( position, j*offset + 1 + 12 ); //12,13,14 contain translation
-		}
-
-		num += 1;
-	}
-
-	return num;
-}
-
-/**
-* If this is a transform track it removes translation and scale leaving only rotations
-* @method onlyRotations
-*/
-Take.prototype.onlyRotations = function()
-{
-	var num = 0;
-
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-		if( track.onlyRotations() )
-			num += 1;
-	}
-	return num;
-}
-
-/**
-* removes scaling in transform tracks
-* @method removeScaling
-*/
-Take.prototype.removeScaling = function()
-{
-	var num = 0;
-
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-		if( track.removeScaling() )
-			num += 1;
-	}
-	return num;
-}
-
-
 Take.prototype.setInterpolationToAllTracks = function( interpolation )
 {
 	var num = 0;
@@ -13048,30 +12969,7 @@ Take.prototype.setInterpolationToAllTracks = function( interpolation )
 	return num;
 }
 
-Take.prototype.trimTracks = function( start, end )
-{
-	var num = 0;
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-		num += track.trim( start, end );
-	}
 
-	this.duration = end - start;
-
-	return num;
-}
-
-Take.prototype.stretchTracks = function( duration )
-{
-	if(duration <= 0 || this.duration == 0)
-		return 0;
-	var scale = duration / this.duration;
-	this.duration *= scale;
-	for(var i = 0; i < this.tracks.length; ++i)
-		this.tracks[i].stretch( scale );
-	return this.tracks.length;
-}
 
 
 Animation.Take = Take;
@@ -13135,6 +13033,8 @@ function Track(o)
 	if(o)
 		this.configure(o);
 }
+
+Animation.Track = Track;
 
 Track.FRAMERATE = 30;
 
@@ -13310,6 +13210,44 @@ Track.prototype.convertIDtoName = function( use_basename, root )
 	return true;
 }
 
+/**
+* If the track used matrices, it transform them to position,quaternion and scale (10 floats, also known as trans10)
+* this makes working with animations faster
+* @method convertToTrans10
+*/
+Track.prototype.convertToTrans10 = function()
+{
+	if( this.value_size != 16 )
+		return false;
+
+	//convert samples
+	if(!this.packed_data)
+		this.packData();
+
+	//convert locator
+	var path = this.property.split("/");
+	if( path[ path.length - 1 ] != "matrix") //from "nodename/matrix" to "nodename/transform/data"
+		return false;
+
+	path[ path.length - 1 ] = "Transform/data";
+	this.property = path.join("/");
+	this.type = "trans10";
+	this.value_size = 10;
+	var temp = new Float32Array(10);
+
+	var data = this.data;
+	var num_samples = data.length / 17;
+	for(var k = 0; k < num_samples; ++k)
+	{
+		var sample = data.subarray(k*17+1,(k*17)+17);
+		LS.Transform.fromMatrix4ToTransformData( sample, temp );
+		data[k*11] = data[k*17]; //timestamp
+		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
+	}
+	this.data = new Float32Array( data.subarray(0,num_samples*11) );
+
+	return true;
+}
 
 /**
 * Adds a new keyframe from the current value of that property
@@ -13857,6 +13795,18 @@ Track.prototype.getPropertyInfo = function( scene )
 }
 
 /**
+* returns the node to which this track is affecting (in case it is a node, if it is something else it returns null)
+* @method getPropertyNode
+* @param {LS.Scene} scene [optional]
+* @return {LS.SceneNode} the node being affected by the track
+*/
+Track.prototype.getPropertyNode = function( scene )
+{
+	return (scene || LS.GlobalScene).getNode( this.property.split("/")[0] );
+}
+
+
+/**
 * returns an array containing N samples for this property over time using the interpolation of the track
 * @method getSampledData
 * @param {Number} start_time when to start sampling
@@ -13882,180 +13832,6 @@ Track.prototype.getSampledData = function( start_time, end_time, num_samples )
 
 	return samples;
 }
-
-/**
-* removes keyframes that are before or after the time range
-* @method trim
-* @param {number} start time
-* @param {number} end time
-*/
-Track.prototype.trim = function( start, end )
-{
-	if(this.packed_data)
-		this.unpackData();
-
-	var size = this.data.length;
-
-	var result = [];
-	for(var i = 0; i < size; ++i)
-	{
-		var d = this.data[i];
-		if(d[0] < start || d[0] > end)
-			continue;
-		d[0] -= start;
-		result.push(d);
-	}
-	this.data = result;
-
-	//changes has been made?
-	if(this.data.length != size)
-		return 1;
-	return 0;
-}
-
-/**
-* Scales the time in every keyframe
-* @method stretch
-* @param {number} scale the sacle to apply to all times
-*/
-Track.prototype.stretch = function( scale )
-{
-	if(this.packed_data)
-		this.unpackData();
-	var size = this.data.length;
-	for(var i = 0; i < size; ++i)
-		this.data[i][0] *= scale; //scale time
-	return 1;
-}
-
-/**
-* If the track used matrices, it transform them to position,quaternion and scale (10 floats, also known as trans10)
-* this makes working with animations faster
-* @method convertToTrans10
-*/
-Track.prototype.convertToTrans10 = function()
-{
-	if( this.value_size != 16 )
-		return false;
-
-	//convert samples
-	if(!this.packed_data)
-		this.packData();
-
-	//convert locator
-	var path = this.property.split("/");
-	if( path[ path.length - 1 ] != "matrix") //from "nodename/matrix" to "nodename/transform/data"
-		return false;
-
-	path[ path.length - 1 ] = "Transform/data";
-	this.property = path.join("/");
-	this.type = "trans10";
-	this.value_size = 10;
-	var temp = new Float32Array(10);
-
-	var data = this.data;
-	var num_samples = data.length / 17;
-	for(var k = 0; k < num_samples; ++k)
-	{
-		var sample = data.subarray(k*17+1,(k*17)+17);
-		LS.Transform.fromMatrix4ToTransformData( sample, temp );
-		data[k*11] = data[k*17]; //timestamp
-		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
-	}
-	this.data = new Float32Array( data.subarray(0,num_samples*11) );
-
-	return true;
-}
-
-/**
-* If this track changes the scale, it forces it to be 1,1,1
-* @method removeScaling
-*/
-Track.prototype.removeScaling = function()
-{
-	var modified = false;
-
-	if(this.type == "matrix")
-	{
-		this.convertToTrans10();
-		modified = true;
-	}
-
-	if( this.type != "trans10" )
-	{
-		if(modified)
-			return true;
-	}
-
-	var num_keyframes = this.getNumberOfKeyframes();
-	for( var j = 0; j < num_keyframes; ++j )
-	{
-		var k = this.getKeyframe(j);
-		k[1][7] = k[1][8] = k[1][9] = 1; //set scale equal to 1
-	}
-	return true;
-}
-
-
-Track.prototype.onlyRotations = (function()
-{
-	var temp = new Float32Array(10);
-	var temp_quat = new Float32Array(4);
-
-	return function(){
-
-		//convert locator
-		var path = this.property.split("/");
-		var last_path = path[ path.length - 1 ];
-		var old_size = this.value_size;
-		if( this.type != "mat4" && this.type != "trans10" )
-			return false;
-
-		if(last_path == "matrix")
-			path[ path.length - 1 ] = "Transform/rotation";
-		else if (last_path == "data")
-			path[ path.length - 1 ] = "rotation";
-
-		//convert samples
-		if(!this.packed_data)
-			this.packData();
-
-		this.property = path.join("/");
-		var old_type = this._type;
-		this.type = "quat";
-		this.value_size = 4;
-
-		var data = this.data;
-		var num_samples = data.length / (old_size+1);
-
-		if( old_type == "mat4" )
-		{
-			for(var k = 0; k < num_samples; ++k)
-			{
-				var sample = data.subarray(k*17+1,(k*17)+17);
-				var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
-				temp_quat.set( temp.subarray(3,7) );
-				data[k*5] = data[k*17]; //timestamp
-				data.set( temp_quat, k*5+1); //overwrite inplace (because the output is less big that the input)
-			}
-		}
-		else if( old_type == "trans10" )
-		{
-			for(var k = 0; k < num_samples; ++k)
-			{
-				var sample = data.subarray(k*11+4,(k*11)+8);
-				data[k*5] = data[k*11]; //timestamp
-				data.set( sample, k*5+1); //overwrite inplace (because the output is less big that the input)
-			}
-		}
-		
-		this.data = new Float32Array( data.subarray(0,num_samples*5) );
-		return true;
-	};
-})();
-
-
-Animation.Track = Track;
 
 Animation.interpolateLinear = function( a, b, t, result, type, value_size, track )
 {
@@ -15828,7 +15604,7 @@ if(typeof(LiteGraph) != "undefined")
 	global.LGraphSceneNode = function()
 	{
 		this.properties = { node_id: "" };
-		this.size = [100,20];
+		this.size = [140,30];
 		this._node = null;
 	}
 
@@ -16049,7 +15825,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.properties = { material_id: "", node_id: "" };
 		this.addInput("Material","Material");
-		this.size = [100,20];
+		this.size = [100,30];
 	}
 
 	LGraphMaterial.title = "Material";
@@ -16246,20 +16022,38 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("in");
 		this.addOutput("out");
-		this.size = [80,20];
-		this.properties = {locator:""};
+		this.properties = { locator: "", cache_object: true };
+		this._locator_split = null;
+		this._locator_info = null;
 	}
 
 	LGraphLocatorProperty.title = "Property";
 	LGraphLocatorProperty.desc = "A property of a node or component of the scene specified by its locator string";
 
-	LGraphLocatorProperty.prototype.getLocatorInfo = function()
+	LGraphLocatorProperty.prototype.getLocatorInfo = function( force )
 	{
-		var locator = this.properties.locator;
-		if(!this.properties.locator)
-			return;
-		var scene = this.graph._scene || LS.GlobalScene;
-		return this._locator_info = scene.getPropertyInfo( locator );
+		if(!this._locator_split)
+			return null;
+		if( !force && this.properties.cache_object && this._locator_info )
+			return this._locator_info;
+		if( !this.graph )
+			return null;
+		var scene = this.graph._scene || LS.GlobalScene; //subgraphs do not have an scene assigned
+		this._locator_info = scene.getPropertyInfoFromPath( this._locator_split );
+		if(this._locator_info && this.inputs && this.inputs.length)
+			this.inputs[0].type = this._locator_info.type;
+		return this._locator_info;
+	}
+
+	LGraphLocatorProperty.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name == "locator")
+		{
+			if( value )
+				this._locator_split = value.split("/");
+			else
+				this._locator_split = null;
+		}
 	}
 
 	LGraphLocatorProperty.prototype.onAction = function( action, param )
@@ -16269,13 +16063,19 @@ if(typeof(LiteGraph) != "undefined")
 		LSQ.setFromInfo( info, !LSQ.getFromInfo( info ) );
 	}
 
+	LGraphLocatorProperty.prototype.getTitle = function()
+	{
+		if( (!this.title || this.title == LGraphLocatorProperty.title) && this._locator_info)
+			return this._locator_info.name;
+		return this.title || LGraphLocatorProperty.title;
+	}
+
 	LGraphLocatorProperty.prototype.onExecute = function()
 	{
 		var info = this.getLocatorInfo();
 
 		if(info && info.target)
 		{
-			this.title = info.name;
 			if( this.inputs.length && this.inputs[0].link !== null )
 				LSQ.setFromInfo( info, this.getInputData(0) );
 			if( this.outputs.length && this.outputs[0].links && this.outputs[0].links.length )
@@ -16283,20 +16083,26 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
-	/*
-	LGraphLocatorProperty.prototype.onGetInputs = function()
+	LGraphLocatorProperty.prototype.onInspect = function( inspector )
 	{
-		var r = [["Toggle",LiteGraph.ACTION]];
-		var info = this.getLocatorInfo();
+		var info = this.getLocatorInfo(true);
 		if(!info)
-			return r;
-		var properties = LS.getObjectProperties( info.target );
-		for(var i in properties)
-			r.push([i,properties[i]]);
-		return r;
+			return;
+		inspector.addSeparator();
+		var type = info.type;
+		var var_info = null;
+		if( info.target && info.target.constructor["@" + info.name] )
+		{
+			var_info = info.target.constructor["@" + info.name];
+			if( var_info.widget )
+				type = var_info.widget;
+			else if( var_info.type )
+				type = var_info.type;
+		}
+		inspector.add( type, info.name, info.value, { callback: function(v){
+			LS.setObjectProperty( info.target, info.name, v );
+		}});
 	}
-	LGraphLocatorProperty.prototype.onGetOutputs = LGraphLocatorProperty.prototype.onGetInputs;
-	*/
 
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
 
@@ -17668,32 +17474,116 @@ LiteGraph.registerNodeType("texture/depthaware_upscale", LGraphDepthAwareUpscale
 ///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
+	LiteGraph.CORNER_TOP_LEFT = 0;
+	LiteGraph.CORNER_TOP_RIGHT = 1;
+	LiteGraph.CORNER_BOTTOM_LEFT = 2;
+	LiteGraph.CORNER_BOTTOM_RIGHT = 3;
+	LiteGraph.CORNER_TOP_CENTER = 4;
+	LiteGraph.CORNER_BOTTOM_CENTER = 5;
+
+	var corner_options = { type:"enum", values:{ 
+		"top-left": LiteGraph.CORNER_TOP_LEFT, 
+		"top-right": LiteGraph.CORNER_TOP_RIGHT,
+		"bottom-left": LiteGraph.CORNER_BOTTOM_LEFT,
+		"bottom-right": LiteGraph.CORNER_BOTTOM_RIGHT,
+		"top-center": LiteGraph.CORNER_TOP_CENTER,
+		"bottom-center": LiteGraph.CORNER_BOTTOM_CENTER
+	}};
+
+	function positionToArea( position, corner, area )
+	{
+		var x = position[0];
+		var y = position[1];
+
+		switch( corner )
+		{
+			case LiteGraph.CORNER_TOP_RIGHT: x = gl.canvas.width - x; break;
+			case LiteGraph.CORNER_BOTTOM_LEFT: y = gl.canvas.height - y; break;
+			case LiteGraph.CORNER_BOTTOM_RIGHT: x = gl.canvas.width - x; y = gl.canvas.height - y; break;
+			case LiteGraph.CORNER_TOP_CENTER: x = gl.canvas.width * 0.5; break;
+			case LiteGraph.CORNER_BOTTOM_CENTER: x = gl.canvas.width * 0.5; y = gl.canvas.height - y; break;
+			case LiteGraph.CORNER_TOP_LEFT:
+			default:
+		}
+
+		area[0] = x;
+		area[1] = y;
+	}
+
 	//special kind of node
+	function LGraphGUIPanel()
+	{
+		this.properties = { enabled: true, title: "", color: [0.1,0.1,0.1], opacity: 0.7, titlecolor: [0,0,0], position: [10,10], size: [300,200], rounding: 8, corner: LiteGraph.CORNER_TOP_LEFT };
+		this._pos = vec2.create();
+		this._color = vec4.create();
+		this._titlecolor = vec4.create();
+	}
+
+	LGraphGUIPanel.title = "GUIPanel";
+	LGraphGUIPanel.desc = "renders a rectangle on webgl canvas";
+	LGraphGUIPanel.priority = -1; //render first
+
+	LGraphGUIPanel["@corner"] = corner_options;
+	LGraphGUIPanel["@color"] = { type:"color" };
+	LGraphGUIPanel["@titlecolor"] = { type:"color" };
+	LGraphGUIPanel["@opacity"] = { widget:"slider", min:0,max:1 };
+
+	LGraphGUIPanel.prototype.onRenderGUI = function()
+	{ 
+		var ctx = window.gl;
+		if(!ctx || !this.properties.enabled)
+			return;
+
+		this._color.set( this.properties.color || [0.1,0.1,0.1] );
+		this._color[3] = this.properties.opacity;
+		ctx.fillColor = this._color;
+		positionToArea( this.properties.position, this.properties.corner, this._pos );
+		gl.disable( gl.DEPTH_TEST );
+		gl.enable( gl.BLEND );
+		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		var rounding = Math.min(15,this.properties.rounding);
+		if(rounding > 0)
+		{
+			ctx.beginPath();
+			ctx.roundRect( this._pos[0], this._pos[1], this.properties.size[0], this.properties.size[1], rounding, rounding );
+			ctx.fill();
+		}
+		else
+			ctx.fillRect( this._pos[0], this._pos[1], this.properties.size[0], this.properties.size[1] );
+
+		if(this.properties.title)
+		{
+			this._titlecolor.set( this.properties.titlecolor || [0.3,0.3,0.3] );
+			this._titlecolor[3] = this.properties.opacity;
+			ctx.fillColor = this._titlecolor;
+			if(rounding > 0)
+			{
+				ctx.beginPath();
+				ctx.roundRect( this._pos[0], this._pos[1], this.properties.size[0], 30, rounding, 0 );
+				ctx.fill();
+			}
+			else
+				ctx.fillRect( this._pos[0], this._pos[1], this.properties.size[0], 30 );
+			ctx.fillColor = [0.8,0.8,0.8,this.properties.opacity];
+			ctx.font = "20px Arial";
+			ctx.fillText( this.properties.title, 10 + this._pos[0],24 + this._pos[1]);
+		}
+	}
+
+	LiteGraph.registerNodeType("gui/panel", LGraphGUIPanel );
+
 	function LGraphGUIText()
 	{
 		this.addInput("text");
-		this.properties = { text: "", font: "", color: [1,1,1,1], position: [20,20], corner: LGraphGUIText.CORNER_TOP_LEFT };
+		this.properties = { enabled: true, text: "", font: "", color: [1,1,1,1], precision: 3, position: [20,20], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._pos = vec2.create();
+		this._text = "";
 	}
 
 	LGraphGUIText.title = "GUIText";
 	LGraphGUIText.desc = "renders text on webgl canvas";
-	LGraphGUIText.priority = 2; //render at the end
 
-	LGraphGUIText.CORNER_TOP_LEFT = 0;
-	LGraphGUIText.CORNER_TOP_RIGHT = 1;
-	LGraphGUIText.CORNER_BOTTOM_LEFT = 2;
-	LGraphGUIText.CORNER_BOTTOM_RIGHT = 3;
-	LGraphGUIText.CORNER_TOP_CENTER = 4;
-	LGraphGUIText.CORNER_BOTTOM_CENTER = 5;
-
-	LGraphGUIText["@corner"] = { type:"enum", values:{ 
-		"top-left": LGraphGUIText.CORNER_TOP_LEFT, 
-		"top-right": LGraphGUIText.CORNER_TOP_RIGHT,
-		"bottom-left": LGraphGUIText.CORNER_BOTTOM_LEFT,
-		"bottom-right": LGraphGUIText.CORNER_BOTTOM_RIGHT,
-		"top-center": LGraphGUIText.CORNER_TOP_CENTER,
-		"bottom-center": LGraphGUIText.CORNER_BOTTOM_CENTER
-	}};
+	LGraphGUIText["@corner"] = corner_options;
 	LGraphGUIText["@color"] = { type:"color" };
 
 	LGraphGUIText.prototype.onGetInputs = function(){
@@ -17701,52 +17591,268 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LGraphGUIText.prototype.onExecute = function()
+	{
+		var v = this.getInputData(0);
+		if(v != null)
+		{
+			if( v.constructor === Number )
+				this._text = v.toFixed( this.properties.precision );
+			else
+				this._text = String(v);
+		}
+	}
+
+	LGraphGUIText.prototype.onRenderGUI = function()
 	{ 
 		var ctx = window.gl;
 		if(!ctx)
 			return;
 
-		if( !window.LS || !LS.Renderer._current_render_settings || !LS.Renderer._current_render_settings.render_gui )
-			return;
-
-		var enabled = this.getInputData(1);
+		var enabled = this.getInputOrProperty("enabled");
 		if(enabled === false)
 			return;
 
-		var input_text = this.getInputData(0);
-		if( input_text == null )
-			input_text = "";
-
-		if(input_text.constructor === Number )
-			input_text = input_text.toFixed(3);
-
-		var text = (this.properties.text || "") + input_text;
-		if(text === "")
+		var text = (this.properties.text || "") + this._text;
+		if(text == "")
 			return;
 
 		ctx.font = this.properties.font || "20px Arial";
+		ctx.textAlign = "left";
 		ctx.fillColor = this.properties.color || [1,1,1,1];
-		var x = this.properties.position[0];
-		var y = this.properties.position[1];
 
-		switch( this.properties.corner )
-		{
-			case LGraphGUIText.CORNER_TOP_RIGHT: x = gl.canvas.width - x; break;
-			case LGraphGUIText.CORNER_BOTTOM_LEFT: y = gl.canvas.height - y; break;
-			case LGraphGUIText.CORNER_BOTTOM_RIGHT: x = gl.canvas.width - x; y = gl.canvas.height - y; break;
-			case LGraphGUIText.CORNER_TOP_CENTER: x = gl.canvas.width * 0.5; break;
-			case LGraphGUIText.CORNER_BOTTOM_CENTER: x = gl.canvas.width * 0.5; y = gl.canvas.height - y; break;
-			case LGraphGUIText.CORNER_TOP_LEFT:
-			default:
-		}
+		positionToArea( this.properties.position, this.properties.corner, this._pos );
 
 		gl.disable( gl.DEPTH_TEST );
 		gl.enable( gl.BLEND );
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-		ctx.fillText( text, x, y );
+		ctx.fillText( text, this._pos[0], this._pos[1] );
 	}
 
 	LiteGraph.registerNodeType("gui/text", LGraphGUIText );
+
+	function LGraphGUIImage()
+	{
+		this.addInput("","image,canvas,texture");
+		this.properties = { enabled: true, opacity: 1, keep_aspect: true, flipX: false, flipY: false, force_update: false, position: [20,20], size: [300,200], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._pos = vec2.create();
+	}
+
+	LGraphGUIImage.title = "GUIImage";
+	LGraphGUIImage.desc = "renders an image on webgl canvas";
+
+	LGraphGUIImage["@corner"] = corner_options;
+	LGraphGUIImage["@opacity"] = { widget:"slider", min:0,max:1 };
+
+	LGraphGUIImage.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
+	}
+
+	LGraphGUIImage.prototype.onRenderGUI = function()
+	{ 
+		var ctx = window.gl;
+		if(!ctx)
+			return;
+
+		var img = this.getInputData(0);
+		var enabled = this.getInputOrProperty("enabled");
+		if(enabled === false || !img)
+			return;
+
+		if(this.properties.force_update)
+			img.mustUpdate = true;
+
+		positionToArea( this.properties.position, this.properties.corner, this._pos );
+
+		gl.disable( gl.DEPTH_TEST );
+		gl.enable( gl.BLEND );
+		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		var tmp = ctx.globalAlpha;
+		ctx.globalAlpha *= this.properties.opacity;
+		var x = this._pos[0];
+		var y = this._pos[1];
+		var w = this.properties.size[0];
+		var h = this.properties.size[1];
+		if(this.properties.keep_aspect)
+			h = (this.properties.size[0] / img.width) * img.height;
+		if(this.properties.flipX)
+		{
+			x += w;
+			w *= -1;
+		}
+		if(this.properties.flipY)
+		{
+			y += h;
+			h *= -1;
+		}
+		ctx.drawImage( img, x, y, w, h );
+		ctx.globalAlpha = tmp;
+	}
+
+	LiteGraph.registerNodeType("gui/image", LGraphGUIImage );
+
+
+	//special kind of node
+	function LGraphGUISlider()
+	{
+		this.addOutput("v");
+		this.properties = { enabled: true, text: "", min: 0, max: 1, value: 0, position: [20,20], size: [200,40], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+	}
+
+	LGraphGUISlider.title = "GUISlider";
+	LGraphGUISlider.desc = "Renders a slider on the main canvas";
+	LGraphGUISlider["@corner"] = corner_options;
+
+	LGraphGUISlider.prototype.onRenderGUI = function()
+	{
+		if(!this.properties.enabled)
+			return;
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1];
+		this.properties.value = LS.GUI.HorizontalSlider( this._area, Number(this.properties.value), Number(this.properties.min), Number(this.properties.max), true );
+		if(this.properties.text)
+		{
+			gl.textAlign = "right";
+			gl.fillStyle = "#AAA";
+			gl.fillText( this.properties.text, this._area[0] - 20, this._area[1] + this._area[3] * 0.75);
+			gl.textAlign = "left";
+		}
+	}
+
+	LGraphGUISlider.prototype.onExecute = function()
+	{
+		if(this.inputs && this.inputs.length)
+			this.properties.enabled = this.getInputOrProperty("enabled");
+		this.setOutputData(0, this.properties.value );
+	}
+
+	LGraphGUISlider.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
+	}
+
+	LiteGraph.registerNodeType("gui/slider", LGraphGUISlider );
+
+
+	function LGraphGUIToggle()
+	{
+		this.addOutput("v");
+		this.properties = { enabled: true, value: true, text:"toggle", position: [20,20], size: [140,40], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+	}
+
+	LGraphGUIToggle.title = "GUIToggle";
+	LGraphGUIToggle.desc = "Renders a toggle widget on the main canvas";
+	LGraphGUIToggle["@corner"] = corner_options;
+
+	LGraphGUIToggle.prototype.onRenderGUI = function()
+	{
+		if(!this.properties.enabled)
+			return;
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1];
+		this.properties.value = LS.GUI.Toggle( this._area, this.properties.value, this.properties.text );
+	}
+
+	LGraphGUIToggle.prototype.onExecute = function()
+	{
+		this.setOutputData(0, this.properties.value );
+	}
+
+	LiteGraph.registerNodeType("gui/toggle", LGraphGUIToggle );
+
+	function LGraphGUIButton()
+	{
+		this.addOutput("on",LiteGraph.EVENT);
+		this.addOutput("was_pressed");
+		this.properties = { enabled: true, text:"clickme", position: [20,20], size: [140,40], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+		this._was_pressed = false;
+	}
+
+	LGraphGUIButton.title = "GUIButton";
+	LGraphGUIButton.desc = "Renders a toggle widget on the main canvas";
+	LGraphGUIButton["@corner"] = corner_options;
+
+	LGraphGUIButton.prototype.onRenderGUI = function()
+	{
+		if(!this.properties.enabled)
+			return;
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1];
+		this._was_pressed = LS.GUI.Button( this._area, this.properties.text );
+	}
+
+	LGraphGUIButton.prototype.onExecute = function()
+	{
+		if(this._was_pressed)
+			this.trigger("on");
+		this.setOutputData(1, this._was_pressed );
+		this._was_pressed = false;
+	}
+
+	LiteGraph.registerNodeType("gui/button", LGraphGUIButton );
+
+
+	function LGraphGUIMultipleChoice()
+	{
+		this.addOutput("v");
+		this.addOutput("i");
+		this.properties = { enabled: true, selected: 0, values:"option1;option2;option3", position: [20,20], size: [180,100], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+		this._values = this.properties.values.split(";");
+		var that = this;
+		this.widget = this.addWidget("text","Options",this.properties.values,function(v){
+			that.properties.values = v;
+			that.onPropertyChanged("values",v);
+		});
+		this.widgets_up = true;
+		this.size = [240,50];
+	}
+
+	LGraphGUIMultipleChoice.title = "GUIMultipleChoice";
+	LGraphGUIMultipleChoice.desc = "Renders a multiple choice widget on the main canvas";
+	LGraphGUIMultipleChoice["@corner"] = corner_options;
+
+	LGraphGUIMultipleChoice.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name == "values")
+			this._values = value.split(";");
+	}
+
+	LGraphGUIMultipleChoice.prototype.onRenderGUI = function()
+	{
+		if(!this._values.length || !this.properties.enabled )
+			return;
+
+		this.properties.selected = Math.floor( this.properties.selected );
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1] / this._values.length;
+		var y = this._area[1];
+		for(var i = 0; i < this._values.length; ++i)
+		{
+			this._area[1] = y + i * this._area[3];
+			if( LS.GUI.Toggle( this._area, i == this.properties.selected, this._values[i], null, true ) )
+				this.properties.selected = i;
+		}
+	}
+
+	LGraphGUIMultipleChoice.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
+	}
+
+	LGraphGUIMultipleChoice.prototype.onExecute = function()
+	{
+		if(this.inputs && this.inputs.length)
+			this.properties.enabled = this.getInputOrProperty("enabled");
+		this.setOutputData( 0, this._values[ this.properties.selected ] );
+		this.setOutputData( 1, this.properties.selected );
+	}
+
+	LiteGraph.registerNodeType("gui/multiple_choice", LGraphGUIMultipleChoice );
 
 
 	//based in the NNI distance 
@@ -17754,10 +17860,12 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("x","number");
 		this.addInput("y","number");
-		this.addOutput("weights","array");
+		this.addOutput("[]","array");
+		this.addOutput("obj","object");
 		this.addProperty("circular",false);
 		this.points = [];
 		this.weights = [];
+		this.weights_obj = {};
 		this.current_pos = new Float32Array([0.5,0.5]);
 		this.size = [200,200];
 		this.dragging = false;
@@ -17783,6 +17891,7 @@ if(typeof(LiteGraph) != "undefined")
 		pos[1] = this.getInputData(1) || pos[1];
 		this.computeWeights(pos);
 		this.setOutputData(0, this.weights );
+		this.setOutputData(1, this.weights_obj );
 	}
 
 	LGraphMap2D.prototype.computeWeights = function(pos)
@@ -17820,7 +17929,10 @@ if(typeof(LiteGraph) != "undefined")
 				}
 			}
 		for(var i = 0; i < weights.length; ++i)
+		{
 			weights[i] /= total_inside;
+			this.weights_obj[ this.points[i].name ] = weights[i];
+		}
 		return weights;
 	}
 
@@ -18210,10 +18322,10 @@ if(typeof(LiteGraph) != "undefined")
 
 	function LGraphRemapWeights()
 	{
-		this.addInput("in","array");
-		this.addOutput("out","array");
-		this.points = [];
-		this.weights = [];
+		this.addInput("in","array"); //array because they are already in order
+		this.addOutput("out","object");
+		this.points = [];	//2D points, name of point ("happy","sad") and weights ("mouth_left":0.4, "mouth_right":0.3)
+		this.current_weights = {}; //object that tells the current state of weights, like "mouth_left":0.3, ...
 
 		var node = this;
 		this.combo = this.addWidget("combo","Point", "", function(v){
@@ -18230,40 +18342,59 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphRemapWeights.prototype.onExecute = function()
 	{
-		var point_weights = this.getInputData(0);
+		var point_weights = this.getInputData(0); //array
 
-		var lw = this.weights.length;
-		for(var i = 0; i < lw; ++i)
-			this.weights[i] = 0;
+		for(var i in this.current_weights)
+			this.current_weights[i] = 0;
 
 		if( point_weights )
 		for(var i = 0; i < point_weights.length; ++i)
 		{
 			var point = this.points[i];
-			var w = point_weights[i];
-			for(var j = 0, l = point.weights.length; j < lw && j < l; ++j)
-				this.weights[j] += point.weights[j] * w;
+			var w = point_weights[i]; //input
+			//for(var j = 0, l = point.weights.length; j < lw && j < l; ++j)
+			for(var j in point.weights)
+			{
+				var v = (point.weights[j] || 0) * w;
+				this.current_weights[j] += v;
+			}
 		}
 
 		//output weights
-		this.setOutputData(0, this.weights );
+		this.setOutputData(0, this.current_weights );
+
+		if(this.outputs)
+		for(var i = 1; i < this.outputs.length; ++i)
+		{
+			var output_info = this.outputs[i];
+			if(output_info)
+				this.setOutputData(i, this.current_weights[output_info.name] );
+		}
 	}
 
-	LGraphRemapWeights.prototype.addPoint = function(name, weights)
+	//adds a 2D point with the weights associated to it (not used?)
+	LGraphRemapWeights.prototype.addPoint = function( name, weights )
 	{
 		if(!weights)
-			weights = new Array( this.weights.length );
-		this.points.push({name: name, weights:weights});	
+		{
+			console.warn("no weights passed to add point");
+			return;
+		}
+		var w = {};
+		for(var i in weights)
+			w[i] = weights[i];
+		this.points.push({name: name, weights: w});	
 	}
 
-	LGraphRemapWeights.prototype.importPoints = function(name, weights)
+	//import 2D points from input node (usually LGraphMap2D), just the names
+	LGraphRemapWeights.prototype.importPoints = function( name )
 	{
 		var input_node = this.getInputNode(0);
 		if(!input_node || !input_node.points || !input_node.points.length )
 			return;
 		this.points.length = input_node.points.length;
 		for(var i = 0; i < this.points.length; ++i)
-			this.points[i] = { name: input_node.points[i].name, weights: new Array( this.weights.length ) };
+			this.points[i] = { name: input_node.points[i].name, weights: {} };
 		this._selected_point = this.points[0];
 		if( this._selected_point )
 		{
@@ -18277,40 +18408,36 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
+	//when called it reads the output nodes to get which morph targets it is using and read their weights
+	//then sets the current 2D point to this weights
 	LGraphRemapWeights.prototype.importWeights = function( assign )
 	{
 		var output_nodes = this.getOutputNodes(0);
 		if(!output_nodes || output_nodes.length == 0)
 			return;
-		if( output_nodes.length > 1)
-			console.warn("More than one node connected, taking the first one");
-		var output_node = output_nodes[0];
-		if( !output_node.getComponent )
-			return;
 
-		var component = output_node.getComponent();
-		if(!component)
-			return;
+		for(var i = 0; i < output_nodes.length; ++i)
+		{
+			var output_node = output_nodes[i];
+			if( !output_node.getComponent )
+				continue;
 
-		var compo_weights = component.weights;
-		this.weights.length = compo_weights.length;
-		for(var i = 0; i < this.weights.length; ++i)
-			this.weights[i] = compo_weights[i];
-		this.updatePointsWeight();
+			var component = output_node.getComponent();
+			if(!component)
+				continue;
+
+			var compo_weights = component.name_weights;
+			for(var j in compo_weights)
+				this.current_weights[j] = compo_weights[j];
+		}
+
 		this.setDirtyCanvas(true);
 
 		if( !assign || !this._selected_point)
 			return;
-		this._selected_point.weights = this.weights.concat();
-	}
-
-	LGraphRemapWeights.prototype.updatePointsWeight = function()
-	{
-		for(var i = 0; i < this.points.length; ++i)
-		{
-			var point = this.points[i];
-			point.weights.length = this.weights.length;
-		}
+		this._selected_point.weights = {};
+		for(var i in this.current_weights)
+			this._selected_point.weights[i] = this.current_weights[i];
 	}
 
 	LGraphRemapWeights.prototype.findPoint = function( name )
@@ -18323,17 +18450,27 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphRemapWeights.prototype.onSerialize = function(o)
 	{
-		o.weights = this.weights;
+		o.current_weights = this.current_weights;
 		o.points = this.points;
 	}
 
 	LGraphRemapWeights.prototype.onConfigure = function(o)
 	{
-		if(o.weights)
-			this.weights = o.weights;
+		if( o.current_weights )
+			this.current_weights = o.current_weights;
 		if(o.points)
 		{
 			this.points = o.points;
+
+			//legacy
+			for(var i = 0;i < this.points.length; ++i)
+			{
+				var p = this.points[i];
+				if(p.weights && p.weights.constructor !== Object)
+					p.weights = {};
+			}
+
+			//widget
 			this.combo.options.values = this.points.map(function(a){ return a.name; });
 			this.combo.value = this.combo.options.values[0] || "";
 		}
@@ -18376,21 +18513,28 @@ if(typeof(LiteGraph) != "undefined")
 		inspector.addSeparator();
 		inspector.addTitle("Weights");
 
-		for(var i = 0; i < this.weights.length; ++i)
+		for(var i in this.current_weights)
 		{
-			inspector.addNumber( i.toString(), this.weights[i], { index: i, callback: function(v){
-				node.weights[ this.options.index ] = v;
+			inspector.addNumber( i, this.current_weights[i], { name_width: "80%", index: i, callback: function(v){
+				node.current_weights[ this.options.index ] = v;
 			}});
 		}
 
-		inspector.addButton(null,"+", function(){
-			node.weights.push(0);
-			node.updatePointsWeight();
+		inspector.addStringButton("Add Weight","", { button: "+", callback_button: function(v){
+			node.current_weights[v] = 0;
 			inspector.refresh();
-		});
+		}});
 
 		inspector.addSeparator();
 	}
+
+    LGraphRemapWeights.prototype.onGetOutputs = function() {
+        var r = [];
+		for(var i in this.current_weights)
+			r.push([i,"number"]);
+		return r;
+    };
+
 
 	LiteGraph.registerNodeType("math/remap_weights", LGraphRemapWeights );
 }
@@ -21893,6 +22037,23 @@ RenderInstance.prototype.addShaderBlock = function( block, uniforms )
 	return this.shader_blocks.length - 1;
 }
 
+RenderInstance.prototype.disableShaderBlock = function( block )
+{
+	if( ! (block.flag_mask & this.shader_block_flags) )
+		return;
+
+	for(var i = 0; i < this.shader_blocks.length; ++i)
+	{
+		if(!this.shader_blocks[i])
+			continue;
+		if( this.shader_blocks[i].block !== block )
+			continue;
+		this.shader_block_flags &= ~block.flag_mask;
+		break;
+	}
+}
+
+
 RenderInstance.prototype.removeShaderBlock = function( block )
 {
 	if( ! (block.flag_mask & this.shader_block_flags) )
@@ -22689,7 +22850,13 @@ var Renderer = {
 	//used to store which is the current full viewport available (could be different from the canvas in case is a FBO or the camera has a partial viewport)
 	setFullViewport: function(x,y,w,h)
 	{
-		if(x.constructor === Number)
+		if(arguments.length == 0) //restore
+		{
+			this._full_viewport[0] = this._full_viewport[1] = 0;
+			this._full_viewport[2] = gl.drawingBufferWidth;
+			this._full_viewport[3] = gl.drawingBufferHeight;
+		}
+		else if(x.constructor === Number)
 		{
 			this._full_viewport[0] = x; this._full_viewport[1] = y; this._full_viewport[2] = w; this._full_viewport[3] = h;
 		}
@@ -23796,91 +23963,6 @@ var Renderer = {
 		this._current_target = null;
 		texture._in_current_fbo = false;
 		return texture;
-	},
-
-	/**
-	* Renders the material preview to an image (or to the screen)
-	*
-	* @method renderMaterialPreview
-	* @param {Material} material
-	* @param {number} size image size
-	* @param {Object} options could be environment_texture, to_viewport
-	* @param {HTMLCanvas} canvas [optional] the output canvas where to store the preview
-	* @return {Image} the preview image (in canvas format) or null if it was rendered to the viewport
-	*/
-	renderMaterialPreview: function( material, size, options, canvas )
-	{
-		options = options || {};
-
-		if(!material)
-		{
-			console.error("No material provided to renderMaterialPreview");
-			return;
-		}
-
-		//create scene
-		var scene = this._material_scene;
-		if(!scene)
-		{
-			scene = this._material_scene = new LS.Scene();
-			scene.root.camera.background_color.set([0.0,0.0,0.0,0]);
-			if(options.environment_texture)
-				scene.info.textures.environment = options.environment_texture;
-			var node = new LS.SceneNode( "sphere" );
-			var compo = new LS.Components.GeometricPrimitive( { size: 40, subdivisions: 50, geometry: LS.Components.GeometricPrimitive.SPHERE } );
-			node.addComponent( compo );
-			scene.root.addChild( node );
-		}
-
-		if(!this._preview_material_render_settings)
-			this._preview_material_render_settings = new LS.RenderSettings({ skip_viewport: true, render_helpers: false, update_materials: true });
-		var render_settings = this._preview_material_render_settings;
-
-		if(options.background_color)
-			scene.root.camera.background_color.set(options.background_color);
-
-		var node = scene.getNode( "sphere");
-		if(!node)
-		{
-			console.error("Node not found in Material Preview Scene");
-			return null;
-		}
-
-		if(options.rotate)
-		{
-			node.transform.reset();
-			node.transform.rotateY( options.rotate );
-		}
-
-		var new_material = null;
-		if( material.constructor === String )
-			new_material = material;
-		else
-		{
-			new_material = new material.constructor();
-			new_material.configure( material.serialize() );
-		}
-		node.material = new_material;
-
-		if(options.to_viewport)
-		{
-			LS.Renderer.renderFrame( scene.root.camera, render_settings, scene );
-			return;
-		}
-
-		var tex = this._material_preview_texture || new GL.Texture(size,size);
-		if(!this._material_preview_texture)
-			this._material_preview_texture = tex;
-
-		tex.drawTo( function()
-		{
-			//it already clears everything
-			//just render
-			LS.Renderer.renderFrame( scene.root.camera, render_settings, scene );
-		});
-
-		var canvas = tex.toCanvas( canvas, true );
-		return canvas;
 	},
 
 	/**
@@ -26244,9 +26326,9 @@ Deformer.prototype.applyByCPU = function( vertex_data, normals_data )
 LS.Deformer = Deformer;
 */
 ///@FILE:../src/render/shadows.js
-///@INFO: UNCOMMON
-//Shadows are complex because there are too many combinations: SPOT/DIRECT,OMNI or DEPTH_COMPONENT,RGBA or HARD,SOFT,VARIANCE
-//It would be nice to have classes that can encapsulate different shadowmap algorithms so they are easy to develop
+///@INFO: COMMON
+// Shadows are complex because there are too many combinations: SPOT/DIRECT,OMNI or DEPTH_COMPONENT,RGBA or HARD,SOFT,VARIANCE
+// This class encapsulates the shadowmap generation, and also how how it is read from the shader (using a ShaderBlock)
 
 function Shadowmap( light )
 {
@@ -26259,7 +26341,7 @@ function Shadowmap( light )
 	this.texture = null;
 	this.fbo = null;
 	this.shadow_params = vec4.create(); //1.0 / this.texture.width, this.shadow_bias, this.near, closest_far
-	this.reverse_faces = true; 
+	this.reverse_faces = false; //improves quality in some cases
 }
 
 Shadowmap.use_shadowmap_depth_texture = true;
@@ -27242,8 +27324,6 @@ Transform.UP = vec3.fromValues(0,1,0);
 Transform.RIGHT = vec3.fromValues(1,0,0);
 Transform.FRONT = vec3.fromValues(0,0,-1);
 
-
-Transform["@position"] = { type: "position"};
 Transform["@rotation"] = { type: "quat"};
 Transform["@data"] = { type: "trans10" };
 
@@ -28876,7 +28956,7 @@ Camera["@layers"] = { type: "layers" };
 
 // used when rendering a cubemap to set the camera view direction (crossx and crossy are for when generating a CROSS cubemap image)
 
-//OLD VERSION
+//OLD VERSION, it doesnt make sense but is the one that works perfectly
 Camera.cubemap_camera_parameters = [
 	{ name: "posx", dir: vec3.fromValues(1,0,0), up: vec3.fromValues(0,-1,0), crossx:2, crossy:1 },
 	{ name: "negx", dir: vec3.fromValues(-1,0,0), up: vec3.fromValues(0,-1,0), crossx:0, crossy:1 },
@@ -32216,6 +32296,32 @@ MorphDeformer.prototype.onAddedToNode = function(node)
 	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
 }
 
+//object with name:weight
+Object.defineProperty( MorphDeformer.prototype, "name_weights", {
+	set: function(v) {
+		if(!v)
+			return;
+		for(var i = 0; i < this.morph_targets.length; ++i)
+		{
+			var m = this.morph_targets[i];
+			if(v[m.mesh] !== undefined)
+				m.weight = Number(v[m.mesh]);
+		}
+	},
+	get: function()
+	{
+		var result = {};
+		for(var i = 0; i < this.morph_targets.length; ++i)
+		{
+			var m = this.morph_targets[i];
+			result[ m.mesh ] = m.weight;
+		}
+		return result;
+	},
+	enumeration: false
+});
+
+
 Object.defineProperty( MorphDeformer.prototype, "weights", {
 	set: function(v) {
 		if(!v || !v.length)
@@ -32902,6 +33008,8 @@ MorphDeformer.prototype.setProperty = function(name, value)
 	}
 	else if( name == "weights" )
 		this.weights = value;
+	else if( name == "name_weights" )
+		this.name_weights = value;
 }
 
 
@@ -32909,13 +33017,14 @@ MorphDeformer.prototype.getPropertiesInfo = function()
 {
 	var properties = {
 		enabled: "boolean",
-		weights: "array"
+		weights: "array",
+		name_weights: "object"
 	};
 
 	for(var i = 0; i < this.morph_targets.length; i++)
 	{
 		properties[ "morph" + i + "_weight" ] = "number";
-		properties[ "morph" + i + "_mesh" ] = "Mesh";
+		//properties[ "morph" + i + "_mesh" ] = "Mesh";
 	}
 
 	return properties;
@@ -33236,13 +33345,11 @@ SkinDeformer.prototype.getBoneMatrices = function( ref_mesh )
 		}
 		else
 		{
-			var inv = joint[1];
+			var inv = joint[1]; //inv bind pose pf the joint
 			mat4.multiply( m, mat, inv );
-			if(ref_mesh.bind_matrix)
+			if(ref_mesh.bind_matrix) //not sure why this
 				mat4.multiply( m, m, ref_mesh.bind_matrix);
 		}
-
-		//bones[i].push( m ); //multiply by the inv bindpose matrix
 	}
 
 	return bones;
@@ -33406,8 +33513,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		this.applySoftwareSkinning( mesh, this._skinned_mesh );
 
 		RI.setMesh( this._skinned_mesh, this.primitive );
-		//remove the flags to avoid recomputing shaders
-		RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
+		this.disableSkinning( RI );
 	}
 
 	if( this.ignore_transform )
@@ -36727,7 +36833,6 @@ Object.defineProperty( GlobalInfo.prototype, 'textures', {
 	enumerable: true
 });
 
-
 Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 	set: function( v )
 	{
@@ -36762,6 +36867,7 @@ GlobalInfo.prototype.computeIrradiance = function( position, near, far, backgrou
 	var texture_settings = { type: gl.FLOAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
 	var cubemap = new GL.Texture( LS.Components.IrradianceCache.final_cubemap_size, LS.Components.IrradianceCache.final_cubemap_size, texture_settings );
 	var temp_cubemap = new GL.Texture( texture_size, texture_size, texture_settings );
+	//renders scene to cubemap
 	LS.Components.IrradianceCache.captureIrradiance( position, cubemap, render_settings, near || 0.1, far || 1000, background_color || [0,0,0,1], true, temp_cubemap );
 	this._irradiance = LS.Components.IrradianceCache.computeSH( cubemap );
 	console.log( "IR factor", this._irradiance );
@@ -36873,6 +36979,8 @@ if(typeof(LGraphTexture) != "undefined")
 	LGraphTexture.getTexturesContainer = function() { return LS.ResourcesManager.textures };
 	LGraphTexture.storeTexture = function(name, texture) { return LS.ResourcesManager.registerResource(name, texture); };
 	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
+
+	LiteGraph.allow_scripts = LS.allow_scripts; //let graphs that contain code execute it
 }
 
 
@@ -36883,6 +36991,18 @@ if( typeof(LGAudio) != "undefined" )
 		return LS.RM.getFullURL(url);
 	}
 }
+
+if(typeof(LiteGraph) != "undefined")
+{
+	LiteGraph.onNodeTypeReplaced = function(name,ctor,old)
+	{
+		var comps = LS.GlobalScene.findNodeComponents( LS.Components.GraphComponent );
+		comps = comps.concat( LS.GlobalScene.findNodeComponents( LS.Components.FXGraphComponent ) );
+		for(var i = 0; i < comps.length; ++i)
+			comps[i].graph.checkNodeTypes();
+	}
+}
+
 
 
 /**
@@ -36896,6 +37016,7 @@ function GraphComponent(o)
 	this.enabled = true;
 	this.from_file = false;
 	this.force_redraw = false;
+	this.title = null;
 	this._filename = null;
 	this._graphcode = null;
 	this._graph_properties = null;
@@ -36997,6 +37118,8 @@ GraphComponent.prototype.configure = function(o)
 		this.uid = o.uid;
 	if(o.enabled != null)
 		this.enabled = !!o.enabled;
+	if(o.title)
+		this.title = String(o.title);
 	if(o.from_file)
 	{
 		this.from_file = true;
@@ -37048,6 +37171,7 @@ GraphComponent.prototype.serialize = function()
 	return { 
 		object_class: "GraphComponent",
 		uid: this.uid,
+		title: this.title,
 		enabled: this.enabled, 
 		from_file: this.from_file,
 		force_redraw: this.force_redraw , 
@@ -37092,6 +37216,7 @@ GraphComponent.prototype.onAddedToScene = function( scene )
 	LEvent.bind( scene , "beforeRenderMainPass", this.onSceneEvent, this );
 	LEvent.bind( scene , "beforeRenderScene", this.onSceneEvent, this );
 	LEvent.bind( scene , "update", this.onSceneEvent, this );
+	LEvent.bind( scene , "renderGUI", this.onRenderGUI, this );
 }
 
 GraphComponent.prototype.onRemovedFromScene = function( scene )
@@ -37105,6 +37230,7 @@ GraphComponent.prototype.onRemovedFromScene = function( scene )
 	LEvent.unbind( scene, "beforeRenderMainPass", this.onSceneEvent, this );
 	LEvent.unbind( scene, "beforeRenderScene", this.onSceneEvent, this );
 	LEvent.unbind( scene, "update", this.onSceneEvent, this );
+	LEvent.unbind( scene, "renderGUI", this.onRenderGUI, this );
 }
 
 GraphComponent.prototype.onResourceRenamed = function( old_name, new_name, resource )
@@ -37112,6 +37238,13 @@ GraphComponent.prototype.onResourceRenamed = function( old_name, new_name, resou
 	if( old_name == this._filename)
 		this._filename = new_name;
 	this._graph.sendEventToAllNodes("onResourceRenamed",[ old_name, new_name, resource ]);
+}
+
+GraphComponent.prototype.onRenderGUI = function( e, canvas )
+{
+	if(!this.enabled)
+		return;
+	this._graph.sendEventToAllNodes("onRenderGUI", canvas );
 }
 
 GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
@@ -37277,6 +37410,12 @@ GraphComponent.prototype.setPropertyValue = function( property, value )
 	}
 }
 
+GraphComponent.prototype.getComponentTitle = function()
+{
+	return this.title;
+}
+
+
 LS.registerComponent( GraphComponent );
 
 
@@ -37293,6 +37432,7 @@ function FXGraphComponent(o)
 	this.frame = new LS.RenderFrameContext();
 	this.use_antialiasing = false;
 	this.use_node_camera = false;
+	this.title = null;
 
 	if(typeof(LGraphTexture) == "undefined")
 		return console.error("Cannot use FXGraphComponent if LiteGraph is not installed");
@@ -37377,6 +37517,8 @@ FXGraphComponent.prototype.configure = function(o)
 
 	this.uid = o.uid;
 	this.enabled = !!o.enabled;
+	if(o.title)
+		this.title = o.title;
 	this.use_antialiasing = !!o.use_antialiasing;
 	this.use_node_camera = !!o.use_node_camera;
 	if(o.frame)
@@ -37429,6 +37571,7 @@ FXGraphComponent.prototype.serialize = function()
 		object_class: "FXGraphComponent",
 		uid: this.uid,
 		enabled: this.enabled,
+		title: this.title,
 		use_antialiasing: this.use_antialiasing,
 		frame: this.frame.serialize(),
 		use_node_camera: this.use_node_camera,
@@ -37484,6 +37627,7 @@ FXGraphComponent.prototype.setPropertyValue = function( property, value )
 	}
 }
 
+FXGraphComponent.prototype.onRenderGUI = GraphComponent.prototype.onRenderGUI;
 
 FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
 {
@@ -37507,6 +37651,16 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 		return;
 	this._graph._scenenode = null;
 	//LEvent.unbind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
+}
+
+FXGraphComponent.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene , "renderGUI", this.onRenderGUI, this );
+}
+
+FXGraphComponent.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene , "renderGUI", this.onRenderGUI, this );
 }
 
 FXGraphComponent.prototype.onAddedToScene = function( scene )
@@ -37669,6 +37823,8 @@ FXGraphComponent.prototype.applyGraph = function()
 	//execute graph
 	this._graph.runStep(1, LS.catch_exceptions );
 }
+
+FXGraphComponent.prototype.getComponentTitle = GraphComponent.prototype.getComponentTitle;
 
 LS.registerComponent( FXGraphComponent );
 
@@ -40665,7 +40821,6 @@ const float Pi = 3.141592654;\n\
 const float CosineA0 = Pi;\n\
 const float CosineA1 = (2.0 * Pi) / 3.0;\n\
 const float CosineA2 = Pi * 0.25;\n\
-#define float3 vec3\n\
 \n\
 struct SH9\n\
 {\n\
@@ -40674,10 +40829,10 @@ struct SH9\n\
 \n\
 struct SH9Color\n\
 {\n\
-    float3 c[9];\n\
+    vec3 c[9];\n\
 };\n\
 \n\
-void SHCosineLobe(in float3 dir, out SH9 sh)\n\
+void SHCosineLobe(in vec3 dir, out SH9 sh)\n\
 {\n\
 	\n\
     // Band 0\n\
@@ -40700,14 +40855,14 @@ void SHCosineLobe(in float3 dir, out SH9 sh)\n\
 	\n\
 }\n\
 \n\
-vec3 ComputeSHIrradiance(in float3 normal, in SH9Color radiance)\n\
+vec3 ComputeSHIrradiance(in vec3 normal, in SH9Color radiance)\n\
 {\n\
     // Compute the cosine lobe in SH, oriented about the normal direction\n\
     SH9 shCosine;\n\
 	SHCosineLobe(normal, shCosine);\n\
 	\n\
     // Compute the SH dot product to get irradiance\n\
-    float3 irradiance = vec3(0.0);\n\
+    vec3 irradiance = vec3(0.0);\n\
 	#ifndef SH_LOW\n\
 	const int num = 9;\n\
 	#else\n\
@@ -40719,7 +40874,7 @@ vec3 ComputeSHIrradiance(in float3 normal, in SH9Color radiance)\n\
     return irradiance;\n\
 }\n\
 \n\
-float3 ComputeSHDiffuse(in float3 normal, in SH9Color radiance)\n\
+vec3 ComputeSHDiffuse(in vec3 normal, in SH9Color radiance)\n\
 {\n\
     // Diffuse BRDF is albedo / Pi\n\
     return ComputeSHIrradiance( normal, radiance ) * (1.0 / Pi);\n\
@@ -40747,7 +40902,6 @@ void main()\n\
 	gl_FragColor = vec4( max( vec3(0.001), ComputeSHDiffuse( normal, coeffs ) ), 1.0 );\n\
 }\n\
 ";
-
 
 var cubemapFaceNormals = [
   [ [0, 0, -1], [0, -1, 0], [1, 0, 0] ],  // posx
@@ -40980,10 +41134,38 @@ var irradiance_disabled_code = "\n\
 	}\n\
 ";
 
+//uniform grid
 var irradiance_block = new LS.ShaderBlock("applyIrradiance");
 ShaderMaterial.irradiance_block = irradiance_block;
 irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
 irradiance_block.register( true );
+
+var irradiance_single_code = "\n\
+	uniform vec3 u_sh_coeffs[9];\n\
+	" + IrradianceCache.include_code + "\n\
+	void applyIrradiance( in Input IN, in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
+	{\n\
+		SH9Color coeffs;\n\
+		coeffs.c[0] = u_sh_coeffs[0];\n\
+		coeffs.c[1] = u_sh_coeffs[1];\n\
+		coeffs.c[2] = u_sh_coeffs[2];\n\
+		coeffs.c[3] = u_sh_coeffs[3];\n\
+		coeffs.c[4] = u_sh_coeffs[4];\n\
+		coeffs.c[5] = u_sh_coeffs[5];\n\
+		coeffs.c[6] = u_sh_coeffs[6];\n\
+		coeffs.c[7] = u_sh_coeffs[7];\n\
+		coeffs.c[8] = u_sh_coeffs[8];\n\
+		vec3 irr_color = ComputeSHDiffuse( o.Normal, coeffs );\n\
+		FINALLIGHT.Ambient = o.Ambient * irr_color;\n\
+	}\n\
+";
+
+//single
+var irradiance_single_block = new LS.ShaderBlock("applyIrradianceSingle");
+ShaderMaterial.irradiance_single_block = irradiance_single_block;
+irradiance_single_block.addCode( GL.FRAGMENT_SHADER, irradiance_single_code, irradiance_disabled_code );
+irradiance_single_block.register( true );
+
 
 ///@FILE:../src/components/script.js
 ///@INFO: SCRIPTS
@@ -41246,7 +41428,7 @@ Script.prototype.processCode = function( skip_events, reset_state )
 		}
 	}
 
-	if(!this._root || LS.Script.block_execution )
+	if( !this._root || LS.Script.block_execution || !LS.allow_scripts )
 		return true;
 
 	//unbind old stuff
@@ -44513,6 +44695,14 @@ Scene.getScriptsList = function( scene, allow_local, full_paths )
 //reloads external and global scripts taking into account if they come from wbins
 Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
 {
+	if(!LS.allow_scripts)
+	{
+		console.error("LiteScene.allow_scripts is set to false, so scripts imported into this scene are ignored.");
+		if(on_complete)
+			on_complete();
+		return;
+	}
+
 	//get a list of scripts (they cannot be fullpaths)
 	scripts = scripts || LS.Scene.getScriptsList( this, true );
 
@@ -48915,370 +49105,6 @@ var parserOBJ = {
 			group = g;
 			return g;
 		}
-	},
-
-	parse2: function(text, options)
-	{
-		options = options || {};
-
-		var support_uint = true;
-		var skip_indices = options.noindex ? options.noindex : false;
-		//skip_indices = true;
-
-		//final arrays (packed, lineal [ax,ay,az, bx,by,bz ...])
-		var positionsArray = [ ];
-		var texcoordsArray = [ ];
-		var normalsArray   = [ ];
-		var indicesArray   = [ ];
-
-		//unique arrays (not packed, lineal)
-		var positions = [ ];
-		var texcoords = [ ];
-		var normals   = [ ];
-		var facemap   = { };
-		var index     = 0;
-
-		var line = null;
-		var f   = null;
-		var pos = 0;
-		var tex = 0;
-		var nor = 0;
-		var x   = 0.0;
-		var y   = 0.0;
-		var z   = 0.0;
-		var tokens = null;
-		var mtllib = null;
-
-		var hasPos = false;
-		var hasTex = false;
-		var hasNor = false;
-
-		var parsingFaces = false;
-		var indices_offset = 0;
-		var negative_offset = -1; //used for weird objs with negative indices
-		var max_index = 0;
-
-		//trace("SKIP INDICES: " + skip_indices);
-		var flip_axis = (this.flipAxis || options.flipAxis);
-		var flip_normals = (flip_axis || options.flipNormals);
-
-		//used for mesh groups (submeshes)
-		var group = null;
-		var group_id = 0;
-		var groups = [];
-		var groups_by_name = {};
-		var materials_found = {};
-
-		var V_CODE = 1;
-		var VT_CODE = 2;
-		var VN_CODE = 3;
-		var F_CODE = 4;
-		var G_CODE = 5;
-		var O_CODE = 6;
-		var codes = { v: V_CODE, vt: VT_CODE, vn: VN_CODE, f: F_CODE, g: G_CODE, o: O_CODE };
-
-		var lines = text.split("\n");
-		var length = lines.length;
-		for (var lineIndex = 0;  lineIndex < length; ++lineIndex) {
-
-			var line = lines[lineIndex];
-			line = line.replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //better than trim
-
-			if(line[ line.length - 1 ] == "\\") //breakline
-			{
-				lineIndex += 1;
-				var next_line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //better than trim
-				line = (line.substr(0,line.length - 1) + next_line).replace(/[ \t]+/g, " ").replace(/\s\s*$/, "");
-			}
-			
-
-			if (line[0] == "#")
-				continue;
-			if(line == "")
-				continue;
-
-			tokens = line.split(" ");
-			var code = codes[ tokens[0] ];
-
-			if(parsingFaces && code == V_CODE) //another mesh?
-			{
-				indices_offset = index;
-				parsingFaces = false;
-				//trace("multiple meshes: " + indices_offset);
-			}
-
-			//read and parse numbers
-			if( code <= VN_CODE ) //v,vt,vn
-			{
-				x = parseFloat(tokens[1]);
-				y = parseFloat(tokens[2]);
-				z = parseFloat(tokens[3]);
-			}
-
-			if (code == V_CODE) {
-				if(flip_axis) //maya and max notation style
-					positions.push(-1*x,z,y);
-				else
-					positions.push(x,y,z);
-			}
-			else if (code == VT_CODE) {
-				texcoords.push(x,y);
-			}
-			else if (code == VN_CODE) {
-
-				if(flip_normals)  //maya and max notation style
-					normals.push(-y,-z,x);
-				else
-					normals.push(x,y,z);
-			}
-			else if (code == F_CODE) {
-				parsingFaces = true;
-
-				if (tokens.length < 4)
-					continue; //faces with less that 3 vertices? nevermind
-
-				//for every corner of this polygon
-				var polygon_indices = [];
-				for (var i=1; i < tokens.length; ++i) 
-				{
-					var faceid = group_id + ":" + tokens[i];
-					if (  !(faceid in facemap) || skip_indices )
-					{
-						f = tokens[i].split("/");
-
-						if (f.length == 1) { //unpacked
-							pos = parseInt(f[0]) - 1;
-							tex = pos;
-							nor = pos;
-						}
-						else if (f.length == 2) { //no normals
-							pos = parseInt(f[0]) - 1;
-							tex = parseInt(f[1]) - 1;
-							nor = -1;
-						}
-						else if (f.length == 3) { //all three indexed
-							pos = parseInt(f[0]) - 1;
-							tex = parseInt(f[1]) - 1;
-							nor = parseInt(f[2]) - 1;
-						}
-						else {
-							console.log("Problem parsing: unknown number of values per face");
-							return false;
-						}
-
-						/*
-						//pos = Math.abs(pos); tex = Math.abs(tex); nor = Math.abs(nor);
-						if(pos < 0) pos = positions.length/3 + pos - negative_offset;
-						if(tex < 0) tex = texcoords.length/2 + tex - negative_offset;
-						if(nor < 0) nor = normals.length/3 + nor - negative_offset;
-						*/
-
-						if(i > 3 && skip_indices) //polys
-						{
-							//first
-							var pl = positionsArray.length;
-							positionsArray.push( positionsArray[pl - (i-3)*9], positionsArray[pl - (i-3)*9 + 1], positionsArray[pl - (i-3)*9 + 2]);
-							positionsArray.push( positionsArray[pl - 3], positionsArray[pl - 2], positionsArray[pl - 1]);
-							pl = texcoordsArray.length;
-							texcoordsArray.push( texcoordsArray[pl - (i-3)*6], texcoordsArray[pl - (i-3)*6 + 1]);
-							texcoordsArray.push( texcoordsArray[pl - 2], texcoordsArray[pl - 1]);
-							pl = normalsArray.length;
-							normalsArray.push( normalsArray[pl - (i-3)*9], normalsArray[pl - (i-3)*9 + 1], normalsArray[pl - (i-3)*9 + 2]);
-							normalsArray.push( normalsArray[pl - 3], normalsArray[pl - 2], normalsArray[pl - 1]);
-						}
-
-						x = 0.0;
-						y = 0.0;
-						z = 0.0;
-						if ((pos * 3 + 2) < positions.length)
-						{
-							hasPos = true;
-							if(pos < 0) //negative indices are relative to the end
-								pos = positions.length / 3 + pos + 1;
-							x = positions[pos*3+0];
-							y = positions[pos*3+1];
-							z = positions[pos*3+2];
-						}
-
-						positionsArray.push(x,y,z);
-						//positionsArray.push([x,y,z]);
-
-						x = 0.0;
-						y = 0.0;
-						if ((tex * 2 + 1) < texcoords.length)
-						{
-							hasTex = true;
-							if(tex < 0) //negative indices are relative to the end
-								tex = texcoords.length / 2 + tex + 1;
-							x = texcoords[tex*2+0];
-							y = texcoords[tex*2+1];
-						}
-						texcoordsArray.push(x,y);
-						//texcoordsArray.push([x,y]);
-
-						x = 0.0;
-						y = 0.0;
-						z = 1.0;
-						if(nor != -1)
-						{
-							if ((nor * 3 + 2) < normals.length)
-							{
-								hasNor = true;
-
-								if(nor < 0)
-									nor = normals.length / 3 + nor + 1;
-								x = normals[nor*3+0];
-								y = normals[nor*3+1];
-								z = normals[nor*3+2];
-							}
-							
-							normalsArray.push(x,y,z);
-							//normalsArray.push([x,y,z]);
-						}
-
-						//Save the string "10/10/10" and tells which index represents it in the arrays
-						if(!skip_indices)
-							facemap[ faceid ] = index++;
-					}//end of 'if this token is new (store and index for later reuse)'
-
-					//store key for this triplet
-					if(!skip_indices)
-					{
-						var final_index = facemap[ faceid ];
-						polygon_indices.push( final_index );
-						if(max_index < final_index)
-							max_index = final_index;
-					}
-				} //end of for every token on a 'f' line
-
-				//polygons (not just triangles)
-				if(!skip_indices)
-				{
-					for(var iP = 2; iP < polygon_indices.length; iP++)
-					{
-						indicesArray.push( polygon_indices[0], polygon_indices[iP-1], polygon_indices[iP] );
-						//indicesArray.push( [polygon_indices[0], polygon_indices[iP-1], polygon_indices[iP]] );
-					}
-				}
-			}
-			else if ( code == G_CODE || code == O_CODE)
-			{
-				negative_offset = positions.length / 3 - 1;
-
-				if(tokens.length > 1)
-				{
-					var group_pos = (indicesArray.length ? indicesArray.length : positionsArray.length / 3);
-					if(group != null)
-					{
-						group.length = group_pos - group.start;
-						if(group.length > 0) //there are triangles...
-						{
-							groups_by_name[ group_name ] = group;
-							groups.push(group);
-							group_id++;
-						}
-					}
-
-					var group_name = tokens[1];
-					if(groups_by_name[group_name])
-						group_name = group_name + "." + group_id;
-
-					group = {
-						name: group_name,
-						start: group_pos,
-						length: -1,
-						material: ""
-					};
-
-					/*
-					if(tokens[0] == "g")
-					{
-						group_vertex_start = positions.length / 3;
-						group_normal_start = normals.length / 3;
-						group_coord_start = texcoords.length / 2;
-					}
-					*/
-				}
-			}
-			else if (tokens[0] == "mtllib") {
-				mtllib = tokens[1];
-			}
-			else if (tokens[0] == "usemtl") {
-				if(group)
-					group.material = tokens[1];
-			}
-			else if ( tokens[0] == "s" ) { //tokens[0] == "o"
-				//ignore
-			}
-			else
-			{
-				console.warn("unknown code: " + line);
-				break;
-			}
-		}
-
-		if(group && (indicesArray.length - group.start) > 1)
-		{
-			group.length = indicesArray.length - group.start;
-			groups.push(group);
-		}
-
-		//deindex streams
-		if((max_index > 256*256 || skip_indices ) && indicesArray.length > 0 && !support_uint )
-		{
-			console.log("Deindexing mesh...")
-			var finalVertices = new Float32Array(indicesArray.length * 3);
-			var finalNormals = normalsArray && normalsArray.length ? new Float32Array(indicesArray.length * 3) : null;
-			var finalTexCoords = texcoordsArray && texcoordsArray.length ? new Float32Array(indicesArray.length * 2) : null;
-			for(var i = 0; i < indicesArray.length; i += 1)
-			{
-				finalVertices.set( positionsArray.slice( indicesArray[i]*3,indicesArray[i]*3 + 3), i*3 );
-				if(finalNormals)
-					finalNormals.set( normalsArray.slice( indicesArray[i]*3,indicesArray[i]*3 + 3 ), i*3 );
-				if(finalTexCoords)
-					finalTexCoords.set( texcoordsArray.slice(indicesArray[i]*2,indicesArray[i]*2 + 2 ), i*2 );
-			}
-			positionsArray = finalVertices;
-			if(finalNormals)
-				normalsArray = finalNormals;
-			if(finalTexCoords)
-				texcoordsArray = finalTexCoords;
-			indicesArray = null;
-			max_index = 0;
-		}
-
-		//Create final mesh object
-		var mesh = {};
-
-		//create typed arrays
-		if (hasPos)
-			mesh.vertices = new Float32Array(positionsArray);
-		if (hasNor && normalsArray.length > 0)
-			mesh.normals = new Float32Array(normalsArray);
-		if (hasTex && texcoordsArray.length > 0)
-			mesh.coords = new Float32Array(texcoordsArray);
-		if (indicesArray && indicesArray.length > 0)
-			mesh.triangles = new (support_uint && max_index > 256*256 ? Uint32Array : Uint16Array)(indicesArray);
-
-		//extra info
-		mesh.bounding = GL.Mesh.computeBoundingBox( mesh.vertices );
-		var info = {};
-		if(groups.length > 1)
-		{
-			info.groups = groups;
-			//compute bounding of groups? //TODO
-		}
-
-		mesh.info = info;
-		if( !mesh.bounding )
-		{
-			console.log("empty mesh");
-			return null;
-		}
-
-		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
-			console.log("no radius found in mesh");
-		return mesh;
 	}
 };
 
@@ -50167,8 +49993,11 @@ global.Collada = _collada = {
 			{
 				//warning: I detected that some nodes could have a controller but they are not referenced here.  ??
 				var url = xmlchild.getAttribute("url");
-				url = url.replace(/\./gi,"\\."); //url could contain dots which invalidates the querySelector, we need to escape them
-				var xmlcontroller = this._xmlroot.querySelector("controller" + url);
+				var safe_url = url.replace(/\./gi,"\\."); //url could contain dots which invalidates the querySelector, we need to escape them
+				var xmlcontroller = this._xmlroot.querySelector("controller" + safe_url);
+
+				if( !xmlcontroller ) //search manually because ids could have invalid characters that querySelector doesnt support
+					xmlcontroller = this.searchManuallyById( "library_controllers", url.substr(1) ); //remove #
 
 				if(!xmlcontroller)
 				{
@@ -50265,6 +50094,20 @@ global.Collada = _collada = {
 		}
 		this.readNodeInfo( xmlnode2, scene, level+1, flip);
 		return true;
+	},
+
+	searchManuallyById: function( base_node_selector, id )
+	{
+		var xmlbase = this._xmlroot.querySelector( base_node_selector );
+		if(!xmlbase)
+			return null;
+		for(var i = 0; i < xmlbase.childNodes.length; ++i)
+		{
+			var xmlchild = xmlbase.childNodes[i];
+			if( xmlchild.id == id )
+				return xmlchild;
+		}
+		return null;
 	},
 
 	//if you want to rename some material names

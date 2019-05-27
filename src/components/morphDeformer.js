@@ -63,6 +63,32 @@ MorphDeformer.prototype.onAddedToNode = function(node)
 	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
 }
 
+//object with name:weight
+Object.defineProperty( MorphDeformer.prototype, "name_weights", {
+	set: function(v) {
+		if(!v)
+			return;
+		for(var i = 0; i < this.morph_targets.length; ++i)
+		{
+			var m = this.morph_targets[i];
+			if(v[m.mesh] !== undefined)
+				m.weight = Number(v[m.mesh]);
+		}
+	},
+	get: function()
+	{
+		var result = {};
+		for(var i = 0; i < this.morph_targets.length; ++i)
+		{
+			var m = this.morph_targets[i];
+			result[ m.mesh ] = m.weight;
+		}
+		return result;
+	},
+	enumeration: false
+});
+
+
 Object.defineProperty( MorphDeformer.prototype, "weights", {
 	set: function(v) {
 		if(!v || !v.length)
@@ -749,6 +775,8 @@ MorphDeformer.prototype.setProperty = function(name, value)
 	}
 	else if( name == "weights" )
 		this.weights = value;
+	else if( name == "name_weights" )
+		this.name_weights = value;
 }
 
 
@@ -756,13 +784,14 @@ MorphDeformer.prototype.getPropertiesInfo = function()
 {
 	var properties = {
 		enabled: "boolean",
-		weights: "array"
+		weights: "array",
+		name_weights: "object"
 	};
 
 	for(var i = 0; i < this.morph_targets.length; i++)
 	{
 		properties[ "morph" + i + "_weight" ] = "number";
-		properties[ "morph" + i + "_mesh" ] = "Mesh";
+		//properties[ "morph" + i + "_mesh" ] = "Mesh";
 	}
 
 	return properties;

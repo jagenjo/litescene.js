@@ -11,6 +11,16 @@
 			"video_url":null
 		},
 		{
+			"name":"Physics",
+			"author":"Javi Agenjo",
+			"version": "0.1",
+			"script_url":"scripts/physics.js",
+			"includes":[],
+			"description":"Physics engine",
+			"preview_url":null,
+			"video_url":null
+		},		
+		{
 			"name":"ThreeJS bridge",
 			"author":"Javi Agenjo",
 			"version": "0.1",

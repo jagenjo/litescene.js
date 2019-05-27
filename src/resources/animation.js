@@ -18,6 +18,11 @@ function Animation(o)
 		this.configure(o);
 }
 
+LS.Classes["Animation"] = LS.Animation = Animation;
+
+//Animation.KEYFRAME_ANIMATION = 0;
+//Animation.CLIP_ANIMATION = 1;
+
 Animation.EXTENSION = "wbin";
 Animation.DEFAULT_SCENE_NAME = "@scene";
 Animation.DEFAULT_DURATION = 10;
@@ -291,8 +296,6 @@ Animation.prototype.assignToNode = function(node)
 }
 
 
-
-LS.Classes["Animation"] = LS.Animation = Animation;
 
 /**  
 * Represents a set of animations
@@ -574,82 +577,6 @@ Take.prototype.optimizeTracks = function()
 	return num;
 }
 
-//assigns the same translation to all nodes?
-Take.prototype.matchTranslation = function( root )
-{
-	var num = 0;
-
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-
-		if(track._type != "trans10" && track._type != "mat4")
-			continue;
-
-		if( !track._property_path || !track._property_path.length )
-			continue;
-
-		var node = LSQ.get( track._property_path[0], root );
-		if(!node)
-			continue;
-		
-		var position = node.transform.position;
-		var offset = track.value_size + 1;
-
-		var data = track.data;
-		var num_samples = data.length / offset;
-		if(track._type == "trans10")
-		{
-			for(var j = 0; j < num_samples; ++j)
-				data.set( position, j*offset + 1 );
-		}
-		else if(track._type == "mat4")
-		{
-			for(var j = 0; j < num_samples; ++j)
-				data.set( position, j*offset + 1 + 12 ); //12,13,14 contain translation
-		}
-
-		num += 1;
-	}
-
-	return num;
-}
-
-/**
-* If this is a transform track it removes translation and scale leaving only rotations
-* @method onlyRotations
-*/
-Take.prototype.onlyRotations = function()
-{
-	var num = 0;
-
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-		if( track.onlyRotations() )
-			num += 1;
-	}
-	return num;
-}
-
-/**
-* removes scaling in transform tracks
-* @method removeScaling
-*/
-Take.prototype.removeScaling = function()
-{
-	var num = 0;
-
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-		if( track.removeScaling() )
-			num += 1;
-	}
-	return num;
-}
-
-
 Take.prototype.setInterpolationToAllTracks = function( interpolation )
 {
 	var num = 0;
@@ -665,30 +592,7 @@ Take.prototype.setInterpolationToAllTracks = function( interpolation )
 	return num;
 }
 
-Take.prototype.trimTracks = function( start, end )
-{
-	var num = 0;
-	for(var i = 0; i < this.tracks.length; ++i)
-	{
-		var track = this.tracks[i];
-		num += track.trim( start, end );
-	}
 
-	this.duration = end - start;
-
-	return num;
-}
-
-Take.prototype.stretchTracks = function( duration )
-{
-	if(duration <= 0 || this.duration == 0)
-		return 0;
-	var scale = duration / this.duration;
-	this.duration *= scale;
-	for(var i = 0; i < this.tracks.length; ++i)
-		this.tracks[i].stretch( scale );
-	return this.tracks.length;
-}
 
 
 Animation.Take = Take;
@@ -752,6 +656,8 @@ function Track(o)
 	if(o)
 		this.configure(o);
 }
+
+Animation.Track = Track;
 
 Track.FRAMERATE = 30;
 
@@ -927,6 +833,44 @@ Track.prototype.convertIDtoName = function( use_basename, root )
 	return true;
 }
 
+/**
+* If the track used matrices, it transform them to position,quaternion and scale (10 floats, also known as trans10)
+* this makes working with animations faster
+* @method convertToTrans10
+*/
+Track.prototype.convertToTrans10 = function()
+{
+	if( this.value_size != 16 )
+		return false;
+
+	//convert samples
+	if(!this.packed_data)
+		this.packData();
+
+	//convert locator
+	var path = this.property.split("/");
+	if( path[ path.length - 1 ] != "matrix") //from "nodename/matrix" to "nodename/transform/data"
+		return false;
+
+	path[ path.length - 1 ] = "Transform/data";
+	this.property = path.join("/");
+	this.type = "trans10";
+	this.value_size = 10;
+	var temp = new Float32Array(10);
+
+	var data = this.data;
+	var num_samples = data.length / 17;
+	for(var k = 0; k < num_samples; ++k)
+	{
+		var sample = data.subarray(k*17+1,(k*17)+17);
+		LS.Transform.fromMatrix4ToTransformData( sample, temp );
+		data[k*11] = data[k*17]; //timestamp
+		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
+	}
+	this.data = new Float32Array( data.subarray(0,num_samples*11) );
+
+	return true;
+}
 
 /**
 * Adds a new keyframe from the current value of that property
@@ -1474,6 +1418,18 @@ Track.prototype.getPropertyInfo = function( scene )
 }
 
 /**
+* returns the node to which this track is affecting (in case it is a node, if it is something else it returns null)
+* @method getPropertyNode
+* @param {LS.Scene} scene [optional]
+* @return {LS.SceneNode} the node being affected by the track
+*/
+Track.prototype.getPropertyNode = function( scene )
+{
+	return (scene || LS.GlobalScene).getNode( this.property.split("/")[0] );
+}
+
+
+/**
 * returns an array containing N samples for this property over time using the interpolation of the track
 * @method getSampledData
 * @param {Number} start_time when to start sampling
@@ -1499,180 +1455,6 @@ Track.prototype.getSampledData = function( start_time, end_time, num_samples )
 
 	return samples;
 }
-
-/**
-* removes keyframes that are before or after the time range
-* @method trim
-* @param {number} start time
-* @param {number} end time
-*/
-Track.prototype.trim = function( start, end )
-{
-	if(this.packed_data)
-		this.unpackData();
-
-	var size = this.data.length;
-
-	var result = [];
-	for(var i = 0; i < size; ++i)
-	{
-		var d = this.data[i];
-		if(d[0] < start || d[0] > end)
-			continue;
-		d[0] -= start;
-		result.push(d);
-	}
-	this.data = result;
-
-	//changes has been made?
-	if(this.data.length != size)
-		return 1;
-	return 0;
-}
-
-/**
-* Scales the time in every keyframe
-* @method stretch
-* @param {number} scale the sacle to apply to all times
-*/
-Track.prototype.stretch = function( scale )
-{
-	if(this.packed_data)
-		this.unpackData();
-	var size = this.data.length;
-	for(var i = 0; i < size; ++i)
-		this.data[i][0] *= scale; //scale time
-	return 1;
-}
-
-/**
-* If the track used matrices, it transform them to position,quaternion and scale (10 floats, also known as trans10)
-* this makes working with animations faster
-* @method convertToTrans10
-*/
-Track.prototype.convertToTrans10 = function()
-{
-	if( this.value_size != 16 )
-		return false;
-
-	//convert samples
-	if(!this.packed_data)
-		this.packData();
-
-	//convert locator
-	var path = this.property.split("/");
-	if( path[ path.length - 1 ] != "matrix") //from "nodename/matrix" to "nodename/transform/data"
-		return false;
-
-	path[ path.length - 1 ] = "Transform/data";
-	this.property = path.join("/");
-	this.type = "trans10";
-	this.value_size = 10;
-	var temp = new Float32Array(10);
-
-	var data = this.data;
-	var num_samples = data.length / 17;
-	for(var k = 0; k < num_samples; ++k)
-	{
-		var sample = data.subarray(k*17+1,(k*17)+17);
-		LS.Transform.fromMatrix4ToTransformData( sample, temp );
-		data[k*11] = data[k*17]; //timestamp
-		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
-	}
-	this.data = new Float32Array( data.subarray(0,num_samples*11) );
-
-	return true;
-}
-
-/**
-* If this track changes the scale, it forces it to be 1,1,1
-* @method removeScaling
-*/
-Track.prototype.removeScaling = function()
-{
-	var modified = false;
-
-	if(this.type == "matrix")
-	{
-		this.convertToTrans10();
-		modified = true;
-	}
-
-	if( this.type != "trans10" )
-	{
-		if(modified)
-			return true;
-	}
-
-	var num_keyframes = this.getNumberOfKeyframes();
-	for( var j = 0; j < num_keyframes; ++j )
-	{
-		var k = this.getKeyframe(j);
-		k[1][7] = k[1][8] = k[1][9] = 1; //set scale equal to 1
-	}
-	return true;
-}
-
-
-Track.prototype.onlyRotations = (function()
-{
-	var temp = new Float32Array(10);
-	var temp_quat = new Float32Array(4);
-
-	return function(){
-
-		//convert locator
-		var path = this.property.split("/");
-		var last_path = path[ path.length - 1 ];
-		var old_size = this.value_size;
-		if( this.type != "mat4" && this.type != "trans10" )
-			return false;
-
-		if(last_path == "matrix")
-			path[ path.length - 1 ] = "Transform/rotation";
-		else if (last_path == "data")
-			path[ path.length - 1 ] = "rotation";
-
-		//convert samples
-		if(!this.packed_data)
-			this.packData();
-
-		this.property = path.join("/");
-		var old_type = this._type;
-		this.type = "quat";
-		this.value_size = 4;
-
-		var data = this.data;
-		var num_samples = data.length / (old_size+1);
-
-		if( old_type == "mat4" )
-		{
-			for(var k = 0; k < num_samples; ++k)
-			{
-				var sample = data.subarray(k*17+1,(k*17)+17);
-				var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
-				temp_quat.set( temp.subarray(3,7) );
-				data[k*5] = data[k*17]; //timestamp
-				data.set( temp_quat, k*5+1); //overwrite inplace (because the output is less big that the input)
-			}
-		}
-		else if( old_type == "trans10" )
-		{
-			for(var k = 0; k < num_samples; ++k)
-			{
-				var sample = data.subarray(k*11+4,(k*11)+8);
-				data[k*5] = data[k*11]; //timestamp
-				data.set( sample, k*5+1); //overwrite inplace (because the output is less big that the input)
-			}
-		}
-		
-		this.data = new Float32Array( data.subarray(0,num_samples*5) );
-		return true;
-	};
-})();
-
-
-Animation.Track = Track;
 
 Animation.interpolateLinear = function( a, b, t, result, type, value_size, track )
 {

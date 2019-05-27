@@ -683,36 +683,6 @@ Material.prototype.getCategory = function()
 	return this.category || "Material";
 }
 
-Material.prototype.updatePreview = function(size, options)
-{
-	options = options || {};
-
-	var res = {};
-	this.getResources(res);
-
-	for(var i in res)
-	{
-		var resource = LS.ResourcesManager.resources[i];
-		if(!resource)
-		{
-			console.warn("Cannot generate preview with resources missing.");
-			return null;
-		}
-	}
-
-	if(LS.GlobalScene.info.textures.environment)
-		options.environment = LS.GlobalScene.info.textures.environment;
-
-	size = size || 256;
-	var preview = LS.Renderer.renderMaterialPreview( this, size, options, this._preview );
-	if(!preview)
-		return;
-
-	this._preview = preview;
-	if(preview.toDataURL)
-		this._preview_url = preview.toDataURL("image/png");
-}
-
 Material.prototype.getLocator = function()
 {
 	if(this._root)

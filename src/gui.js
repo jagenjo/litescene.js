@@ -549,9 +549,10 @@ var GUI = {
 	* @param {Boolean} value if the checkbox is on or off
 	* @param {String|GL.Texture} content an string or image in case the checkbox is on
 	* @param {String|GL.Texture} content_off an string or image in case the checkbox is off 
+	* @param {Boolean} circle if true the checkboxes are circles instead of squares
 	* @return {Boolean} the current state of the checkbox (will be different from value if it was pressed)
 	*/
-	Toggle: function( area, value, content, content_off )
+	Toggle: function( area, value, content, content_off, circle )
 	{
 		if(!area)
 			throw("No area");
@@ -591,13 +592,23 @@ var GUI = {
 			{
 				ctx.fillStyle = this.GUIStyle.color;
 				ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+				ctx.textAlign = "left";
 				ctx.fillText( content, area[0] + margin + this._offset[0], area[1] + area[3] * 0.75 + this._offset[1]);
 
 				var w = area[3] * 0.6;
 				ctx.fillStyle = this.GUIStyle.backgroundColor;
-				ctx.fillRect( area[0] + area[2] - margin*1.5 - w + this._offset[0], area[1] + margin*0.5 + this._offset[1], w+margin, area[3] - margin );
+				var x = area[0] + area[2] - margin*1.5 - w + this._offset[0];
+				var y = area[1] + margin*0.5 + this._offset[1];
+
+				if(circle)
+					ctx.fillCircle( x, y, area[3] - margin );
+				else
+					ctx.fillRect(x, y, w+margin, area[3] - margin );
 				ctx.fillStyle = value ? this.GUIStyle.selected : "#000";
-				ctx.fillRect( area[0] + area[2] - margin - w + this._offset[0], area[1] + margin + this._offset[1], w, area[3] - margin*2 );
+				if(circle)
+					ctx.fillCircle( area[0] + area[2] - margin - w + this._offset[0], area[1] + margin + this._offset[1], area[3] - margin*2 );
+				else
+					ctx.fillRect( area[0] + area[2] - margin - w + this._offset[0], area[1] + margin + this._offset[1], w, area[3] - margin*2 );
 			}
 		}
 
@@ -772,6 +783,7 @@ var GUI = {
 			ctx.fillStyle = this.GUIStyle.color;
 			ctx.font = (area[3]*0.5).toFixed(0) + "px " + this.GUIStyle.font;
 			ctx.fillText( value.toFixed(2), area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.7 + this._offset[1] );
+			ctx.textAlign = "left";
 		}
 
 		return value;

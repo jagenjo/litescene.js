@@ -48,7 +48,6 @@ function enableWebGLCanvas( canvas, options )
 	//some generic shaders
 	var	flat_shader = new GL.Shader( GL.Shader.QUAD_VERTEX_SHADER, GL.Shader.FLAT_FRAGMENT_SHADER );
 	var	texture_shader = new GL.Shader( GL.Shader.QUAD_VERTEX_SHADER, GL.Shader.SCREEN_COLORED_FRAGMENT_SHADER );
-	var circle = GL.Mesh.circle({size:1});
 
 	//reusing same buffer
 	var global_index = 0;
@@ -56,6 +55,7 @@ function enableWebGLCanvas( canvas, options )
 	var global_mesh = new GL.Mesh();
 	var global_buffer = global_mesh.createVertexBuffer("vertices", null, null, global_vertices, gl.STREAM_DRAW );
 	var quad_mesh = GL.Mesh.getScreenQuad();
+	var circle_mesh = GL.Mesh.circle({size:1});
 	var extra_projection = mat4.create();
 	var stencil_enabled = false;
 	var anisotropic = options.anisotropic !== undefined ? options.anisotropic : 2;
@@ -293,14 +293,28 @@ function enableWebGLCanvas( canvas, options )
 
 				tex = img.gl[ gl.context_id ];
 				if(tex)
+				{
+					if( img.mustUpdate )
+					{
+						tex.uploadData( img );
+						img.mustUpdate = false;
+					}
 					return tex;
+				}
 				return img.gl[ gl.context_id ] = GL.Texture.fromImage(img, { magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR, wrap: wrap, ignore_pot:true, premultipliedAlpha: true, anisotropic: anisotropic } );
 			}
 			else //probably a canvas
 			{
 				tex = img.gl[ gl.context_id ];
 				if(tex)
+				{
+					if( img.mustUpdate )
+					{
+						tex.uploadData( img );
+						img.mustUpdate = false;
+					}
 					return tex;
+				}
 				return img.gl[ gl.context_id ] = GL.Texture.fromImage(img, { minFilter: gl.LINEAR, magFilter: gl.LINEAR, anisotropic: anisotropic });
 			}
 		}
@@ -308,9 +322,17 @@ function enableWebGLCanvas( canvas, options )
 		return null;
 	}
 
+	//it supports all versions of drawImage (3 params, 5 params or 9 params)
+	//it allows to pass a shader, otherwise it uses texture_shader (code is GL.Shader.SCREEN_COLORED_FRAGMENT_SHADER)
 	ctx.drawImage = function( img, x, y, w, h, shader )
 	{
-		if(!img || img.width == 0 || img.height == 0) 
+		if(!img)
+			return;
+
+		var img_width = img.videoWidth || img.width;
+		var img_height = img.videoHeight || img.height;
+			
+		if(img_width == 0 || img_height == 0) 
 			return;
 
 		var tex = getTexture(img);
@@ -319,7 +341,7 @@ function enableWebGLCanvas( canvas, options )
 
 		if(arguments.length == 9) //img, sx,sy,sw,sh, x,y,w,h
 		{
-			tmp_vec4b.set([x/img.width,y/img.height,w/img.width,h/img.height]);
+			tmp_vec4b.set([x/img_width,y/img_height,w/img_width,h/img_height]);
 			x = arguments[5];
 			y = arguments[6];
 			w = arguments[7];
@@ -917,7 +939,6 @@ function enableWebGLCanvas( canvas, options )
 		uniforms.u_size = tmp_vec2b;
 		uniforms.u_transform = this._matrix;
 		uniforms.u_viewport = viewport
-
 		flat_shader.uniforms(uniforms).draw(quad_mesh);
 	}
 
@@ -931,6 +952,29 @@ function enableWebGLCanvas( canvas, options )
 		gl.clear( gl.COLOR_BUFFER_BIT );
 		var v = gl.viewport_data;
 		gl.scissor(v[0],v[1],v[2],v[3]);
+	}
+
+	ctx.fillCircle = function(x,y,r)
+	{
+		global_index = 0;
+
+		//fill using a gradient or pattern
+		if( this._fillStyle.constructor == GL.Texture || this._fillStyle.constructor === WebGLCanvasGradient )
+		{
+			this.beginPath();
+			this.arc(x,y,r,0,Math.PI*2);
+			this.fill();
+			return;
+		}
+
+		uniforms.u_color = this._fillcolor;
+		tmp_vec2[0] = x; tmp_vec2[1] = y;
+		tmp_vec2b[0] = r; tmp_vec2b[1] = r;
+		uniforms.u_position = tmp_vec2;
+		uniforms.u_size = tmp_vec2b;
+		uniforms.u_transform = this._matrix;
+		uniforms.u_viewport = viewport
+		flat_shader.uniforms(uniforms).draw(circle_mesh);
 	}
 	
 	ctx.clip = function()

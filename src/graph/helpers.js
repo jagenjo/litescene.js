@@ -1,32 +1,116 @@
 ///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
+	LiteGraph.CORNER_TOP_LEFT = 0;
+	LiteGraph.CORNER_TOP_RIGHT = 1;
+	LiteGraph.CORNER_BOTTOM_LEFT = 2;
+	LiteGraph.CORNER_BOTTOM_RIGHT = 3;
+	LiteGraph.CORNER_TOP_CENTER = 4;
+	LiteGraph.CORNER_BOTTOM_CENTER = 5;
+
+	var corner_options = { type:"enum", values:{ 
+		"top-left": LiteGraph.CORNER_TOP_LEFT, 
+		"top-right": LiteGraph.CORNER_TOP_RIGHT,
+		"bottom-left": LiteGraph.CORNER_BOTTOM_LEFT,
+		"bottom-right": LiteGraph.CORNER_BOTTOM_RIGHT,
+		"top-center": LiteGraph.CORNER_TOP_CENTER,
+		"bottom-center": LiteGraph.CORNER_BOTTOM_CENTER
+	}};
+
+	function positionToArea( position, corner, area )
+	{
+		var x = position[0];
+		var y = position[1];
+
+		switch( corner )
+		{
+			case LiteGraph.CORNER_TOP_RIGHT: x = gl.canvas.width - x; break;
+			case LiteGraph.CORNER_BOTTOM_LEFT: y = gl.canvas.height - y; break;
+			case LiteGraph.CORNER_BOTTOM_RIGHT: x = gl.canvas.width - x; y = gl.canvas.height - y; break;
+			case LiteGraph.CORNER_TOP_CENTER: x = gl.canvas.width * 0.5; break;
+			case LiteGraph.CORNER_BOTTOM_CENTER: x = gl.canvas.width * 0.5; y = gl.canvas.height - y; break;
+			case LiteGraph.CORNER_TOP_LEFT:
+			default:
+		}
+
+		area[0] = x;
+		area[1] = y;
+	}
+
 	//special kind of node
+	function LGraphGUIPanel()
+	{
+		this.properties = { enabled: true, title: "", color: [0.1,0.1,0.1], opacity: 0.7, titlecolor: [0,0,0], position: [10,10], size: [300,200], rounding: 8, corner: LiteGraph.CORNER_TOP_LEFT };
+		this._pos = vec2.create();
+		this._color = vec4.create();
+		this._titlecolor = vec4.create();
+	}
+
+	LGraphGUIPanel.title = "GUIPanel";
+	LGraphGUIPanel.desc = "renders a rectangle on webgl canvas";
+	LGraphGUIPanel.priority = -1; //render first
+
+	LGraphGUIPanel["@corner"] = corner_options;
+	LGraphGUIPanel["@color"] = { type:"color" };
+	LGraphGUIPanel["@titlecolor"] = { type:"color" };
+	LGraphGUIPanel["@opacity"] = { widget:"slider", min:0,max:1 };
+
+	LGraphGUIPanel.prototype.onRenderGUI = function()
+	{ 
+		var ctx = window.gl;
+		if(!ctx || !this.properties.enabled)
+			return;
+
+		this._color.set( this.properties.color || [0.1,0.1,0.1] );
+		this._color[3] = this.properties.opacity;
+		ctx.fillColor = this._color;
+		positionToArea( this.properties.position, this.properties.corner, this._pos );
+		gl.disable( gl.DEPTH_TEST );
+		gl.enable( gl.BLEND );
+		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		var rounding = Math.min(15,this.properties.rounding);
+		if(rounding > 0)
+		{
+			ctx.beginPath();
+			ctx.roundRect( this._pos[0], this._pos[1], this.properties.size[0], this.properties.size[1], rounding, rounding );
+			ctx.fill();
+		}
+		else
+			ctx.fillRect( this._pos[0], this._pos[1], this.properties.size[0], this.properties.size[1] );
+
+		if(this.properties.title)
+		{
+			this._titlecolor.set( this.properties.titlecolor || [0.3,0.3,0.3] );
+			this._titlecolor[3] = this.properties.opacity;
+			ctx.fillColor = this._titlecolor;
+			if(rounding > 0)
+			{
+				ctx.beginPath();
+				ctx.roundRect( this._pos[0], this._pos[1], this.properties.size[0], 30, rounding, 0 );
+				ctx.fill();
+			}
+			else
+				ctx.fillRect( this._pos[0], this._pos[1], this.properties.size[0], 30 );
+			ctx.fillColor = [0.8,0.8,0.8,this.properties.opacity];
+			ctx.font = "20px Arial";
+			ctx.fillText( this.properties.title, 10 + this._pos[0],24 + this._pos[1]);
+		}
+	}
+
+	LiteGraph.registerNodeType("gui/panel", LGraphGUIPanel );
+
 	function LGraphGUIText()
 	{
 		this.addInput("text");
-		this.properties = { text: "", font: "", color: [1,1,1,1], position: [20,20], corner: LGraphGUIText.CORNER_TOP_LEFT };
+		this.properties = { enabled: true, text: "", font: "", color: [1,1,1,1], precision: 3, position: [20,20], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._pos = vec2.create();
+		this._text = "";
 	}
 
 	LGraphGUIText.title = "GUIText";
 	LGraphGUIText.desc = "renders text on webgl canvas";
-	LGraphGUIText.priority = 2; //render at the end
 
-	LGraphGUIText.CORNER_TOP_LEFT = 0;
-	LGraphGUIText.CORNER_TOP_RIGHT = 1;
-	LGraphGUIText.CORNER_BOTTOM_LEFT = 2;
-	LGraphGUIText.CORNER_BOTTOM_RIGHT = 3;
-	LGraphGUIText.CORNER_TOP_CENTER = 4;
-	LGraphGUIText.CORNER_BOTTOM_CENTER = 5;
-
-	LGraphGUIText["@corner"] = { type:"enum", values:{ 
-		"top-left": LGraphGUIText.CORNER_TOP_LEFT, 
-		"top-right": LGraphGUIText.CORNER_TOP_RIGHT,
-		"bottom-left": LGraphGUIText.CORNER_BOTTOM_LEFT,
-		"bottom-right": LGraphGUIText.CORNER_BOTTOM_RIGHT,
-		"top-center": LGraphGUIText.CORNER_TOP_CENTER,
-		"bottom-center": LGraphGUIText.CORNER_BOTTOM_CENTER
-	}};
+	LGraphGUIText["@corner"] = corner_options;
 	LGraphGUIText["@color"] = { type:"color" };
 
 	LGraphGUIText.prototype.onGetInputs = function(){
@@ -34,52 +118,268 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LGraphGUIText.prototype.onExecute = function()
+	{
+		var v = this.getInputData(0);
+		if(v != null)
+		{
+			if( v.constructor === Number )
+				this._text = v.toFixed( this.properties.precision );
+			else
+				this._text = String(v);
+		}
+	}
+
+	LGraphGUIText.prototype.onRenderGUI = function()
 	{ 
 		var ctx = window.gl;
 		if(!ctx)
 			return;
 
-		if( !window.LS || !LS.Renderer._current_render_settings || !LS.Renderer._current_render_settings.render_gui )
-			return;
-
-		var enabled = this.getInputData(1);
+		var enabled = this.getInputOrProperty("enabled");
 		if(enabled === false)
 			return;
 
-		var input_text = this.getInputData(0);
-		if( input_text == null )
-			input_text = "";
-
-		if(input_text.constructor === Number )
-			input_text = input_text.toFixed(3);
-
-		var text = (this.properties.text || "") + input_text;
-		if(text === "")
+		var text = (this.properties.text || "") + this._text;
+		if(text == "")
 			return;
 
 		ctx.font = this.properties.font || "20px Arial";
+		ctx.textAlign = "left";
 		ctx.fillColor = this.properties.color || [1,1,1,1];
-		var x = this.properties.position[0];
-		var y = this.properties.position[1];
 
-		switch( this.properties.corner )
-		{
-			case LGraphGUIText.CORNER_TOP_RIGHT: x = gl.canvas.width - x; break;
-			case LGraphGUIText.CORNER_BOTTOM_LEFT: y = gl.canvas.height - y; break;
-			case LGraphGUIText.CORNER_BOTTOM_RIGHT: x = gl.canvas.width - x; y = gl.canvas.height - y; break;
-			case LGraphGUIText.CORNER_TOP_CENTER: x = gl.canvas.width * 0.5; break;
-			case LGraphGUIText.CORNER_BOTTOM_CENTER: x = gl.canvas.width * 0.5; y = gl.canvas.height - y; break;
-			case LGraphGUIText.CORNER_TOP_LEFT:
-			default:
-		}
+		positionToArea( this.properties.position, this.properties.corner, this._pos );
 
 		gl.disable( gl.DEPTH_TEST );
 		gl.enable( gl.BLEND );
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-		ctx.fillText( text, x, y );
+		ctx.fillText( text, this._pos[0], this._pos[1] );
 	}
 
 	LiteGraph.registerNodeType("gui/text", LGraphGUIText );
+
+	function LGraphGUIImage()
+	{
+		this.addInput("","image,canvas,texture");
+		this.properties = { enabled: true, opacity: 1, keep_aspect: true, flipX: false, flipY: false, force_update: false, position: [20,20], size: [300,200], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._pos = vec2.create();
+	}
+
+	LGraphGUIImage.title = "GUIImage";
+	LGraphGUIImage.desc = "renders an image on webgl canvas";
+
+	LGraphGUIImage["@corner"] = corner_options;
+	LGraphGUIImage["@opacity"] = { widget:"slider", min:0,max:1 };
+
+	LGraphGUIImage.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
+	}
+
+	LGraphGUIImage.prototype.onRenderGUI = function()
+	{ 
+		var ctx = window.gl;
+		if(!ctx)
+			return;
+
+		var img = this.getInputData(0);
+		var enabled = this.getInputOrProperty("enabled");
+		if(enabled === false || !img)
+			return;
+
+		if(this.properties.force_update)
+			img.mustUpdate = true;
+
+		positionToArea( this.properties.position, this.properties.corner, this._pos );
+
+		gl.disable( gl.DEPTH_TEST );
+		gl.enable( gl.BLEND );
+		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		var tmp = ctx.globalAlpha;
+		ctx.globalAlpha *= this.properties.opacity;
+		var x = this._pos[0];
+		var y = this._pos[1];
+		var w = this.properties.size[0];
+		var h = this.properties.size[1];
+		if(this.properties.keep_aspect)
+			h = (this.properties.size[0] / img.width) * img.height;
+		if(this.properties.flipX)
+		{
+			x += w;
+			w *= -1;
+		}
+		if(this.properties.flipY)
+		{
+			y += h;
+			h *= -1;
+		}
+		ctx.drawImage( img, x, y, w, h );
+		ctx.globalAlpha = tmp;
+	}
+
+	LiteGraph.registerNodeType("gui/image", LGraphGUIImage );
+
+
+	//special kind of node
+	function LGraphGUISlider()
+	{
+		this.addOutput("v");
+		this.properties = { enabled: true, text: "", min: 0, max: 1, value: 0, position: [20,20], size: [200,40], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+	}
+
+	LGraphGUISlider.title = "GUISlider";
+	LGraphGUISlider.desc = "Renders a slider on the main canvas";
+	LGraphGUISlider["@corner"] = corner_options;
+
+	LGraphGUISlider.prototype.onRenderGUI = function()
+	{
+		if(!this.properties.enabled)
+			return;
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1];
+		this.properties.value = LS.GUI.HorizontalSlider( this._area, Number(this.properties.value), Number(this.properties.min), Number(this.properties.max), true );
+		if(this.properties.text)
+		{
+			gl.textAlign = "right";
+			gl.fillStyle = "#AAA";
+			gl.fillText( this.properties.text, this._area[0] - 20, this._area[1] + this._area[3] * 0.75);
+			gl.textAlign = "left";
+		}
+	}
+
+	LGraphGUISlider.prototype.onExecute = function()
+	{
+		if(this.inputs && this.inputs.length)
+			this.properties.enabled = this.getInputOrProperty("enabled");
+		this.setOutputData(0, this.properties.value );
+	}
+
+	LGraphGUISlider.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
+	}
+
+	LiteGraph.registerNodeType("gui/slider", LGraphGUISlider );
+
+
+	function LGraphGUIToggle()
+	{
+		this.addOutput("v");
+		this.properties = { enabled: true, value: true, text:"toggle", position: [20,20], size: [140,40], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+	}
+
+	LGraphGUIToggle.title = "GUIToggle";
+	LGraphGUIToggle.desc = "Renders a toggle widget on the main canvas";
+	LGraphGUIToggle["@corner"] = corner_options;
+
+	LGraphGUIToggle.prototype.onRenderGUI = function()
+	{
+		if(!this.properties.enabled)
+			return;
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1];
+		this.properties.value = LS.GUI.Toggle( this._area, this.properties.value, this.properties.text );
+	}
+
+	LGraphGUIToggle.prototype.onExecute = function()
+	{
+		this.setOutputData(0, this.properties.value );
+	}
+
+	LiteGraph.registerNodeType("gui/toggle", LGraphGUIToggle );
+
+	function LGraphGUIButton()
+	{
+		this.addOutput("on",LiteGraph.EVENT);
+		this.addOutput("was_pressed");
+		this.properties = { enabled: true, text:"clickme", position: [20,20], size: [140,40], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+		this._was_pressed = false;
+	}
+
+	LGraphGUIButton.title = "GUIButton";
+	LGraphGUIButton.desc = "Renders a toggle widget on the main canvas";
+	LGraphGUIButton["@corner"] = corner_options;
+
+	LGraphGUIButton.prototype.onRenderGUI = function()
+	{
+		if(!this.properties.enabled)
+			return;
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1];
+		this._was_pressed = LS.GUI.Button( this._area, this.properties.text );
+	}
+
+	LGraphGUIButton.prototype.onExecute = function()
+	{
+		if(this._was_pressed)
+			this.trigger("on");
+		this.setOutputData(1, this._was_pressed );
+		this._was_pressed = false;
+	}
+
+	LiteGraph.registerNodeType("gui/button", LGraphGUIButton );
+
+
+	function LGraphGUIMultipleChoice()
+	{
+		this.addOutput("v");
+		this.addOutput("i");
+		this.properties = { enabled: true, selected: 0, values:"option1;option2;option3", position: [20,20], size: [180,100], corner: LiteGraph.CORNER_TOP_LEFT };
+		this._area = vec4.create();
+		this._values = this.properties.values.split(";");
+		var that = this;
+		this.widget = this.addWidget("text","Options",this.properties.values,function(v){
+			that.properties.values = v;
+			that.onPropertyChanged("values",v);
+		});
+		this.widgets_up = true;
+		this.size = [240,50];
+	}
+
+	LGraphGUIMultipleChoice.title = "GUIMultipleChoice";
+	LGraphGUIMultipleChoice.desc = "Renders a multiple choice widget on the main canvas";
+	LGraphGUIMultipleChoice["@corner"] = corner_options;
+
+	LGraphGUIMultipleChoice.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name == "values")
+			this._values = value.split(";");
+	}
+
+	LGraphGUIMultipleChoice.prototype.onRenderGUI = function()
+	{
+		if(!this._values.length || !this.properties.enabled )
+			return;
+
+		this.properties.selected = Math.floor( this.properties.selected );
+		positionToArea( this.properties.position, this.properties.corner, this._area );
+		this._area[2] = this.properties.size[0];
+		this._area[3] = this.properties.size[1] / this._values.length;
+		var y = this._area[1];
+		for(var i = 0; i < this._values.length; ++i)
+		{
+			this._area[1] = y + i * this._area[3];
+			if( LS.GUI.Toggle( this._area, i == this.properties.selected, this._values[i], null, true ) )
+				this.properties.selected = i;
+		}
+	}
+
+	LGraphGUIMultipleChoice.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
+	}
+
+	LGraphGUIMultipleChoice.prototype.onExecute = function()
+	{
+		if(this.inputs && this.inputs.length)
+			this.properties.enabled = this.getInputOrProperty("enabled");
+		this.setOutputData( 0, this._values[ this.properties.selected ] );
+		this.setOutputData( 1, this.properties.selected );
+	}
+
+	LiteGraph.registerNodeType("gui/multiple_choice", LGraphGUIMultipleChoice );
 
 
 	//based in the NNI distance 
@@ -87,10 +387,12 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("x","number");
 		this.addInput("y","number");
-		this.addOutput("weights","array");
+		this.addOutput("[]","array");
+		this.addOutput("obj","object");
 		this.addProperty("circular",false);
 		this.points = [];
 		this.weights = [];
+		this.weights_obj = {};
 		this.current_pos = new Float32Array([0.5,0.5]);
 		this.size = [200,200];
 		this.dragging = false;
@@ -116,6 +418,7 @@ if(typeof(LiteGraph) != "undefined")
 		pos[1] = this.getInputData(1) || pos[1];
 		this.computeWeights(pos);
 		this.setOutputData(0, this.weights );
+		this.setOutputData(1, this.weights_obj );
 	}
 
 	LGraphMap2D.prototype.computeWeights = function(pos)
@@ -153,7 +456,10 @@ if(typeof(LiteGraph) != "undefined")
 				}
 			}
 		for(var i = 0; i < weights.length; ++i)
+		{
 			weights[i] /= total_inside;
+			this.weights_obj[ this.points[i].name ] = weights[i];
+		}
 		return weights;
 	}
 
@@ -543,10 +849,10 @@ if(typeof(LiteGraph) != "undefined")
 
 	function LGraphRemapWeights()
 	{
-		this.addInput("in","array");
-		this.addOutput("out","array");
-		this.points = [];
-		this.weights = [];
+		this.addInput("in","array"); //array because they are already in order
+		this.addOutput("out","object");
+		this.points = [];	//2D points, name of point ("happy","sad") and weights ("mouth_left":0.4, "mouth_right":0.3)
+		this.current_weights = {}; //object that tells the current state of weights, like "mouth_left":0.3, ...
 
 		var node = this;
 		this.combo = this.addWidget("combo","Point", "", function(v){
@@ -563,40 +869,59 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphRemapWeights.prototype.onExecute = function()
 	{
-		var point_weights = this.getInputData(0);
+		var point_weights = this.getInputData(0); //array
 
-		var lw = this.weights.length;
-		for(var i = 0; i < lw; ++i)
-			this.weights[i] = 0;
+		for(var i in this.current_weights)
+			this.current_weights[i] = 0;
 
 		if( point_weights )
 		for(var i = 0; i < point_weights.length; ++i)
 		{
 			var point = this.points[i];
-			var w = point_weights[i];
-			for(var j = 0, l = point.weights.length; j < lw && j < l; ++j)
-				this.weights[j] += point.weights[j] * w;
+			var w = point_weights[i]; //input
+			//for(var j = 0, l = point.weights.length; j < lw && j < l; ++j)
+			for(var j in point.weights)
+			{
+				var v = (point.weights[j] || 0) * w;
+				this.current_weights[j] += v;
+			}
 		}
 
 		//output weights
-		this.setOutputData(0, this.weights );
+		this.setOutputData(0, this.current_weights );
+
+		if(this.outputs)
+		for(var i = 1; i < this.outputs.length; ++i)
+		{
+			var output_info = this.outputs[i];
+			if(output_info)
+				this.setOutputData(i, this.current_weights[output_info.name] );
+		}
 	}
 
-	LGraphRemapWeights.prototype.addPoint = function(name, weights)
+	//adds a 2D point with the weights associated to it (not used?)
+	LGraphRemapWeights.prototype.addPoint = function( name, weights )
 	{
 		if(!weights)
-			weights = new Array( this.weights.length );
-		this.points.push({name: name, weights:weights});	
+		{
+			console.warn("no weights passed to add point");
+			return;
+		}
+		var w = {};
+		for(var i in weights)
+			w[i] = weights[i];
+		this.points.push({name: name, weights: w});	
 	}
 
-	LGraphRemapWeights.prototype.importPoints = function(name, weights)
+	//import 2D points from input node (usually LGraphMap2D), just the names
+	LGraphRemapWeights.prototype.importPoints = function( name )
 	{
 		var input_node = this.getInputNode(0);
 		if(!input_node || !input_node.points || !input_node.points.length )
 			return;
 		this.points.length = input_node.points.length;
 		for(var i = 0; i < this.points.length; ++i)
-			this.points[i] = { name: input_node.points[i].name, weights: new Array( this.weights.length ) };
+			this.points[i] = { name: input_node.points[i].name, weights: {} };
 		this._selected_point = this.points[0];
 		if( this._selected_point )
 		{
@@ -610,40 +935,36 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
+	//when called it reads the output nodes to get which morph targets it is using and read their weights
+	//then sets the current 2D point to this weights
 	LGraphRemapWeights.prototype.importWeights = function( assign )
 	{
 		var output_nodes = this.getOutputNodes(0);
 		if(!output_nodes || output_nodes.length == 0)
 			return;
-		if( output_nodes.length > 1)
-			console.warn("More than one node connected, taking the first one");
-		var output_node = output_nodes[0];
-		if( !output_node.getComponent )
-			return;
 
-		var component = output_node.getComponent();
-		if(!component)
-			return;
+		for(var i = 0; i < output_nodes.length; ++i)
+		{
+			var output_node = output_nodes[i];
+			if( !output_node.getComponent )
+				continue;
 
-		var compo_weights = component.weights;
-		this.weights.length = compo_weights.length;
-		for(var i = 0; i < this.weights.length; ++i)
-			this.weights[i] = compo_weights[i];
-		this.updatePointsWeight();
+			var component = output_node.getComponent();
+			if(!component)
+				continue;
+
+			var compo_weights = component.name_weights;
+			for(var j in compo_weights)
+				this.current_weights[j] = compo_weights[j];
+		}
+
 		this.setDirtyCanvas(true);
 
 		if( !assign || !this._selected_point)
 			return;
-		this._selected_point.weights = this.weights.concat();
-	}
-
-	LGraphRemapWeights.prototype.updatePointsWeight = function()
-	{
-		for(var i = 0; i < this.points.length; ++i)
-		{
-			var point = this.points[i];
-			point.weights.length = this.weights.length;
-		}
+		this._selected_point.weights = {};
+		for(var i in this.current_weights)
+			this._selected_point.weights[i] = this.current_weights[i];
 	}
 
 	LGraphRemapWeights.prototype.findPoint = function( name )
@@ -656,17 +977,27 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphRemapWeights.prototype.onSerialize = function(o)
 	{
-		o.weights = this.weights;
+		o.current_weights = this.current_weights;
 		o.points = this.points;
 	}
 
 	LGraphRemapWeights.prototype.onConfigure = function(o)
 	{
-		if(o.weights)
-			this.weights = o.weights;
+		if( o.current_weights )
+			this.current_weights = o.current_weights;
 		if(o.points)
 		{
 			this.points = o.points;
+
+			//legacy
+			for(var i = 0;i < this.points.length; ++i)
+			{
+				var p = this.points[i];
+				if(p.weights && p.weights.constructor !== Object)
+					p.weights = {};
+			}
+
+			//widget
 			this.combo.options.values = this.points.map(function(a){ return a.name; });
 			this.combo.value = this.combo.options.values[0] || "";
 		}
@@ -709,21 +1040,28 @@ if(typeof(LiteGraph) != "undefined")
 		inspector.addSeparator();
 		inspector.addTitle("Weights");
 
-		for(var i = 0; i < this.weights.length; ++i)
+		for(var i in this.current_weights)
 		{
-			inspector.addNumber( i.toString(), this.weights[i], { index: i, callback: function(v){
-				node.weights[ this.options.index ] = v;
+			inspector.addNumber( i, this.current_weights[i], { name_width: "80%", index: i, callback: function(v){
+				node.current_weights[ this.options.index ] = v;
 			}});
 		}
 
-		inspector.addButton(null,"+", function(){
-			node.weights.push(0);
-			node.updatePointsWeight();
+		inspector.addStringButton("Add Weight","", { button: "+", callback_button: function(v){
+			node.current_weights[v] = 0;
 			inspector.refresh();
-		});
+		}});
 
 		inspector.addSeparator();
 	}
+
+    LGraphRemapWeights.prototype.onGetOutputs = function() {
+        var r = [];
+		for(var i in this.current_weights)
+			r.push([i,"number"]);
+		return r;
+    };
+
 
 	LiteGraph.registerNodeType("math/remap_weights", LGraphRemapWeights );
 }
