@@ -99,7 +99,7 @@ this.createProperty( "myfile", "", { widget: "file", read_file: true });
 Or if you want to have a handy button in the component interface when using the editor:
 
 ```javascript
-this.createAction( "Click me", this.myCallback );
+this.createAction( "Click me", this.myCallback.bind(this) );
 ```
 
 There is also the option of using this syntax which is more user friendly:
