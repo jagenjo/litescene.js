@@ -88,6 +88,14 @@ Or to create even Arrays that can be edited through the editor:
 this.createProperty( "myarray", [], { type: "array", data_type: LS.TYPES.TEXTURE });
 ```
 
+Or input a local file (although local files are not serialized so the data is lost if the scene is reloaded!):
+
+```javascript
+//this will store a File object in this.myfile if the user clicks in the input in the editor.
+//if read_file is true, the file will be read and stored in the .data field of the variable
+this.createProperty( "myfile", "", { widget: "file", read_file: true });
+```
+
 Or if you want to have a handy button in the component interface when using the editor:
 
 ```javascript
