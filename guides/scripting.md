@@ -99,6 +99,7 @@ this.createProperty( "myfile", "", { widget: "file", read_file: true });
 Or if you want to have a handy button in the component interface when using the editor:
 
 ```javascript
+//assuming the this.myCallback was defined BEFORE this line
 this.createAction( "Click me", this.myCallback.bind(this) );
 ```
 
