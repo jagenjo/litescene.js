@@ -109,6 +109,7 @@ There is also the option of using this syntax which is more user friendly:
 public var myvar = 10; //for public vars
 public var my_texture : Texture = null; //for specific types
 public var my_array : [Animation] = []; //for arrays of one specific type
+public var my_file : File = null; //for files
 ```
 
 but keep in mind that this is just a trick that is replaced by the syntax you have seen before, this means that if you want to access the vars **you still need to specify the scope of the var using ```this```**.
