@@ -1,8 +1,8 @@
-# Scene #
+# Scene
 
 To familiarize with LiteScene first you need to understand how the scene is composed.
 
-## The LS.SceneNode ##
+## The LS.SceneNode
 
 A LS.SceneNode represents an object in your scene (similar to how a GameObject works in Unity).
 
@@ -10,7 +10,20 @@ It can have a name, a transform to define where it is, and a list of [Components
 
 Everything visible or that react to our scene must be inside a LS.SceneNode.
 
-### Names and UIDs ###
+## Properties
+
+Here is a list of the most relevant properties of every SceneNode:
+
+- name
+- uid
+- node_type
+- childNodes
+- paretNode
+- flags
+- components
+
+
+### Names and UIDs
 
 Every node can have a name in a String form, this name doesnt have to be unique.
 
