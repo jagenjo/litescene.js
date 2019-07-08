@@ -117,7 +117,9 @@ Check ```LS.Input``` guides for more info of how to handle input.
 
 # Using Graphs
 
-The last option is to use a graph. There are nodes that allow to create widgets on the GUI, check the GUI section 
+The last option is to use a graph. There are nodes that allow to create widgets on the GUI, check the GUI section in the nodes list.
 
+To get the value you must connect it to the value that must receive the value, remember that you can drag any value from the inspector to the graph, use the circle next to the value.
 
+![GUI Graph](imgs/gui-graph.png "Graph GUI")
 
