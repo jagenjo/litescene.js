@@ -18,11 +18,11 @@ But sometimes we just want to tweak how StandardMaterial shader behaves in some 
 how the vertex is deformed). In those cases we can inject code in the StandardMaterial shader using the next syntax:
 
 ```js
-  LS.newStandardMaterial.onShaderCode = function(code,mat)
+  LS.StandardMaterial.onShaderCode = function(code,mat)
   {
   	code.fs_encode = "final_color.x = final_color.y;";
   }
-	LS.newStandardMaterial.clearShadersCache();
+	LS.StandardMaterial.clearShadersCache();
 ```
 
 
