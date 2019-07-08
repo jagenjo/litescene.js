@@ -73,6 +73,22 @@ this.onRenderGUI = function(ctx)
 }
 ```
 
+## Styling the GUI
+
+Here are the fields to change the GUI style:
+
+- **backgroundColor**: "#333"
+- **backgroundColorOver**: "#AAA"
+- **color**: "#FFF"
+- **colorTextOver**: "#FFF"
+- **font**: "Arial"
+- **margin**: 0.2
+- **outline**: "#000"
+- **selected**: "#AAF"
+- **unselected**: "#AAA"
+
+Remember that if you change any of the vars it will be changed for all the GUI objects in the app. If you just want to change it for one single GUI, then call ```LS.GUI.pushStyle()``` before changing it, and ```LS.GUI.popStyle()``` after rendering your widgets.
+
 ## Canvas GUIs
 
 Another option is to create the GUI manually, you can use Canvas2DToWebGL, a library that allows to use regular Canvas2D calls inside the WebGL Canvas, this way you can easily render simple GUIs (more suited for non-interactive GUIs like HUDs).
