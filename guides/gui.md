@@ -117,12 +117,12 @@ this.onRenderGUI = function()
   if( LS.Input.Mouse.isInsideRect( 100, 100, 120,80, true ) )
   {
     ctx.canvas.style.cursor = "pointer";
-	  ctx.fillColor = [0.5,0.5,0.7,0.75];
+    ctx.fillColor = [0.5,0.5,0.7,0.75];
   }
   else
   {
-		ctx.fillColor = [0.2,0.2,0.3,0.75];  
-		ctx.canvas.style.cursor = "";
+    ctx.fillColor = [0.2,0.2,0.3,0.75];  
+    ctx.canvas.style.cursor = "";
   }  
   ctx.fillText( "Hello", 100,100 );
   ctx.finish2D();
