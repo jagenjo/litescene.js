@@ -50,9 +50,11 @@ this.onCollectRenderInstances = function( RIs )
 
 ## LS.Draw
 
-If all that you want is to render some basic shapes for debugging purposes sometimes is easier to skip all the nodes and render instances and just do the basic calls to the GPU.
+If all that you want is to render some basic shapes for debugging purposes sometimes is easier to skip all the nodes and render instances and just do the inmediate render calls to the GPU.
 
 For that purpose you can use the ```LS.Draw``` class. It behaves similar to old school fixed pipeline rendering methods.
+
+It has methods to render points, lines, cubes, spheres, even meshes, with a flat shader. And it provides a matrices stack to help you position the coordinate's system.
 
 To know more check the [guide for LS.Draw](draw.md)
 
