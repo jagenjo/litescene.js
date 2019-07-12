@@ -63,10 +63,10 @@ RenderFrameContext["@precision"] = { widget: "combo", values: {
 
 RenderFrameContext["@format"] = { widget: "combo", values: { 
 		"RGB": GL.RGB,
-		"RGBA": GL.RGBA,
-		"LUMINANCE": GL.LUMINANCE,
-		"LUMINANCE_ALPHA": GL.LUMINANCE_ALPHA,
-		"ALPHA": GL.ALPHA
+		"RGBA": GL.RGBA
+//		"R8": GL.LUMINANCE,
+//		"LUMINANCE_ALPHA": GL.LUMINANCE_ALPHA,
+//		"ALPHA": GL.ALPHA
 	}
 };
 
@@ -158,7 +158,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 			type = this.precision; break; //used for custom formats
 	}
 
-	//check support
+	//check support due to weirdeness of webgl 1.0
 	if( type == GL.HALF_FLOAT_OES && !GL.FBO.testSupport( type, format ) )
 		format = gl.RGBA;
 	if( type == GL.HALF_FLOAT_OES && !GL.FBO.testSupport( type, format ) )
@@ -278,7 +278,7 @@ RenderFrameContext.prototype.cloneBuffers = function()
 		{
 			var texture = textures[i];
 			var cloned_texture = this._cloned_textures[i];
-			if( !cloned_texture || cloned_texture.hasSameSize( texture[i] ) || !cloned_texture.hasSameProperties( texture ) )
+			if( !cloned_texture || !cloned_texture.hasSameSize( texture ) || !cloned_texture.hasSameProperties( texture ) )
 				cloned_texture = this._cloned_textures[i] = new GL.Texture( texture.width, texture.height, texture.getProperties() );
 			texture.copyTo( cloned_texture );
 			if(i == 0)

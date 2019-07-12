@@ -165,7 +165,8 @@ LinesRenderer.prototype.updateMesh = function ()
 
 	for(var i = 0; i < l; ++i)
 	{
-		if( i*6 >= vl) break; //too many lines
+		if( i*6 >= vl)
+			break; //too many lines
 		var p = lines[i];
 
 		vertices.set(p.subarray(0,6), i * 6);
@@ -191,7 +192,7 @@ LinesRenderer.prototype.onAfterRender = function(e)
 	if( this._must_update )
 		this.updateMesh();
 
-	LS.Draw.renderMesh( this._mesh, GL.LINES );
+	LS.Draw.renderMesh( this._mesh, GL.LINES, null, null, 0, this._lines.length * 2 );
 }
 
 

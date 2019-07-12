@@ -523,6 +523,8 @@ var LS = {
 				o[i] = null;			
 			else if ( isFunction(v) ) //&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
 				continue;//o[i] = v;
+			else if (v.constructor === File ) 
+				o[i] = null;
 			else if (v.constructor === Number || v.constructor === String || v.constructor === Boolean ) //elemental types
 				o[i] = v;
 			else if( v.buffer && v.byteLength && v.buffer.constructor === ArrayBuffer ) //typed arrays are ugly when serialized

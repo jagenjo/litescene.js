@@ -724,6 +724,18 @@ if(typeof(LiteGraph) != "undefined")
 		ctx.restore();
 	}
 
+	LGraphFrame.prototype.onInspect = function( inspector )
+	{
+		var that = this;
+		var render_context = this.graph.component.frame;
+		if(this.graph.component)
+		{
+			inspector.showObjectFields( render_context );
+			inspector.addSeparator();
+			inspector.addCheckbox("Antialiasing", this.graph.component.use_antialiasing, function(v){ that.graph.component.use_antialiasing = v; });
+		}
+	}
+
 	LiteGraph.registerNodeType("scene/frame", LGraphFrame );
 };
 

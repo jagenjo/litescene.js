@@ -20,6 +20,7 @@ function SkinDeformer( o )
 	this._mesh = null;
 	this._last_bones = null;
 	this._ris_skinned = [];
+	this._skeleton = null; //used to overwrite the bones fetching
 	//this._skinning_mode = 0;
 
 	//check how many floats can we put in a uniform
@@ -87,6 +88,9 @@ SkinDeformer.prototype.getBoneNode = function( name )
 //returns a reference to the global matrix of the bone
 SkinDeformer.prototype.getBoneMatrix = function( name )
 {
+	if(this._skeleton)
+		return this._skeleton.getBoneMatrix(name); //global
+
 	var node = this.getBoneNode( name );
 	if(!node)
 		return null;
@@ -95,6 +99,7 @@ SkinDeformer.prototype.getBoneMatrix = function( name )
 }
 
 //checks the list of bones in mesh.bones and retrieves its matrices
+//returns an array with all the bones matrices
 SkinDeformer.prototype.getBoneMatrices = function( ref_mesh )
 {
 	//bone matrices
@@ -106,6 +111,13 @@ SkinDeformer.prototype.getBoneMatrices = function( ref_mesh )
 		bones = this._last_bones = [];
 		for(var i = 0; i < ref_mesh.bones.length; ++i)
 			bones[i] = mat4.create();
+	}
+
+	if(this._skeleton)
+	{
+		var global_model = this._root.transform ? this._root.transform.getGlobalMatrixRef() : null;
+		this._skeleton.computeFinalBoneMatricesAsArray( bones, ref_mesh, global_model );
+		return bones;		
 	}
 
 	for(var i = 0; i < ref_mesh.bones.length; ++i)
@@ -205,19 +217,21 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		return;
 
 	var bones = null;
+	var u_bones = this._u_bones;
 	
 	if( SkinDeformer.gpu_skinning_supported && !this.cpu_skinning ) 
 	{
+		//get the final bone array to upload to the shader
 		//retrieve all the bones
 		bones = this.getBoneMatrices( mesh );
+
 		var bones_size = bones.length * 12;
-		if(!bones.length)
+		if(!bones_size)
 		{
 			console.warn("SkinDeformer.prototype.applySkinning: Bones not found");
 			return;
 		}
 
-		var u_bones = this._u_bones;
 		if(!u_bones || u_bones.length != bones_size)
 			this._u_bones = u_bones = new Float32Array( bones_size );
 
@@ -311,7 +325,14 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		RI.center[1] /= bones.length;
 		RI.center[2] /= bones.length;
 	}
-	mat4.multiplyVec3( RI.position, RI.matrix, LS.ZEROS );
+	else if(u_bones) //take first bone
+	{
+		RI.center[0] = u_bones[9];
+		RI.center[1] = u_bones[10];
+		RI.center[2] = u_bones[11];
+	}
+
+	mat4.getTranslation( RI.position, RI.matrix );
 
 	RI.use_bounding = false;
 }

@@ -1424,6 +1424,7 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 
 //Images ********
 
+//Called after the http request for an image
 //Takes image data in some raw format and transforms it in regular image data, then converts it to GL.Texture
 LS.ResourcesManager.processImage = function( filename, data, options, callback ) {
 

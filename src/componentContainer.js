@@ -17,6 +17,17 @@ function ComponentContainer()
 	//this._components_by_uid = {}; //TODO
 }
 
+/*
+Object.defineProperty( ComponentContainer.prototype, "components", {
+	enumerable: false,
+	get: function() {
+		return this._components;
+	},
+	set: function(v) {
+		throw("Components cannot be set, you must use addComponent");
+	}
+});
+*/
 
 /**
 * Adds a component to this node.

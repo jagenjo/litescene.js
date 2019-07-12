@@ -15,7 +15,7 @@ var GUI = {
 	_allow_change_cursor: true,
 	_is_on_top_of_immediate_widget: false,
 
-	GUIStyle: {
+	defaultGUIStyle: {
 		font: "Arial",
 		color: "#FFF",
 		colorTextOver: "#FFF",
@@ -26,6 +26,9 @@ var GUI = {
 		outline: "#000",
 		margin: 0.2
 	},
+
+	GUIStyle: null,
+	_style_stack: [],
 
 	_offset: [0,0],
 
@@ -283,7 +286,7 @@ var GUI = {
 	//IMMEDIATE GUI STUFF
 
 	/**
-	* Called by the LS.Renderer to clear intermediate stuff
+	* Called by the LS.Renderer to clear inmediate stuff
 	*
 	* @method ResetImmediateGUI
 	*/
@@ -296,6 +299,8 @@ var GUI = {
 		this._offset[1] = 0;
 		this._gui_areas.offset = 0;
 		this._ctx = gl;
+		this.GUIStyle = this.defaultGUIStyle;
+		this._style_stack.length = 0;
 		if(!skip_redraw)
 			LS.GlobalScene.requestFrame(); //force redraws
 	},
@@ -398,6 +403,36 @@ var GUI = {
 			ctx.textAlign = "left";
 			ctx.fillText( content, area[0] + area[3] * 0.2 + this._offset[0], area[1] + area[3] * 0.75  + this._offset[1]);
 		}
+	},
+
+	/**
+	* Just defines an area that could be clicked
+	*
+	* @method ClickArea
+	* @param {Array} area [x,y,width,height]
+	* @return {Boolean} true if the button was pressed inside the area
+	*/
+	ClickArea: function( area )
+	{
+		if(!area)
+			throw("No area");
+		this.blockEventArea( area );
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			if(clicked)
+				LS.Input.current_click = false; //consume event
+		}
+
+		return clicked;
 	},
 
 	/**
@@ -1014,6 +1049,19 @@ var GUI = {
 		return value;
 	},
 	//*/
+
+	pushStyle: function()
+	{
+		var new_style = LS.cloneObject( this.GUIStyle );
+		this._style_stack.push(this.GUIStyle);
+		this.GUIStyle = new_style;
+	},
+
+	popStyle: function()
+	{
+		if(this._style_stack.length)
+			this.GUIStyle = this._style_stack.pop();
+	},
 
 	setCursor: function(type)
 	{

@@ -24,6 +24,7 @@ function Canvas3D(o)
 	this.use_node_material = false;
 	this.generate_mipmaps = false;
 	this.max_interactive_distance = 100; //distance beyong which the mouse is no longer projected
+	this.high_precision = false; //use a texture format of more than one byte per channel
 
 	this._clear_buffer = true; //not public, just here in case somebody wants it
 	this._skip_backside = true;
@@ -53,11 +54,11 @@ function Canvas3D(o)
 
 Canvas3D.icon = "mini-icon-brush.png";
 
-Canvas3D.MODE_CANVAS2D = 1;
-Canvas3D.MODE_WEBGL = 2;
-Canvas3D.MODE_IMMEDIATE = 3; //not supported yet
+Canvas3D.MODE_CANVAS2D = 1; //renders to a canvas2D, then uploads the texture to the GPU after every frame
+Canvas3D.MODE_WEBGL = 2;	//renders to a WebGLTexture translating the Canvas2D calls to WebGL (using Canvas2DtoWebGL)
+Canvas3D.MODE_IMMEDIATE = 3; //renders directly to current viewport (using Canvas2DtoWebGL)
 
-Canvas3D["@mode"] = { type:"enum", values: { "Canvas2D":Canvas3D.MODE_CANVAS2D, "WebGL":Canvas3D.MODE_WEBGL } };
+Canvas3D["@mode"] = { type:"enum", values: { "Canvas2D":Canvas3D.MODE_CANVAS2D, "WebGL":Canvas3D.MODE_WEBGL, "Immediate": Canvas3D.MODE_IMMEDIATE } };
 Canvas3D["@width"] = { type:"number", step:1, precision:0 };
 Canvas3D["@height"] = { type:"number", step:1, precision:0 };
 Canvas3D["@texture_name"] = { type:"string" };
@@ -75,11 +76,13 @@ Object.defineProperty( Canvas3D.prototype, "texture", {
 Canvas3D.prototype.onAddedToScene = function(scene)
 {
 	LEvent.bind(scene,"readyToRender",this.onRender,this);
+	LEvent.bind(scene,"afterRenderInstances",this.onRender,this);
 }
 
 Canvas3D.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbind(scene,"readyToRender",this.onRender,this);
+	LEvent.unbind(scene,"afterRenderInstances",this.onRender,this);
 }
 
 Canvas3D.prototype.onAddedToNode = function( node )
@@ -96,11 +99,21 @@ Canvas3D.prototype.onRemovedFromNode = function( node )
 }
 
 //called before rendering scene
-Canvas3D.prototype.onRender = function()
+Canvas3D.prototype.onRender = function(e)
 {
 	if(!this.enabled)
 		return;
 
+	if(	(e == "readyToRender" && ( this.mode == Canvas3D.MODE_CANVAS2D || this.mode == Canvas3D.MODE_WEBGL)) || 
+		(e == "afterRenderInstances" && this.mode == Canvas3D.MODE_IMMEDIATE)
+	)
+	{
+		this.drawCanvas();
+	}
+}
+
+Canvas3D.prototype.drawCanvas = function()
+{
 	var w = this.width|0;
 	var h = this.height|0;
 
@@ -115,10 +128,12 @@ Canvas3D.prototype.onRender = function()
 			this._canvas.height = h;
 	}
 
+	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+
 	if(this.mode != Canvas3D.MODE_IMMEDIATE)
 	{
-		if(!this._texture || this._texture.width != w || this._texture.height != h)
-			this._texture = new GL.Texture(w,h,{ format: GL.RGBA, filter: GL.LINEAR, wrap: GL.CLAMP_TO_EDGE });
+		if(!this._texture || this._texture.width != w || this._texture.height != h || this._texture.type != type)
+			this._texture = new GL.Texture(w,h,{ type: type, format: GL.RGBA, filter: GL.LINEAR, wrap: GL.CLAMP_TO_EDGE });
 	}
 
 	//project mouse into the canvas plane
@@ -154,9 +169,38 @@ Canvas3D.prototype.onRender = function()
 		gl.finish2D();
 		this._fbo.unbind();
 	}
-	else //not implemented yet
+	else if ( this.mode == Canvas3D.MODE_IMMEDIATE )
 	{
-		//requires to support extra_projection in canvas2DtoWebGL which is not yet implemented
+		var ctx = gl;
+		gl.start2D();
+		LS.GUI._ctx = gl;
+
+		//pass MVP matrix
+		var mvp = this._mvp;
+		if(!mvp)
+			mvp = this._mvp = mat4.create();
+		mat4.identity(mvp);
+		if(this._root.transform)
+			mat4.multiply(mvp,mvp, this._root.transform.getGlobalMatrixRef() );
+		mat4.scale(mvp,mvp,[1/this.width,-1/this.height,1]);
+		mat4.translate(mvp,mvp,[this.width*-0.5,this.height*-0.5,0]);
+		var camera = LS.Renderer._current_camera;
+		mat4.multiply( mvp, camera._viewprojection_matrix, mvp );
+		//mat4.multiply( mvp, mvp, camera._viewprojection_matrix );
+		//mat4.identity(mvp);
+		gl.WebGLCanvas.set3DMatrix( mvp );
+		if(!this._canvas_info)
+			this._canvas_info = { width: 0, height: 0 };
+		this._canvas_info.width = this.width;
+		this._canvas_info.height = this.height;
+		gl.disable( gl.CULL_FACE );
+		gl.enable( gl.DEPTH_TEST );
+		gl.depthFunc( gl.LEQUAL );
+		this._root.processActionInComponents("onRenderCanvas",[ctx,this._canvas_info,this._mouse,this]);
+
+		gl.finish2D();
+		gl.depthFunc( gl.LESS );
+		gl.WebGLCanvas.set3DMatrix(null);
 		return;
 	}
 
@@ -188,7 +232,7 @@ Canvas3D.prototype.onRender = function()
 
 Canvas3D.prototype.onCollectInstances = function(e,instances)
 {
-	if(!this.enabled || !this.visible || !this._texture)
+	if(!this.enabled || !this.visible || !this._texture || this.mode == Canvas3D.MODE_IMMEDIATE)
 		return;
 
 	if(!this._RI)

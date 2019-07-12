@@ -406,6 +406,16 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 				value: target
 			};
 		}
+		else if (path[0] == "visible")
+		{
+			return {
+				node: this,
+				target: this,
+				name: "visible",
+				type: "boolean",
+				value: this.visible
+			};
+		}
 
 		var target = this.getComponent( path[0] );
 		if(target)
@@ -553,6 +563,11 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 			target = this.flags;
 			varname = path[1];
 		}
+		else if (path[0] == "visible")
+		{
+			target = this;
+			varname = path[0];
+		}
 		else
 		{
 			target = this.getComponent( path[0] );
@@ -641,6 +656,11 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 		{
 			target = this.flags;
 			varname = path[offset+1];
+		}
+		else if( path[offset] == "visible" )
+		{
+			target = this;
+			varname = path[offset];
 		}
 		else 
 		{

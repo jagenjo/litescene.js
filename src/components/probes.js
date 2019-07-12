@@ -7,7 +7,6 @@
 * @param {Object} object to configure from
 */
 
-
 function ReflectionProbe( o )
 {
 	this._enabled = true;
@@ -16,7 +15,7 @@ function ReflectionProbe( o )
 	this.texture_name = "";
 	this.generate_irradiance = true;
 	this.generate_mipmaps = false;
-	this.refresh_rate = 1; //in frames
+	this.refresh_rate = 0; //in frames, 0 means only on demand (on start or if ReflectionProbe.updateAll() is called)
 	this.layers = 0xFF;
 
 	this.near = 0.1;
@@ -33,6 +32,7 @@ function ReflectionProbe( o )
 	this._tex_id = ":probe_" + ReflectionProbe.last_id;
 	ReflectionProbe.last_id++;
 	this._registered = false;
+	this._must_update = false;
 
 	if(o)
 		this.configure(o);
@@ -45,6 +45,12 @@ ReflectionProbe.icon = "mini-icon-reflector.png";
 ReflectionProbe["@texture_size"] = { type:"enum", values:["viewport",64,128,256,512,1024,2048] };
 ReflectionProbe["@layers"] = { type:"layers" };
 ReflectionProbe["@background_color"] = { type:"color" };
+
+Object.defineProperty( ReflectionProbe.prototype, "texture", {
+	get: function() { return this._texture; },
+	set: function() { throw("probe cubemap cannot be set"); },
+	enumerable: false
+});
 
 Object.defineProperty( ReflectionProbe.prototype, "enabled", {
 	set: function(v){ 
@@ -77,6 +83,11 @@ ReflectionProbe.prototype.onAddedToScene = function(scene)
 	this.register( scene );
 }
 
+ReflectionProbe.prototype.getExtraProperties = function(properties)
+{
+	properties.push(["texture","texture"]);
+}
+
 ReflectionProbe.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbindAll( scene, this );
@@ -104,35 +115,54 @@ ReflectionProbe.prototype.onConfigure = function(o)
 
 ReflectionProbe.prototype.onRenderReflection = function( e )
 {
-	if( this._enabled )
-		this.recompute();
-}
+	if( !this._enabled )
+		return;
 
-ReflectionProbe.prototype.recompute = function( render_settings, force )
-{
 	if( !this._root || !this._root.scene )
 		return;
 
-	var scene = this._root.scene;
+	if(!this._must_update)
+	{
+		if( LS.ResourcesManager.isLoading() )
+			return;
 
-	if( LS.ResourcesManager.isLoading() )
-		return;
+		this.refresh_rate = this.refresh_rate|0;
+		if( this.refresh_rate < 1 && this._texture )
+			return;
 
-	this.refresh_rate = this.refresh_rate|0;
-	if( this.refresh_rate < 1 && this._texture && !force )
-		return;
+		if ( this._texture && (this._root.scene._frame % this.refresh_rate) != 0 )
+			return;
+	}
+	this._must_update = false;
 
-	if ( this._texture && (scene._frame % this.refresh_rate) != 0 && !force )
-		return;
-
-	this._root.transform.getGlobalPosition( this._current );
-	//if ( vec3.distance( this._current, this._position ) < 0.1 )
-	//	force = true;
-
-	this.updateCubemap( this._current, render_settings, force );
+	this.recompute();
 }
 
-ReflectionProbe.prototype.updateCubemap = function( position, render_settings, generate_spherical_harmonics )
+ReflectionProbe.prototype.recompute = function( render_settings, generate_spherical_harmonics )
+{
+	if( !this._root || !this._root.scene )
+		return;
+	this._root.transform.getGlobalPosition( this._current );
+	this.updateCubemap( this._current, render_settings, true );
+
+	//compute SHs (VERY SLOW)
+	if(generate_spherical_harmonics)
+	{
+		//TODO: copy to lowres cubemap
+		var temp_texture = ReflectionProbe._temp_cubemap;
+		var texture_size = IrradianceCache.capture_cubemap_size;
+		var texture_settings = { type: gl.FLOAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
+		if( !temp_texture || temp_texture.width != texture_size || temp_texture.height != texture_size  )
+			ReflectionProbe._temp_cubemap = temp_texture = new GL.Texture( texture_size, texture_size, texture_settings );
+		var texture = this._texture;
+		texture.copyTo( temp_texture ); //downsample
+		this._irradiance_shs = IrradianceCache.computeSH( temp_texture );
+	}
+}
+
+ReflectionProbe.use_float_for_high_precision = false; //by default it uses HALF_FLOAT
+
+ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 {
 	render_settings = render_settings || LS.Renderer.default_render_settings;
 
@@ -149,13 +179,13 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings, g
 	LS.Renderer.clearSamplers();
 
 	var texture_type = gl.TEXTURE_CUBE_MAP;
-	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	var type = this.high_precision ? ( ReflectionProbe.use_float_for_high_precision ? gl.FLOAT : gl.HIGH_PRECISION_FORMAT ) : gl.UNSIGNED_BYTE;
 
 	var texture = this._texture;
 
 	if(!texture || texture.width != texture_size || texture.height != texture_size || texture.type != type || texture.texture_type != texture_type || texture.minFilter != (this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR) )
 	{
-		texture = new GL.Texture( texture_size, texture_size, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+		texture = new GL.Texture( texture_size, texture_size, { type: type, format: gl.RGB, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
 		texture.has_mipmaps = this.generate_mipmaps;
 		this._texture = texture;
 	}
@@ -178,7 +208,8 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings, g
 
 	//fix: there was a problem because there was no texture bind in ENVIRONMENT_SLOT, this fix it
 	for(var i = 0; i < LS.Renderer._visible_instances.length; ++i)
-		LS.Renderer._visible_instances[i]._nearest_reflection_probe = null;
+		if( LS.Renderer._visible_instances[i]._nearest_reflection_probe == this )
+			LS.Renderer._visible_instances[i]._nearest_reflection_probe = null;
 
 	//render all the scene inside the cubemap
 	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
@@ -192,22 +223,13 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings, g
 		texture.unbind();
 	}
 
+	for(var i = 0; i < LS.Renderer._visible_instances.length; ++i)
+		if( LS.Renderer._visible_instances[i]._nearest_reflection_probe == null )
+			LS.Renderer._visible_instances[i]._nearest_reflection_probe = this;
+
 	if(this.texture_name)
 		LS.ResourcesManager.registerResource( this.texture_name, texture );
 	LS.ResourcesManager.registerResource( this._tex_id, texture );
-
-	//compute SHs (VERY SLOW)
-	if(generate_spherical_harmonics)
-	{
-		//TODO: copy to lowres cubemap
-		var temp_texture = ReflectionProbe._temp_cubemap;
-		var texture_size = IrradianceCache.capture_cubemap_size;
-		var texture_settings = { type: gl.FLOAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
-		if( !temp_texture || temp_texture.width != texture_size || temp_texture.height != texture_size  )
-			ReflectionProbe._temp_cubemap = temp_texture = new GL.Texture( texture_size, texture_size, texture_settings );
-		texture.copyTo( temp_texture ); //downsample
-		this._irradiance_shs = IrradianceCache.computeSH( temp_texture );
-	}
 
 	//remove flags
 	render_settings.layers = old_layers;
@@ -370,6 +392,12 @@ function IrradianceCache( o )
 	};
 	this._samplers = [];
 
+	//callback
+	this.onRecomputingIrradiance = null; //called when recomputing
+	this.onPreprocessCubemap = null; //called before generating SHs
+	this.onComputedSphericalHarmonics = null; //called after generating SHs
+	this.onRecomputingFinished = null; //called when recomputing
+
 	this.cache_filename = "";
 	this._cache_resource = null;
 
@@ -480,6 +508,9 @@ IrradianceCache.prototype.recompute = function( camera )
 	if( !texture || texture.width != texture_size || texture.height != texture_size || texture.type != texture_settings.type )
 		IrradianceCache._temp_cubemap = texture = new GL.Texture( texture_size, texture_size, texture_settings );
 
+	if(this.onRecomputingIrradiance)
+		this.onRecomputingIrradiance(size);
+
 	//first render
 	if( !LS.Renderer._visible_instances )
 	{
@@ -525,7 +556,7 @@ IrradianceCache.prototype.recompute = function( camera )
 			this._irradiance_cubemaps[ i ] = cubemap = new GL.Texture( final_cubemap_size, final_cubemap_size, texture_settings );
 
 		IrradianceCache.captureIrradiance( position, cubemap, render_settings, this.near, this.far, this.background_color, true, IrradianceCache._temp_cubemap );
-		this._irradiance_shs[i] = IrradianceCache.computeSH( cubemap );
+		this._irradiance_shs[i] = this.computeCubemapSH( cubemap, position, i );
 
 		i+=1;
 		generated+=1;
@@ -539,6 +570,9 @@ IrradianceCache.prototype.recompute = function( camera )
 	console.log("Packing in texture time: " + (end_packing_time - end_irradiance_time).toFixed(1) + "ms");
 
 	console.log("Irradiance Total: " + (getTime() - start).toFixed(1) + "ms");
+
+	if(this.onRecomputingFinished)
+		this.onRecomputingFinished();
 
 	//store in file
 	if(!this.cache_filename)
@@ -578,6 +612,25 @@ IrradianceCache.captureIrradiance = function( position, output_cubemap, render_s
 	//downsample
 	temp_cubemap.copyTo( output_cubemap );
 }
+
+IrradianceCache.prototype.computeCubemapSH = function( cubemap, position, index )
+{
+	//read 6 images from cubemap
+	var faces = [];
+	for(var i = 0; i < 6; ++i)
+		faces.push( cubemap.getPixels(i) );
+
+	if(this.onPreprocessCubemap)
+		this.onPreprocessCubemap( faces, position, cubemap, index );
+
+	var coeffs = computeSH( faces, cubemap.width, 4 );
+
+	if(this.onComputedSphericalHarmonics)
+		this.onComputedSphericalHarmonics( coeffs, position );
+
+	return coeffs;
+}
+
 
 IrradianceCache.computeSH = function( cubemap )
 {

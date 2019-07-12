@@ -104,6 +104,10 @@ LS.RESOURCE_TYPES[ LS.TYPES.MESH ] = true;
 LS.RESOURCE_TYPES[ LS.TYPES.ANIMATION ] = true;
 //audio and video?
 
+
+//Events
+var EVENT = LS.EVENT = {};
+
 /**
 * A Ray that contains an origin and a direction (it uses the Ray class from litegl, so to check documentation go to litegl doc
 * @class Ray

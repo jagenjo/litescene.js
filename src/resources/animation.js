@@ -607,6 +607,9 @@ Animation.Take = Take;
 * @constructor
 */
 
+//KeyframesTrack: 0
+//ClipsTrack: 1
+
 function Track(o)
 {
 	/** 

@@ -20,7 +20,7 @@ var Shaders = {
 	shader_blocks: [],
 	num_shaderblocks: 0, //used to know the index
 
-	global_extra_code: null,
+	global_extra_shader_code: "",
 	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
 
@@ -36,11 +36,22 @@ var Shaders = {
 		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
-		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL\n";
-		if( gl.webgl_version == 2 || gl.extensions.OES_standard_derivatives )
-			this.global_extra_code += "#define STANDARD_DERIVATIVES\n";
-		if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
-			this.global_extra_code += "#define DRAW_BUFFERS\n";
+		var supported_features = []; //[name, webgl1_extension_name, enabling code]
+		supported_features.push( ["STANDARD_DERIVATIVES", "OES_standard_derivatives", "#extension GL_OES_standard_derivatives : enable"] );
+		supported_features.push( ["DRAW_BUFFERS","WEBGL_draw_buffers"] ); //#extension GL_EXT_draw_buffers : require
+
+		this.global_extra_shader_code = String.fromCharCode(10) + "#define WEBGL_VERSION "+gl.webgl_version+"\n";
+
+		for(var i in supported_features)
+		{
+			var feature = supported_features[i];
+			if( gl.webgl_version == 2 || gl.extensions[ feature[1] ] )
+			{
+				this.global_extra_shader_code += "#define " + feature[0] + "\n";
+				if(gl.webgl_version == 1 && feature[2]) 
+					this.global_extra_shader_code += feature[2] + "\n";
+			}
+		}
 	},
 
 	/**
@@ -73,8 +84,8 @@ var Shaders = {
 		var shader = null;
 		try
 		{
-			vs_code = this.global_extra_code + vs_code;
-			fs_code = this.global_extra_code + fs_code;
+			vs_code = this.global_extra_shader_code + vs_code;
+			fs_code = this.global_extra_shader_code + fs_code;
 
 			//speed up compilations by caching shaders compiled
 			var vs_shader = this.compiled_shaders[name + ":VS"];
@@ -135,14 +146,14 @@ var Shaders = {
 		console.log(err);
 		console.groupCollapsed("Vertex Shader Code");
 		//console.log("VS CODE\n************");
-		var lines = (this.global_extra_code + vs_code).split("\n");
+		var lines = vs_code.split("\n");
 		for(var i in lines)
 			console.log(i + ": " + lines[i]);
 		console.groupEnd();
 
 		console.groupCollapsed("Fragment Shader Code");
 		//console.log("FS CODE\n************");
-		lines = (this.global_extra_code + fs_code).split("\n");
+		lines = fs_code.split("\n");
 		for(var i in lines)
 			console.log(i + ": " + lines[i]);
 		console.groupEnd();
@@ -827,7 +838,6 @@ LS.Shaders.registerSnippet("spotFalloff","\n\
 
 LS.Shaders.registerSnippet("getFlatNormal","\n\
 			#ifdef STANDARD_DERIVATIVES\n\
-				#extension GL_OES_standard_derivatives : enable \n\
 				vec3 getFlatNormal(vec3 pos)\n\
 				{\n\
 					vec3 A = dFdx( pos );\n\
@@ -868,10 +878,6 @@ LS.Shaders.registerSnippet("PackDepth32","\n\
 
 
 LS.Shaders.registerSnippet("perturbNormal","\n\
-			#ifdef STANDARD_DERIVATIVES\n\
-				#extension GL_OES_standard_derivatives : enable \n\
-			#endif\n\
-			\n\
 				mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)\n\
 				{\n\
 					// get edge vectors of the pixel triangle\n\
@@ -914,9 +920,6 @@ LS.Shaders.registerSnippet("perturbNormal","\n\
 		");
 
 LS.Shaders.registerSnippet("bumpNormal","\n\
-			#ifdef STANDARD_DERIVATIVES\n\
-				#extension GL_OES_standard_derivatives : enable \n\
-			#endif\n\
 				\n\
 				// Calculate the surface normal using screen-space partial derivatives of the height field\n\
 				vec3 bumpNormal(vec3 position, vec3 normal, sampler2D texture, vec2 uvs, float factor)\n\
@@ -940,6 +943,15 @@ LS.Shaders.registerSnippet("bumpNormal","\n\
 				#endif\n\
 				}\n\
 		");
+
+LS.Shaders.registerSnippet("testClippingPlane","\n\
+			float testClippingPlane(vec4 plane, vec3 p)\n\
+			{\n\
+				if(plane.x == 0.0 && plane.y == 0.0 && plane.z == 0.0)\n\
+					return 0.0;\n\
+				return (dot(plane.xyz, p) - plane.w) / dot(plane.xyz,plane.xyz);\n\
+			}\n\
+	");
 
 LS.Shaders.registerSnippet("computePointSize","\n\
 			float computePointSize(float radius, float w)\n\

@@ -171,8 +171,6 @@ Scene.prototype.init = function()
 	this.animation = null;
 	this._local_resources = {}; //not used yet
 	this.extra = {};
-
-	this._renderer = LS.Renderer;
 }
 
 /**
@@ -1463,17 +1461,6 @@ Scene.prototype.finish = function()
 	LEvent.trigger(this,"finish",this);
 	this.triggerInNodes("finish");
 	this.purgeResidualEvents();
-}
-
-
-/**
-* renders the scene using the assigned renderer
-*
-* @method render
-*/
-Scene.prototype.render = function(options)
-{
-	this._renderer.render(this, options);
 }
 
 /**

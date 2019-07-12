@@ -90,7 +90,7 @@ GraphMaterial.shader_codes = {};
 //in the StandardMaterial we cache versions of the ShaderCode according to the settings
 GraphMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	if(!this._graphcode)
+	if(!this._graphcode || !this._graphcode.getShaderCode)
 		return null;
 	return this._graphcode.getShaderCode();
 }

@@ -1,6 +1,6 @@
 ///@INFO: GRAPHS
 //This is a Work In Progress concept to create Configurable Rendering Pipelines
-
+/*
 if(typeof(LiteGraph) != "undefined")
 {
 
@@ -101,3 +101,4 @@ LiteGraph.registerNodeType("pipeline/deferred", LGDeferredRender );
 
 
 }
+*/

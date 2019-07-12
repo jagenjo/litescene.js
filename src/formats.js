@@ -186,3 +186,44 @@ LS.Formats.addSupportedFormat( "glsl", { dataType: "text", resource: "ShaderCode
 LS.Formats.addSupportedFormat( "zip", { dataType: "arraybuffer" } );
 WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
 
+
+var parserMESH = {
+	extension: 'mesh',
+	type: 'mesh',
+	resource: 'Mesh',
+	format: 'text',
+	dataType:'text',
+
+	parse: function(text, options)
+	{
+		options = options || {};
+		var support_uint = true;
+
+		var parser = GL.Mesh.parsers["mesh"];
+		var mesh = parser(text, options);
+		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
+			console.log("no radius found in mesh");
+		//console.log(mesh);
+		return mesh;
+	}
+}
+
+LS.Formats.addSupportedFormat( "mesh", parserMESH );
+
+var parserSKANIM = {
+	extension: 'skanim',
+	type: 'skeletalAnimation',
+	resource: 'SkeletalAnimation',
+	format: 'text',
+	dataType:'text',
+
+	parse: function(text, options)
+	{
+		options = options || {};
+		var anim = new LS.SkeletalAnimation();
+		anim.fromData(text);
+		return anim;
+	}
+}
+
+LS.Formats.addSupportedFormat( "skanim", parserSKANIM );

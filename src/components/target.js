@@ -57,6 +57,11 @@ Target.prototype.onBeforeRender = function(e)
 		this.updateOrientation();
 }
 
+Target.temp_mat3 = mat3.create();
+
+//*
+Target.temp_mat = mat4.create();
+
 Target.prototype.updateOrientation = function()
 {
 	if(!this._root || !this._root.transform ) 
@@ -105,7 +110,10 @@ Target.prototype.updateOrientation = function()
 		//up.set([0,1,0]);
 	}
 
-	transform.lookAt( position, target_position, up, true );
+	mat4.lookAt( Target.temp_mat, position, target_position, up );
+	quat.fromMat4( transform._rotation, Target.temp_mat );
+
+	//transform.lookAt( position, target_position, up, true );
 
 	switch( this.front )
 	{
@@ -120,5 +128,6 @@ Target.prototype.updateOrientation = function()
 
 	transform._on_change();
 }
+//*/
 
 LS.registerComponent( Target );

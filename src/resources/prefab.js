@@ -361,11 +361,19 @@ Prefab.prototype.getBaseData = function()
 	return { "@json": this.prefab_json, "@version": LS.Prefab.version };
 }
 
+Prefab.prototype.recomputeData = function()
+{
+	var data = this.getDataToStore();
+	if(data)
+		this._original_data = data.buffer;
+}
+
 //inheritet methods from Pack
 Prefab.prototype.containsResources = Pack.prototype.containsResources;
 Prefab.prototype.onResourceRenamed = Pack.prototype.onResourceRenamed;
 Prefab.prototype.checkResourceNames = Pack.prototype.checkResourceNames;
 Prefab.prototype.setResources = Pack.prototype.setResources;
+Prefab.prototype.getSizeInBytes = Pack.prototype.getSizeInBytes;
 
 LS.Prefab = Prefab;
 LS.registerResourceClass( Prefab );

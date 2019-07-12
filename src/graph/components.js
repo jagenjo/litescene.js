@@ -46,11 +46,21 @@ if(typeof(LiteGraph) != "undefined")
 			var output = this.outputs[i];
 			if( !output.links || !output.links.length || output.type == LiteGraph.EVENT )
 				continue;
-
 			if(output.name == "Component")
 				this.setOutputData(i, compo );
 			else
-				this.setOutputData(i, compo[ output.name ] );
+			{
+				if(compo.getProperty)
+				{
+					var v = compo.getProperty(output.name);
+					if(v !== undefined)
+						this.setOutputData(i, v );
+					else
+						this.setOutputData(i, compo[ output.name ] );
+				}
+				else
+					this.setOutputData(i, compo[ output.name ] );
+			}
 		}
 	}
 
@@ -119,9 +129,8 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphComponent.prototype.getComponent = function()
 	{
-		var scene = this.graph._scene;
-		if(!scene) 
-			return null;
+		var scene = this.graph._scene || LS.GlobalScene;
+		//TODO: if no graph found, then crawl up in the graph hierarchy because probalby it is a subgraph
 
 		var node_id = this.properties.node_id;
 		if(!node_id)
@@ -206,6 +215,10 @@ if(typeof(LiteGraph) != "undefined")
 		result = result || [];
 		for(var i in attrs)
 			result.push( [i, attrs[i]] );
+
+		if(compo.getExtraProperties)
+			compo.getExtraProperties( result );
+
 		return result;
 	}
 
@@ -360,9 +373,7 @@ if(typeof(LiteGraph) != "undefined")
 
 		if(!transform)
 		{
-			var scene = this.graph.getScene();
-			if(!scene)
-				return;
+			var scene = this.graph.getScene ? this.graph.getScene() : LS.GlobalScene;
 
 			var node = this._node;
 			if(	this.properties.node_id )

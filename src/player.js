@@ -71,7 +71,10 @@ function Player(options)
 	this._file_drop_enabled = false; //use enableFileDrop
 
 	LS.Shaders.init();
-	LS.Renderer.init();
+
+	//this allows to use your custom renderer
+	this.renderer = options.renderer || LS.Renderer;
+	this.renderer.init();
 
 	//this will repaint every frame and send events when the mouse clicks objects
 	this.state = LS.Player.STOPPED;
@@ -495,7 +498,8 @@ Player.prototype._ondraw = function( force )
 
 		if(scene._must_redraw || this.force_redraw )
 		{
-			scene.render( scene.info && scene.info.render_settings ? scene.info.render_settings : this.render_settings );
+			this.renderer._in_player = true;
+			this.renderer.render( scene, scene.info && scene.info.render_settings ? scene.info.render_settings : this.render_settings );
 		}
 
 		if(this.onDraw)

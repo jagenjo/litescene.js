@@ -363,6 +363,13 @@ Pack.prototype.containsResources = function()
 	return this.resource_names && this.resource_names.length > 0 ? true : false;
 }
 
+Pack.prototype.getSizeInBytes = function()
+{
+	if(this._original_data)
+		return this._original_data.byteLength;
+	return 0;
+}
+
 LS.Pack = Pack;
 LS.registerResourceClass( Pack );
 

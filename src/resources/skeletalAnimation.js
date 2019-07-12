@@ -7,9 +7,9 @@ if(!Math.lerp)
 
 function Skeleton()
 {
-	this.bones = [];
-	this.global_bone_matrices = [];
-	this.bones_by_name = new Map();
+	this.bones = []; //array of bones
+	this.global_bone_matrices = []; //internal array of mat4
+	this.bones_by_name = new Map(); //map of nodenames and index in the bones array
 }
 
 Skeleton.EXTENSION = "skanim";
@@ -25,15 +25,35 @@ function Bone()
 	this.children = new Int8Array(16);
 }
 
-Bone.prototype.copyFrom = function(b)
+Bone.prototype.serialize = function()
 {
-	this.name = b.name;
-	this.model.set( b.model );
-	this.parent = b.parent;
-	this.layer = b.layer;
-	this.num_children = b.num_children;
-	this.children.set( b.children );
+	return {
+		name: this.name,
+		model: typedArrayToArray( this.model ),
+		parent: this.parent,
+		layer: this.layer,
+		children: this.num_children ? typedArrayToArray( this.children.subarray(0,this.num_children) ) : null
+	};
 }
+
+Bone.prototype.configure = function(o)
+{
+	this.name = o.name;
+	this.model.set( o.model );
+	this.parent = o.parent;
+	this.layer = o.layer;
+	this.num_children = 0;
+	if(o.children)
+	{
+		this.children.set(o.children);
+		if(o.children.constructor === Array)
+			this.num_children = o.children.length;
+		else
+			this.num_children = o.num_children;
+	}
+}
+
+Bone.prototype.copyFrom = Bone.prototype.configure;
 
 Skeleton.Bone = Bone;
 
@@ -74,6 +94,7 @@ Skeleton.prototype.computeFinalBoneMatrices = function( bone_matrices, mesh, sim
 {
 	if(!this.bones.length || !mesh || !mesh.bones)
 		return bone_matrices || [];
+
 	this.updateGlobalMatrices();
 
 	var size = simplify ? mesh.bones.length * 12 : mesh.bones.length * 16;
@@ -100,6 +121,34 @@ Skeleton.prototype.computeFinalBoneMatrices = function( bone_matrices, mesh, sim
 			var m = bone_matrices.subarray(i*16,i*16+16);
 			mat4.multiply( m, this.getBoneMatrix( bone_info[0], false ), bone_info[1] ); //use globals
 		}
+
+	return bone_matrices;
+}
+
+//returns an array with the final global bone matrix in the order specified by the mesh, global_model is optional
+Skeleton.prototype.computeFinalBoneMatricesAsArray = function( bone_matrices, mesh, global_model )
+{
+	if(!this.bones.length || !mesh || !mesh.bones)
+		return bone_matrices || [];
+
+	this.updateGlobalMatrices();
+
+	bone_matrices = bone_matrices || [];
+	bone_matrices.length = mesh.bones.length;
+
+	for (var i = 0; i < mesh.bones.length; ++i)
+	{
+		var bone_info = mesh.bones[i];
+		if(!bone_matrices[i])
+			bone_matrices[i] = mat4.create();
+		var m = bone_matrices[i];
+		mat4.multiply( m, this.getBoneMatrix( bone_info[0], false ), bone_info[1] ); //use globals
+		if(mesh.bind_matrix)
+			mat4.multiply( m, m, mesh.bind_matrix );
+		if(global_model)
+			mat4.multiply( m, global_model, m );
+	}
+
 	return bone_matrices;
 }
 
@@ -125,13 +174,18 @@ Skeleton.prototype.updateGlobalMatrices = function()
 //assigns a layer to a node and all its children
 Skeleton.prototype.assignLayer = function(bone, layer)
 {
-
+	//TODO
 }
 
-//for rendering
+//for rendering the skeleton
 Skeleton.prototype.getVertices = function()
 {
-	var vertices = new Float32Array( (this.bones.length - 1) * 3 * 2 );
+	if(!this.bones.length)
+		return null;
+	var size = (this.bones.length - 1) * 3 * 2;
+	if(!this._vertices || this._vertices.length != size)
+		this._vertices = new Float32Array( size );
+	var vertices = this._vertices;
 	for (var i = 0; i < this.bones.length - 1; ++i)
 	{
 		var bone = this.bones[i+1];
@@ -173,7 +227,36 @@ Skeleton.prototype.copyFrom = function( skeleton )
 		this.bones[i].copyFrom( skeleton.bones[i] );
 		this.global_bone_matrices[i].set( skeleton.global_bone_matrices[i] );
 	}
-	this.bones_by_name = new Map( this.skeleton.bones_by_name );
+	this.bones_by_name = new Map( skeleton.bones_by_name );
+}
+
+Skeleton.prototype.serialize = function()
+{
+	var o = {
+		bones: [],
+		bone_names: {}
+	};
+
+	for(var i = 0; i < this.bones.length; ++i)
+		o.bones.push(this.bones[i].serialize());
+	return o;
+}
+
+Skeleton.prototype.configure = function(o)
+{
+	this.resizeBones( o.bones.length );
+	if(o.bones_by_name)
+		this.bones_by_name = new Map( o.bones_by_name );
+	else
+		this.bones_by_name.clear();
+	for(var i = 0; i < o.bones.length; ++i)
+	{
+		this.bones[i].copyFrom( o.bones[i] );
+		if(o.global_bone_matrices) //is an skeleton
+			this.global_bone_matrices[i].set( o.global_bone_matrices[i] );
+		else //is an object
+			this.bones_by_name[this.bones[i].name] = i;
+	}
 }
 
 var temp_axis = vec3.create();
@@ -342,17 +425,6 @@ SkeletalAnimation.prototype.resize = function( num_keyframes, num_animated_bones
 	this.keyframes = new Float32Array( num_keyframes * num_animated_bones * 16);
 }
 
-SkeletalAnimation.prototype.serialize = function()
-{
-	var o = {};
-	return o;
-}
-
-SkeletalAnimation.prototype.configure = function(o)
-{
-
-}
-
 SkeletalAnimation.prototype.fromData = function(txt)
 {
 	var lines = txt.split("\n");
@@ -403,6 +475,8 @@ SkeletalAnimation.prototype.fromData = function(txt)
 		else 
 			break;
 	}
+
+	this.assignTime(0,false,false);
 }
 
 SkeletalAnimation.prototype.toData = function()

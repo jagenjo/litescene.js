@@ -237,7 +237,7 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 		return this._global_matrix;
 	},
 	set: function(v) { 
-		throw("globalMatrix cannot be set");
+		throw("globalMatrix cannot be set, use fromMatrix(m,true)");
 	},
 	enumerable: true
 });

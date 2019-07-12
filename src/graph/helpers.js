@@ -41,7 +41,7 @@ if(typeof(LiteGraph) != "undefined")
 	function LGraphGUIPanel()
 	{
 		this.properties = { enabled: true, title: "", color: [0.1,0.1,0.1], opacity: 0.7, titlecolor: [0,0,0], position: [10,10], size: [300,200], rounding: 8, corner: LiteGraph.CORNER_TOP_LEFT };
-		this._pos = vec2.create();
+		this._pos = vec4.create();
 		this._color = vec4.create();
 		this._titlecolor = vec4.create();
 	}
@@ -65,6 +65,14 @@ if(typeof(LiteGraph) != "undefined")
 		this._color[3] = this.properties.opacity;
 		ctx.fillColor = this._color;
 		positionToArea( this.properties.position, this.properties.corner, this._pos );
+		this._pos[2] = this.properties.size[0];
+		this._pos[3] = this.properties.size[1];
+
+		//var mouse = LS.Input.current_click;
+		//var clicked = LS.Input.isEventInRect( mouse, this._pos, LS.GUI._offset );
+		//if(clicked)
+		//	LS.Input.current_click = false; //consume event
+
 		gl.disable( gl.DEPTH_TEST );
 		gl.enable( gl.BLEND );
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
@@ -314,10 +322,17 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphGUIButton.prototype.onExecute = function()
 	{
+		var enabled = this.getInputDataByName("enabled");
+		if(enabled === false || enabled === true)
+			this.properties.enabled = enabled;
 		if(this._was_pressed)
 			this.trigger("on");
 		this.setOutputData(1, this._was_pressed );
 		this._was_pressed = false;
+	}
+
+	LGraphGUIButton.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
 	}
 
 	LiteGraph.registerNodeType("gui/button", LGraphGUIButton );
@@ -327,7 +342,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addOutput("v");
 		this.addOutput("i");
-		this.properties = { enabled: true, selected: 0, values:"option1;option2;option3", position: [20,20], size: [180,100], corner: LiteGraph.CORNER_TOP_LEFT };
+		this.properties = { enabled: true, selected: 0, values:"option1;option2;option3", one_line: false, position: [20,20], size: [180,100], corner: LiteGraph.CORNER_TOP_LEFT };
 		this._area = vec4.create();
 		this._values = this.properties.values.split(";");
 		var that = this;
@@ -335,8 +350,7 @@ if(typeof(LiteGraph) != "undefined")
 			that.properties.values = v;
 			that.onPropertyChanged("values",v);
 		});
-		this.widgets_up = true;
-		this.size = [240,50];
+		this.size = [240,70];
 	}
 
 	LGraphGUIMultipleChoice.title = "GUIMultipleChoice";
@@ -346,7 +360,21 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphGUIMultipleChoice.prototype.onPropertyChanged = function(name,value)
 	{
 		if(name == "values")
+		{
 			this._values = value.split(";");
+			this.widget.value = value;
+		}
+	}
+
+	LGraphGUIMultipleChoice.prototype.onAction = function(name, param)
+	{
+		if(name == "prev")
+			this.properties.selected -= 1;
+		else if(name == "next")
+			this.properties.selected += 1;
+		this.properties.selected = this.properties.selected % this._values.length;
+		if(this.properties.selected < 0)
+			this.properties.selected += this._values.length;
 	}
 
 	LGraphGUIMultipleChoice.prototype.onRenderGUI = function()
@@ -354,27 +382,95 @@ if(typeof(LiteGraph) != "undefined")
 		if(!this._values.length || !this.properties.enabled )
 			return;
 
-		this.properties.selected = Math.floor( this.properties.selected );
+		var selected = this.properties.selected = Math.floor( this.properties.selected );
 		positionToArea( this.properties.position, this.properties.corner, this._area );
-		this._area[2] = this.properties.size[0];
-		this._area[3] = this.properties.size[1] / this._values.length;
-		var y = this._area[1];
-		for(var i = 0; i < this._values.length; ++i)
+		var ctx = gl;
+
+		if(this.properties.one_line)
 		{
-			this._area[1] = y + i * this._area[3];
-			if( LS.GUI.Toggle( this._area, i == this.properties.selected, this._values[i], null, true ) )
-				this.properties.selected = i;
+			var pos = this.properties.position;
+			var size = this.properties.size;
+			var w = size[1]; //use height as width
+			this._area[2] = w * 2;
+			this._area[3] = size[1];
+			if( LS.GUI.ClickArea( this._area ) )
+				selected -= 1;
+			this._area[0] += size[0] - w*2;
+			if( LS.GUI.ClickArea( this._area ) )
+				selected += 1;
+			selected = selected % this._values.length;
+			if(selected < 0)
+				selected += this._values.length;
+			ctx.fillStyle = "black";
+			ctx.strokeStyle = "#AAA";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.roundRect( pos[0], pos[1], size[0], size[1], w * 0.5 );
+			ctx.fill();
+			ctx.stroke();
+			ctx.fillStyle = "white";
+			ctx.beginPath();
+			var m = w * 0.25;
+			ctx.moveTo( pos[0] + m, pos[1] + w * 0.5 );
+			ctx.lineTo( pos[0] + w*0.5 + m*2, pos[1] + m );
+			ctx.lineTo( pos[0] + w*0.5 + m*2, pos[1] + w - m);
+			ctx.fill();
+			ctx.beginPath();
+			ctx.moveTo( pos[0] + size[0] - m, pos[1] + w * 0.5 );
+			ctx.lineTo( pos[0] + size[0] - w*0.5 - m*2, pos[1] + m);
+			ctx.lineTo( pos[0] + size[0] - w*0.5 - m*2, pos[1] + w - m);
+			ctx.fill();
+			ctx.fillStyle = "#AAA";
+			ctx.textAlign = "center";
+			ctx.font = (w*0.75).toFixed(0) + "px " + LS.GUI.GUIStyle.font;
+			ctx.fillText( String(this._values[selected]), pos[0] + size[0] * 0.5, pos[1] + size[1] * 0.75 );
+		}
+		else
+		{
+			this._area[2] = this.properties.size[0];
+			this._area[3] = this.properties.size[1] / this._values.length;
+			var y = this._area[1];
+			for(var i = 0; i < this._values.length; ++i)
+			{
+				this._area[1] = y + i * this._area[3];
+				if( LS.GUI.Toggle( this._area, i == selected, this._values[i], null, true ) )
+					selected = i;
+			}
+		}
+
+		this.properties.selected = selected;
+
+		var mouse = LS.Input.current_click;
+		if(mouse)
+		{
+			var clicked = LS.Input.isEventInRect( mouse, this._area, LS.GUI._offset );
+			if(clicked)
+				LS.Input.current_click = false; //consume event
 		}
 	}
 
 	LGraphGUIMultipleChoice.prototype.onGetInputs = function(){
-		return [["enabled","boolean"]];
+		return [["enabled","boolean"],["options","array"],["next",LiteGraph.ACTION],["prev",LiteGraph.ACTION]];
 	}
 
 	LGraphGUIMultipleChoice.prototype.onExecute = function()
 	{
-		if(this.inputs && this.inputs.length)
-			this.properties.enabled = this.getInputOrProperty("enabled");
+		if(this.inputs)
+		{
+			for(var i = 0; i < this.inputs.length; ++i)
+			{
+				var input_info = this.inputs[i];
+				var v = this.getInputData(i);
+				if( input_info.name == "enabled" )
+					this.properties.enabled = Boolean(v);
+				else if( input_info.name == "options" && v)
+				{
+					this._values = v;
+					this.properties.values = v.join(";");
+					this.widget.value = this.properties.values;
+				}
+			}
+		}
 		this.setOutputData( 0, this._values[ this.properties.selected ] );
 		this.setOutputData( 1, this.properties.selected );
 	}
@@ -420,7 +516,10 @@ if(typeof(LiteGraph) != "undefined")
 		this.setOutputData(0, this.weights );
 		this.setOutputData(1, this.weights_obj );
 	}
-
+	
+	//now to compute the final weight we iterate for every cell to see if our point is nearer to the cell than the nearest point of the cell,
+	//if that is the case we increase the weight of the nearest point. At the end we normalize the weights of the points by the number of near points
+	//and that give us the weight for every point
 	LGraphMap2D.prototype.computeWeights = function(pos)
 	{
 		if(!this.points.length)
@@ -658,6 +757,9 @@ if(typeof(LiteGraph) != "undefined")
 		return null;
 	}
 
+	//here we precompute for every cell, which is the closest point of the points set and how far it is from the center of the cell
+	//we store point index and distance in this._precomputed_weights
+	//this is done only when the points set change
 	LGraphMap2D.prototype.precomputeWeights = function()
 	{
 		var points = this.points;
@@ -811,10 +913,8 @@ if(typeof(LiteGraph) != "undefined")
 		inspector.widgets_per_row = 1;
 
 		var new_point_name = "";
-		inspector.addSeparator();
-		inspector.addTitle("New Point");
 		inspector.widgets_per_row = 2;
-		inspector.addString("Name","",{ width:"75%", callback: function(v){
+		inspector.addString("New Point","",{ width:"75%", callback: function(v){
 			new_point_name = v;
 		}});
 		inspector.addButton(null,"Create",{ width:"25%",callback: function(v){
@@ -853,13 +953,13 @@ if(typeof(LiteGraph) != "undefined")
 		this.addOutput("out","object");
 		this.points = [];	//2D points, name of point ("happy","sad") and weights ("mouth_left":0.4, "mouth_right":0.3)
 		this.current_weights = {}; //object that tells the current state of weights, like "mouth_left":0.3, ...
-
+		this.properties = { enabled: true };
 		var node = this;
 		this.combo = this.addWidget("combo","Point", "", function(v){
 			node._selected_point = node.findPoint(v);
 		}, { values:[] } );
 		this.import_button = this.addWidget("button", "import weights", "", function(){
-			node.importWeights(true);
+			node.importWeights(true,true);
 		});
 		this.size = [170,80];
 		this._selected_point = null;
@@ -869,15 +969,40 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphRemapWeights.prototype.onExecute = function()
 	{
+		var enabled = this.getInputOrProperty("enabled");
+		if(!enabled)
+			return;
+
 		var point_weights = this.getInputData(0); //array
+
+		if(this.inputs)
+		for(var i = 1; i < this.inputs.length; ++i)
+		{
+			var input_info = this.inputs[i];
+			if(input_info.name == "selected")
+			{
+				var selected = this.getInputData(i); 
+				if(selected)
+				{
+					this._selected_point = this.findPoint(selected);
+					this.combo.value = selected;
+				}
+			}
+		}
 
 		for(var i in this.current_weights)
 			this.current_weights[i] = 0;
 
+		var points_has_changed = false;
 		if( point_weights )
 		for(var i = 0; i < point_weights.length; ++i)
 		{
 			var point = this.points[i];
+			if(!point)
+			{
+				points_has_changed = true;
+				continue;
+			}
 			var w = point_weights[i]; //input
 			//for(var j = 0, l = point.weights.length; j < lw && j < l; ++j)
 			for(var j in point.weights)
@@ -894,9 +1019,22 @@ if(typeof(LiteGraph) != "undefined")
 		for(var i = 1; i < this.outputs.length; ++i)
 		{
 			var output_info = this.outputs[i];
-			if(output_info)
+			if(!output_info)
+				continue;
+			if(output_info.name == "selected")
+				this.setOutputData(i, this._selected_point ? this._selected_point.name : "" );
+			else
 				this.setOutputData(i, this.current_weights[output_info.name] );
 		}
+
+		if(points_has_changed)
+			this.importPoints();
+	}
+
+	LGraphRemapWeights.prototype.onAction = function(name, params)
+	{
+		if(name == "import")
+			this.importWeights(true); //do not force or recursion ahead
 	}
 
 	//adds a 2D point with the weights associated to it (not used?)
@@ -914,7 +1052,7 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	//import 2D points from input node (usually LGraphMap2D), just the names
-	LGraphRemapWeights.prototype.importPoints = function( name )
+	LGraphRemapWeights.prototype.importPoints = function()
 	{
 		var input_node = this.getInputNode(0);
 		if(!input_node || !input_node.points || !input_node.points.length )
@@ -937,25 +1075,40 @@ if(typeof(LiteGraph) != "undefined")
 
 	//when called it reads the output nodes to get which morph targets it is using and read their weights
 	//then sets the current 2D point to this weights
-	LGraphRemapWeights.prototype.importWeights = function( assign )
+	LGraphRemapWeights.prototype.importWeights = function( assign, run_graph )
 	{
-		var output_nodes = this.getOutputNodes(0);
-		if(!output_nodes || output_nodes.length == 0)
-			return;
+		//force data to flow from inputs to here
+		if(this.graph && run_graph)
+			this.graph.runStep(1,false, this.order );
 
-		for(var i = 0; i < output_nodes.length; ++i)
+		var name_weights = this.getInputDataByName("name_weights");
+		
+		if(name_weights)
 		{
-			var output_node = output_nodes[i];
-			if( !output_node.getComponent )
-				continue;
+			for(var j in name_weights)
+				this.current_weights[j] = name_weights[j];
+		}
+		else //get from output
+		{
+			var output_nodes = this.getOutputNodes(0);
+			if(!output_nodes || output_nodes.length == 0)
+				return;
 
-			var component = output_node.getComponent();
-			if(!component)
-				continue;
+			for(var i = 0; i < output_nodes.length; ++i)
+			{
+				var output_node = output_nodes[i];
+				if( !output_node.getComponent )
+					continue;
 
-			var compo_weights = component.name_weights;
-			for(var j in compo_weights)
-				this.current_weights[j] = compo_weights[j];
+				var component = output_node.getComponent();
+				if(!component)
+					continue;
+
+				var compo_weights = component.name_weights;
+				var compo_weights = component.name_weights;
+				for(var j in compo_weights)
+					this.current_weights[j] = compo_weights[j];
+			}
 		}
 
 		this.setDirtyCanvas(true);
@@ -979,10 +1132,13 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		o.current_weights = this.current_weights;
 		o.points = this.points;
+		o.enabled = this.enabled;
 	}
 
 	LGraphRemapWeights.prototype.onConfigure = function(o)
 	{
+		if(o.enabled !== undefined)
+			this.properties.enabled = o.enabled;
 		if( o.current_weights )
 			this.current_weights = o.current_weights;
 		if(o.points)
@@ -1012,7 +1168,7 @@ if(typeof(LiteGraph) != "undefined")
 			inspector.refresh();
 		}});
 		inspector.addButton(null,"Import weights", { callback: function(){
-			node.importWeights();
+			node.importWeights(null,true);
 			inspector.refresh();
 		}});
 
@@ -1056,12 +1212,52 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
     LGraphRemapWeights.prototype.onGetOutputs = function() {
-        var r = [];
+        var r = [["selected","string"]];
 		for(var i in this.current_weights)
 			r.push([i,"number"]);
 		return r;
     };
 
+	LGraphRemapWeights.prototype.onGetInputs = function()
+	{
+		return [["enabled","boolean"],["import",LiteGraph.ACTION],["selected","string"],["name_weights","object"]];
+	}
 
 	LiteGraph.registerNodeType("math/remap_weights", LGraphRemapWeights );
+
+
+	function LGraphInputKey()
+	{
+		this.addOutput("","boolean");
+		this.addOutput("",LiteGraph.EVENT);
+		this.properties = {
+			key: "SPACE"
+		};
+		var that = this;
+		this.widgets_up = true;
+		this.addWidget("text","Key",this.properties.key,function(v){
+			if(v)
+				that.properties.key = v;
+		});
+	}
+
+	LGraphInputKey.title = "Key";
+
+    LGraphInputKey.prototype.getTitle = function() {
+        if (this.flags.collapsed) {
+            return "Key: " + this.properties.key;
+        }
+        return this.title;
+    };
+
+	LGraphInputKey.prototype.onExecute = function()
+	{
+		var v = LS.Input.wasKeyPressed(this.properties.key);
+		this.boxcolor = v ? "#fff" : "#000";
+		this.setOutputData(0,v);
+		if(v)
+			this.triggerSlot(1,this.properties.key);
+	}
+
+	LiteGraph.registerNodeType("input/key", LGraphInputKey );
 }

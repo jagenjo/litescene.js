@@ -779,6 +779,25 @@ MorphDeformer.prototype.setProperty = function(name, value)
 		this.name_weights = value;
 }
 
+MorphDeformer.prototype.getProperty = function(name)
+{
+	if(name.substr(0,5) == "morph" && name.length > 5)
+	{
+		var t = name.substr(5).split("_");
+		var index = Number(t[0]);
+		var morph = this.morph_targets[ index ];
+		if(morph)
+		{
+			if(t[1] == "mesh")
+				return morph.mesh;
+			else if(t[1] == "weight")
+				return morph.weight;
+			else
+				return morph;
+		}
+	}
+}
+
 
 MorphDeformer.prototype.getPropertiesInfo = function()
 {

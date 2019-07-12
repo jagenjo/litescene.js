@@ -396,11 +396,23 @@ precision mediump float;\n\
 attribute vec3 a_vertex;\n\
 attribute vec3 a_normal;\n\
 attribute vec2 a_coord;\n\
+#pragma shaderblock \"vertex_color\"\n\
+#pragma shaderblock \"coord1\"\n\
+#ifdef BLOCK_COORD1\n\
+	attribute vec2 a_coord1;\n\
+	varying vec2 v_uvs1;\n\
+#endif\n\
+#ifdef BLOCK_VERTEX_COLOR\n\
+	attribute vec4 a_color;\n\
+	varying vec4 v_vertex_color;\n\
+#endif\n\
 \n\
 //varyings\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 \n\
 //matrices\n\
 uniform mat4 u_model;\n\
@@ -423,8 +435,16 @@ uniform vec3 u_camera_eye;\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_local_pos = a_vertex;\n\
+	v_local_normal = a_normal;\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
+	#ifdef BLOCK_COORD1\n\
+		v_uvs1 = a_coord1;\n\
+	#endif\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+		v_vertex_color = a_color;\n\
+	#endif\n\
   \n\
   //deforms\n\
   {{vs_local}}\n\
@@ -449,7 +469,17 @@ precision mediump float;\n\
 //varyings\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 varying vec2 v_uvs;\n\
+#pragma shaderblock \"vertex_color\"\n\
+#pragma shaderblock \"coord1\"\n\
+#ifdef BLOCK_COORD1\n\
+	varying vec2 v_uvs1;\n\
+#endif\n\
+#ifdef BLOCK_VERTEX_COLOR\n\
+	varying vec4 v_vertex_color;\n\
+#endif\n\
 \n\
 //globals\n\
 uniform vec3 u_camera_eye;\n\
@@ -462,11 +492,23 @@ uniform vec4 u_material_color;\n\
 #pragma shaderblock \"applyReflection\"\n\
 \n\
 #pragma snippet \"perturbNormal\"\n\
+#pragma snippet \"testClippingPlane\"\n\
 \n\
 {{fs_out}}\n\
 \n\
 void main() {\n\
 	Input IN = getInput();\n\
+	if(testClippingPlane(u_clipping_plane,IN.worldPos) < 0.0)\n\
+		discard;\n\
+	\n\
+	IN.vertex = v_local_pos;\n\
+	IN.normal = v_local_normal;\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+		IN.color = v_vertex_color;\n\
+	#endif\n\
+	#ifdef BLOCK_COORD1\n\
+		IN.uv1 = v_uvs1;\n\
+	#endif\n\
 	SurfaceOutput o = getSurfaceOutput();\n\
 	surf(IN,o);\n\
 	vec4 final_color = vec4(0.0);\n\
@@ -493,6 +535,8 @@ attribute vec4 a_color;\n\
 //varyings\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 varying vec2 v_uvs;\n\
 \n\
 //matrices\n\
@@ -516,6 +560,8 @@ uniform vec3 u_camera_eye;\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_local_pos = a_vertex;\n\
+	v_local_normal = a_normal;\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
   \n\
@@ -542,6 +588,8 @@ precision mediump float;\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 \n\
 //globals\n\
 uniform vec3 u_camera_eye;\n\
@@ -558,9 +606,11 @@ uniform mat3 u_texture_matrix;\n\
 {{fs_out}}\n\
 \n\
 void main() {\n\
-  Input IN = getInput();\n\
-  SurfaceOutput o = getSurfaceOutput();\n\
-  surf(IN,o);\n\
-  gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
+	Input IN = getInput();\n\
+	IN.vertex = v_local_pos;\n\
+	IN.normal = v_local_normal;\n\
+	SurfaceOutput o = getSurfaceOutput();\n\
+	surf(IN,o);\n\
+	gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
 }\n\
 ";

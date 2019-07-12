@@ -19,6 +19,8 @@ var Picking = {
 	_picking_next_color_id: 0,
 	_picking_render_settings: new RenderSettings(),
 
+	_use_scissor_test: true,
+
 	/**
 	* Renders the pixel and retrieves the color to detect which object it was, slow but accurate
 	* @method getNodeAtCanvasPosition
@@ -94,6 +96,8 @@ var Picking = {
 		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
 		//byte_pick_color[3] = 255; //Set the alpha to 1
 
+		if(!this._picking_nodes) //not necessary but used for debug
+			this._picking_nodes = {};
 		this._picking_nodes[ this._picking_next_color_id ] = info;
 		return vec4.fromValues( byte_pick_color[0] / 255, byte_pick_color[1] / 255, byte_pick_color[2] / 255, 1 );
 	},
@@ -109,7 +113,7 @@ var Picking = {
 			//LS.ResourcesManager.textures[":picking"] = this._pickingMap; //debug the texture
 		}
 
-		var small_area = true;
+		var small_area = this._use_scissor_test;
 		LS.Renderer._current_target = this._pickingMap;
 
 		this._pickingFBO.bind();
@@ -175,6 +179,40 @@ var Picking = {
 
 		LS.Renderer.renderInstances( picking_render_settings, instances );
 
+		//Nodes
+		/* done in EditorView
+		var ray = null;
+		if(mouse_pos)
+		{
+			ray = camera.getRayInPixel( pos[0], pos[1] );
+			ray.end = vec3.add( vec3.create(), ray.origin, vec3.scale(vec3.create(), ray.direction, 10000 ) );
+		}
+
+		for(var i = 0, l = scene._nodes.length; i < l; ++i)
+		{
+			var node = scene._nodes[i];
+			if(!node.visible)
+				continue;
+
+			//nodes with special pickings?
+			if(node.renderPicking)
+				node.renderPicking(ray);
+
+			if( node.transform )
+			{
+				var pos = vec3.create();
+				mat4.multiplyVec3(pos, node.transform.getGlobalMatrixRef(), pos); //create a new one to store them
+			}
+
+			for(var j in node._components)
+			{
+				var component = node._components[j];
+				if(component.renderPicking)
+					component.renderPicking(ray);
+			}
+		}
+		*/
+
 		LEvent.trigger( scene, "renderPicking", pos );
 		LEvent.trigger( LS.Renderer, "renderPicking", pos );
 
@@ -209,17 +247,17 @@ var Picking = {
 			gl.enable( gl.DEPTH_TEST );
 			this._picking_points.length = 0;
 		}
-	}
+	},
 
-	/*
 	visualize: function(v)
 	{
 		//to visualize picking buffer
-		if(v)
-			LS.Renderer.registerRenderPass( "color", { id: 1, render_instance: LS.Renderer.renderPickingPassInstance } );
+		LS.Renderer.setRenderPass( v ? LS.PICKING_PASS : LS.COLOR_PASS );
 	}
-	*/
 };
+
+//Extra info
+// renderPicking is not called from LiteScene, only from WebGLStudio EditorView
 
 LS.Picking = Picking;
 

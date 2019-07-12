@@ -26,6 +26,7 @@
 
 ../src/resources/resource.js
 ../src/resources/animation.js
+../src/resources/skeletalAnimation.js
 ../src/resources/pack.js
 ../src/resources/prefab.js
 ../src/resources/shaderCode.js
@@ -77,6 +78,7 @@
 ../src/components/sprite.js
 ../src/components/spriteAtlas.js
 ../src/components/sceneInclude.js
+../src/components/helper.js
 
 # deprecated
 #../src/components/lightFX.js
@@ -99,6 +101,7 @@
 ../src/components/pointCloud.js
 ../src/components/linesRenderer.js
 ../src/components/playAnimation.js
+../src/components/playSkeletalAnimation.js
 ../src/components/realtimeReflector.js
 ../src/components/probes.js
 ../src/components/script.js

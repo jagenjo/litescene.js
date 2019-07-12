@@ -468,6 +468,7 @@ function FXGraphComponent(o)
 
 	this._graph = new LGraph();
 	this._graph.getScene = function() { return this._scene; }
+	this._graph.component = this;
 
 	if(o)
 	{

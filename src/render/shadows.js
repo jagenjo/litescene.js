@@ -148,6 +148,12 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 
 Shadowmap.prototype.prepare = function( uniforms, samplers )
 {
+	if(!this.texture)
+	{
+		console.warn("shadowmap without texture?");
+		return;
+	}
+
 	var light = this.light;
 	var closest_far = light.computeFar();
 	uniforms.u_shadow_params = this.shadow_params;

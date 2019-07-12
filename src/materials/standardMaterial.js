@@ -651,6 +651,8 @@ attribute vec2 a_coord;\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 \n\
 //matrices\n\
 #ifdef BLOCK_INSTANCING\n\
@@ -686,6 +688,8 @@ uniform vec2 u_camera_planes;\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_local_pos = a_vertex;\n\
+	v_local_normal = a_normal;\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
 	#ifdef BLOCK_COORD1\n\
@@ -739,6 +743,8 @@ precision mediump float;\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 #ifdef BLOCK_COORD1\n\
 	varying vec2 v_uvs1;\n\
 #endif\n\
@@ -747,6 +753,8 @@ varying vec2 v_uvs;\n\
 #endif\n\
 \n\
 //globals\n\
+uniform vec4 u_viewport;\n\
+uniform mat4 u_view;\n\
 uniform vec3 u_camera_eye;\n\
 uniform vec4 u_clipping_plane;\n\
 uniform vec4 u_background_color;\n\
@@ -813,11 +821,17 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 }\n\
 \n\
 #pragma event \"fs_functions\"\n\
+#pragma snippet \"testClippingPlane\"\n\
 \n\
 {{fs_out}}\n\
 \n\
 void main() {\n\
 	Input IN = getInput();\n\
+	if(testClippingPlane(u_clipping_plane,IN.worldPos) < 0.0)\n\
+		discard;\n\
+	\n\
+	IN.vertex = v_local_pos;\n\
+	IN.normal = v_local_normal;\n\
 	SurfaceOutput o = getSurfaceOutput();\n\
 	#ifdef BLOCK_VERTEX_COLOR\n\
 		IN.color = v_vertex_color;\n\
@@ -870,6 +884,8 @@ precision mediump float;\n\
 attribute vec3 a_vertex;\n\
 attribute vec3 a_normal;\n\
 attribute vec2 a_coord;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 \n\
 //varyings\n\
 varying vec3 v_pos;\n\
@@ -908,6 +924,8 @@ uniform vec2 u_camera_planes;\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_local_pos = a_vertex;\n\
+	v_local_normal = a_normal;\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
   \n\
@@ -940,6 +958,8 @@ varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
 varying vec4 v_screenpos;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 \n\
 //globals\n\
 uniform vec3 u_camera_eye;\n\
@@ -970,17 +990,19 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 {{fs_shadow_out}}\n\
 \n\
 void main() {\n\
-  Input IN = getInput();\n\
-  SurfaceOutput o = getSurfaceOutput();\n\
-  surf(IN,o);\n\
-  //float depth = length( IN.worldPos - u_camera_eye );\n\
-  //depth = linearDepth( depth, u_camera_planes.x, u_camera_planes.y );\n\
-  float depth = (v_screenpos.z / v_screenpos.w) * 0.5 + 0.5;\n\
-  //depth = linearDepthNormalized( depth, u_camera_planes.x, u_camera_planes.y );\n\
-  vec4 final_color;\n\
-  final_color = PackDepth32(depth);\n\
-  {{fs_shadow_encode}}\n\
-  gl_FragColor = final_color;\n\
+	Input IN = getInput();\n\
+	IN.vertex = v_local_pos;\n\
+	IN.normal = v_local_normal;\n\
+	SurfaceOutput o = getSurfaceOutput();\n\
+	surf(IN,o);\n\
+	//float depth = length( IN.worldPos - u_camera_eye );\n\
+	//depth = linearDepth( depth, u_camera_planes.x, u_camera_planes.y );\n\
+	float depth = (v_screenpos.z / v_screenpos.w) * 0.5 + 0.5;\n\
+	//depth = linearDepthNormalized( depth, u_camera_planes.x, u_camera_planes.y );\n\
+	vec4 final_color;\n\
+	final_color = PackDepth32(depth);\n\
+	{{fs_shadow_encode}}\n\
+	gl_FragColor = final_color;\n\
 }\n\
 \\picking.vs\n\
 \n\
@@ -996,6 +1018,8 @@ attribute vec2 a_coord;\n\
 varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
 \n\
 //matrices\n\
 #ifdef BLOCK_INSTANCING\n\
@@ -1029,6 +1053,8 @@ uniform vec3 u_camera_eye;\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_local_pos = a_vertex;\n\
+	v_local_normal = a_normal;\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
   \n\

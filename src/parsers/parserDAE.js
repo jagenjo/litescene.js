@@ -62,6 +62,13 @@ var parserDAE = {
 
 		function inner_replace_names( node )
 		{
+			if(node.id == "root")
+			{
+				console.warn("DAE contains a node named root, renamed to _root");
+				node.id = "_root";
+				renamed["root"] = node.id;
+			}
+
 			//change uid
 			if(node.id && !options.skip_renaming )
 			{

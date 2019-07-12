@@ -266,14 +266,9 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		return null;
 	}
 
-	//globals
-	var global_fs = "";
-	if( gl.webgl_version == 2 || gl.extensions.OES_standard_derivatives )
-		global_fs += "#define STANDARD_DERIVATIVES\n";
-	if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
-		global_fs += "#define DRAW_BUFFERS\n";
-	if(global_fs)
-		fs_code = global_fs + fs_code;
+	//add globals
+	vs_code = LS.Shaders.global_extra_shader_code + vs_code;
+	fs_code = LS.Shaders.global_extra_shader_code + fs_code;
 
 	//compile the shader and return it
 	var shader = this.compileShader( vs_code, fs_code );

@@ -574,7 +574,7 @@ var Draw = {
 		return this.renderMesh(mesh, gl.POINTS, shader, undefined, 0, vertices.length / 3 );
 	},
 
-	createRectangleMesh: function(width, height, in_z, use_global)
+	createRectangleMesh: function( width, height, in_z, use_global )
 	{
 		var vertices = new Float32Array(4 * 3);
 		if(in_z)
@@ -595,10 +595,10 @@ var Draw = {
 	* @param {number} height
 	* @param {boolean} in_z [optional] if the plane is aligned with the z plane
 	*/
-	renderRectangle: function(width, height, in_z)
+	renderRectangle: function(width, height, in_z, fill)
 	{
-		var mesh = this.createRectangleMesh(width, height, in_z, true);
-		return this.renderMesh( mesh, gl.LINE_LOOP, undefined, undefined, 0, this._global_mesh_last_size );
+		var mesh = this.createRectangleMesh( width, height, in_z, true );
+		return this.renderMesh( mesh, fill ? gl.TRIANGLE_FAN : gl.LINE_LOOP, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
 	createCircleMesh: function(radius, segments, in_z, use_global)
@@ -795,7 +795,7 @@ var Draw = {
 	*/
 	renderSolidCube: function(size)
 	{
-		return this.renderSolidCube(size,size,size);
+		return this.renderSolidBox(size,size,size);
 	},
 
 	/**

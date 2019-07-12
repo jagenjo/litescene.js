@@ -1,8 +1,8 @@
 ///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
-	var SHADER_COLOR = "#2a363b";
-	var SHADER_BGCOLOR = "#444";
+	var SHADER_COLOR = "#333";
+	var SHADER_BGCOLOR = "#333";
 	var SHADER_TITLE_TEXT_COLOR = "#AAA";
 
 	var getInputLinkID = LiteGraph.getInputLinkID = function getInputLinkID( node, num )
@@ -192,6 +192,8 @@ if(typeof(LiteGraph) != "undefined")
 		return ctor;
 	}
 
+	createShaderOperationNode("Float->Vec2", ["float"], "vec2", "vec2(@0)", "vec2" );
+	createShaderOperationNode("Float->Vec3", ["float"], "vec3", "vec3(@0)", "vec3" );
 	createShaderOperationNode("Add Float", ["float","float"], "float", "@0 + @1", "A+B" );
 	createShaderOperationNode("Add Vec3", ["vec3","vec3"], "vec3", "@0 + @1", "A+B" );
 	createShaderOperationNode("Sub Vec3", ["vec3","vec3"], "vec3", "@0 - @1", "A-B" );
@@ -203,6 +205,12 @@ if(typeof(LiteGraph) != "undefined")
 	createShaderOperationNode("Pow Vec3", ["vec3","float"], "vec3", "pow(@0,@1)", "pow" );
 	createShaderOperationNode("Float->Vec3", ["float"], "vec3", "vec3(@0)", "vec3" );
 	createShaderOperationNode("Dot", ["vec3","vec3"], "float", "dot(@0,@1)", "dot" );
+	createShaderOperationNode("Abs Vec3", ["vec3"], "vec3", "abs(@0)", "abs" );
+	createShaderOperationNode("Abs Float", ["float"], "float", "abs(@0)", "abs" );
+	createShaderOperationNode(".xyz", [""], "vec3", "(@0).xyz", "xyz" );
+	createShaderOperationNode(".x", [""], "float", "(@0).x", "x" );
+	createShaderOperationNode(".y", [""], "float", "(@0).y", "y" );
+	createShaderOperationNode(".z", [""], "float", "(@0).z", "z" );
 
 	function LGraphShaderSurface()
 	{
@@ -282,12 +290,12 @@ if(typeof(LiteGraph) != "undefined")
 	function LGraphShaderScale()
 	{
 		this.addInput("in","vec3");
-		this.addInput("f","number");
+		this.addInput("f","float");
 		this.addOutput("out","vec3");
 	}
 
 	LGraphShaderScale.title = "Scale";
-	LGraphShaderScale.desc = "Multiply by number";
+	LGraphShaderScale.desc = "Multiply by float";
 	LGraphShaderScale.filter = "shader";
 
 	LGraphShaderScale.prototype.onGetCode = function(type)
@@ -442,7 +450,8 @@ if(typeof(LiteGraph) != "undefined")
 		this.addOutput("screen","vec4");
 		this.addOutput("viewDir","vec3");
 		this.addOutput("camPos","vec3");
-		this.size = [97,126];
+		this.addOutput("color","vec4");
+		this.size = [97,156];
 	}
 
 	LGraphShaderVertex.title = "Vertex";
@@ -478,6 +487,9 @@ if(typeof(LiteGraph) != "undefined")
 		output = getOutputLinkID( this, 7 );
 		if(output)
 			code += "\t vec3 "+output+" = IN.camPos;\n";
+		output = getOutputLinkID( this, 8 );
+		if(output)
+			code += "\t vec4 "+output+" = IN.color;\n";
 		return code;
 	}
 

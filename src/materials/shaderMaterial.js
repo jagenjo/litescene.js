@@ -10,29 +10,28 @@ function ShaderMaterial( o )
 {
 	Material.call( this, null );
 
-	this._shader = "";
-	this._shader_version = -1;
-	this._shader_flags = 0; //?
-	this._shader_code = null;
+	this._shader = ""; //resource filename to a GL.ShaderCode
+	this._shader_version = -1; //if the shader gets modified, the material should be modified too
+	this._shader_flags = 0; //not used
+	this._shader_code = null; //here the final code is stored (for debug)
 
-	this._uniforms = {};
-	this._samplers = [];
-	this._properties = [];
+	this._uniforms = {};	//uniforms to send to the shader
+	this._samplers = [];	//textures to send to the shader
+	this._properties = [];	//public properties to manipulate this material 
 	this._properties_by_name = {};
 
-	this._passes = {};
-	this._light_mode = 0;
-	this._primitive = -1;
-	this._allows_instancing = false;
+	this._passes = {};		//the same ShaderCode is  used for different render passes (like color, shadowmap, picking), so here we cache the final GL.Shader for every type of pass
+	this._light_mode = 0;	//info if this material should be rendered using lights: Material.NO_LIGHTS, Material.SEVERAL_LIGHTS 
+	this._primitive = -1;	//which primitive to use when rendering this material
+	this._allows_instancing = false;	//not supported yet
 
-	this._version = -1;
-	this._shader_version = -1;
+	this._version = -1;	
 
 	if(o) 
 		this.configure(o);
 }
 
-//assign a shader from a filename to a shadercode
+//assign a shader from a filename to a shadercode and reprocesses the code
 Object.defineProperty( ShaderMaterial.prototype, "shader", {
 	enumerable: true,
 	get: function() {
@@ -49,7 +48,7 @@ Object.defineProperty( ShaderMaterial.prototype, "shader", {
 	}
 });
 
-//allows to assign a shader code that doesnt come from a resource
+//allows to assign a shader code that doesnt come from a resource (used from StandardMaterial)
 Object.defineProperty( ShaderMaterial.prototype, "shader_code", {
 	enumerable: false,
 	get: function() {
@@ -118,7 +117,7 @@ ShaderMaterial.prototype.prepare = function( scene )
 		this.onPrepare( scene );
 }
 
-//called when filling uniforms from prepare
+//called when filling uniforms from this.prepare
 ShaderMaterial.prototype.fillUniforms = function()
 {
 	//gather uniforms & samplers
@@ -342,21 +341,30 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	{
 		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
 
-		var environment_texture = null;
-		if( LS.Renderer._global_textures.environment )
-			environment_texture = LS.Renderer._global_textures.environment;
+		var environment_sampler = this.textures["environment"];
+		var environment_texture = environment_sampler && environment_sampler.texture ? environment_sampler.texture : null;
 
-		if(instance._nearest_reflection_probe )
+		if( !environment_texture ) //use global
 		{
-			if( instance._nearest_reflection_probe._texture )
-				environment_texture = instance._nearest_reflection_probe._tex_id;
+			if( LS.Renderer._global_textures.environment )
+				environment_texture = LS.Renderer._global_textures.environment;
+			if( instance._nearest_reflection_probe )
+			{
+				if( instance._nearest_reflection_probe._texture )
+					environment_texture = instance._nearest_reflection_probe._tex_id;
+			}
 		}
 
 		if( environment_texture )
 		{
 			var tex = LS.ResourcesManager.textures[ environment_texture ];
 			if( tex && tex.texture_type == GL.TEXTURE_2D )
-				global_flags |= environment_2d_block.flag_mask;
+			{
+				if( tex._is_planar )
+					global_flags |= environment_planar_block.flag_mask;
+				else
+					global_flags |= environment_2d_block.flag_mask;
+			}
 			else
 				global_flags |= environment_cubemap_block.flag_mask;
 		}

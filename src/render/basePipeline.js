@@ -213,6 +213,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 	\n\
 ";
 
+//the disabled block is included when no light should be present in the scene, but we do not want to break the shaders that rely on them
 Light._disabled_shaderblock_code = "\n\
 	#pragma shaderblock \"firstPass\"\n\
 	#pragma shaderblock \"lastPass\"\n\
@@ -249,6 +250,7 @@ Light._disabled_shaderblock_code = "\n\
 	\n\
 ";
 
+//this is the main light block
 var light_block = new LS.ShaderBlock("light");
 light_block.addCode( GL.VERTEX_SHADER, Light._vs_shaderblock_code, Light._vs_shaderblock_code );
 light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_fs_shaderblock_code, Light._disabled_shaderblock_code );
@@ -256,7 +258,7 @@ light_block.register();
 Light.shader_block = light_block;
 
 // ATTENUATION ************************************************
-
+//this block handles different types ot attenuation
 Light._attenuation_enabled_fragment_code = "\n\
 	const float LINEAR_ATTENUATION = 1.0;\n\
 	const float RANGE_ATTENUATION = 2.0;\n\
@@ -287,6 +289,7 @@ attenuation_block.addCode( GL.FRAGMENT_SHADER, Light._attenuation_enabled_fragme
 attenuation_block.register();
 
 // LIGHT TEXTURE **********************************************
+//this block handles light cookies (textures modulating light)
 Light._light_texture_fragment_enabled_code ="\n\
 uniform sampler2D light_texture;\n\
 void applyLightTexture( in Input IN, inout Light LIGHT )\n\
@@ -451,8 +454,15 @@ Light.shadowmapping_2D_soft_block = shadowmapping_2D_soft_block;
 */
 
 // ENVIRONMENT *************************************
+//this block handles a reflective texture
+//it is not part of the illumination, shadars must include it manually
+//most of it is solved inside ShaderMaterial.prototype.renderInstance 
+
 var environment_code = "\n\
 	#ifdef ENVIRONMENT_TEXTURE\n\
+		uniform sampler2D environment_texture;\n\
+	#endif\n\
+	#ifdef ENVIRONMENT_PLANAR\n\
 		uniform sampler2D environment_texture;\n\
 	#endif\n\
 	#ifdef ENVIRONMENT_CUBEMAP\n\
@@ -492,6 +502,11 @@ environment_2d_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_2D"});
 environment_2d_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_TEXTURE: "" } );
 environment_2d_block.register();
 
+var environment_planar_block = new LS.ShaderBlock("environment_planar");
+environment_planar_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_planar"});
+environment_planar_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_PLANAR: "" } );
+environment_planar_block.register();
+
 var environment_block = new LS.ShaderBlock("environment");
 environment_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code );
 environment_block.register();
@@ -506,7 +521,14 @@ var reflection_code = "\n\
 		vec3 bg = vec3(0.0);\n\
 		//is last pass for this object?\n\
 		#ifdef BLOCK_LASTPASS\n\
-		bg = getEnvironmentColor( R, 0.0 );\n\
+			#ifdef ENVIRONMENT_PLANAR\n\
+				vec2 screen_uv = gl_FragCoord.xy / u_viewport.zw;\n\
+				screen_uv.x = 1.0 - screen_uv.x;\n\
+				screen_uv.xy += (u_view * vec4(o.Normal - IN.worldNormal, 0.0)).xy * 0.1;\n\
+				bg = texture2D( environment_texture, screen_uv ).xyz;\n\
+			#else\n\
+				bg = getEnvironmentColor( R, 0.0 );\n\
+			#endif\n\
 		#endif\n\
 		final_color.xyz = mix( final_color.xyz, bg, clamp( o.Reflectivity, 0.0, 1.0) );\n\
 		return final_color;\n\
@@ -525,7 +547,9 @@ ShaderMaterial.reflection_block = reflection_block;
 reflection_block.addCode( GL.FRAGMENT_SHADER, reflection_code, reflection_disabled_code );
 reflection_block.register();
 
-//dummy irradiance code (it is overwritten later)
+
+
+//dummy irradiance code (it is overwritten later) *****************************
 var irradiance_disabled_code = "\n\
 	void applyIrradiance( in Input IN, in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
 	{\n\
