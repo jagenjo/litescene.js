@@ -72,7 +72,8 @@ this.onStart = function()
 
 this.processData = function( res )
 {
-  res.data //contains all the data
+  //res is the resource after parsing
+  //if the res is a simple text file, then res.data contains the data
 }
 
 ```
