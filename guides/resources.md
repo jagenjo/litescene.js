@@ -77,6 +77,68 @@ this.processData = function( data )
 
 ```
 
+# Creating your own Resource Type
+
+By default LiteScene comes with several Resource types (like Texture, Mesh, Animation, Graph, Script, ...).
+
+But sometimes your components require to allow the developer to select some resource that is stored in the server (like the Animation from a PlayAnimation).
+
+If your resource is just a bunch of data (text or binary) and most of the use of that data is done from the component itself, then you can use just the ```LS.Resource``` which allows to store general data (in string or ArrayBuffer format).
+
+But if you want the resource to store the data in an structured way, (for example if your data requires to be parsed) and you want to have methods to interact with that data, then you must create your own class for that resource.
+
+Here are the steps to create your own resource type:
+
+- Create a class that contains your resource
+- Define some important properties in that class
+- Register the resource class
+- Register the data parser for that class
+
+```js
+
+function MyResourceClass()
+{
+   //...
+}
+
+MyResourceClass.prototype.fromData = function(data)
+{
+   //parse and fill the instance
+}
+
+MyResourceClass.prototype.toData = function()
+{
+   //generate data
+   return data;
+}
+
+//register in the system
+LS.registerResourceClass( MyResourceClass );
+
+//register the parser
+var parserMYFORMAT = {
+	extension: 'myextension',
+	type: 'formatName',
+	resource: 'MyResourceClass',
+	format: 'text', //could be arrayBuffer
+	dataType:'text',
+
+	parse: function(data, options)
+	{
+      //create your own class
+		var myres = new MyResourceClass();
+      
+      //parse it
+		myres.fromData(data);
+      
+      //return the resource instance
+		return myres;
+	}
+}
+
+LS.Formats.addSupportedFormat( "myextension", parserMYFORMAT );
+
+```
 
 
 
