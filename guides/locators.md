@@ -50,8 +50,8 @@ But keep in mind that this way is slower than using the regular object access.
 
 Sometimes your component may support some sort of locator property that has subproperties, in that case the component must define the next methods to process them:
 
-- getPropertyInfoFromPath( path ): must return an object telling all the required info to the system about this property
-- setPropertyValueFromPath( path, value, offset ): must assign the value to the given property defiend by the path
+- ```getPropertyInfoFromPath( path )```: must return an object telling all the required info to the system about this property
+- ```setPropertyValueFromPath( path, value, offset )```: must assign the value to the given property defiend by the path
 
 ```js
 
