@@ -65,14 +65,14 @@ To know more about File Formats check the [File Formats guide](fileformats.md)
 this.onStart = function()
 {
    var that = this;
-   LS.ResourcesManager.load("data/myfile.txt", function(data) {
-      that.processData( data );
+   LS.ResourcesManager.load("data/myfile.txt", function(res) {
+      that.processData( res );
    });
 }
 
-this.processData = function( data )
+this.processData = function( res )
 {
-  //...
+  res.data //contains all the data
 }
 
 ```
