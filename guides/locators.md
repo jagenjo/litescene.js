@@ -26,7 +26,7 @@ node.transform.getLocator("x"); //returns "@NODE_uid/@COMP-uid/x"
 
 # Paths
 
-Because tokenizing the string constantly is slow and generates garbage, the functions processing the locators usually do not receive the string itself but an array of string containing every token like:
+Because tokenizing the string constantly is slow and generates garbage, the functions processing the locators usually do not receive the string itself but an array of string containing every token called paths:
 
 ```["node_id","component_id","property_name"]```
 
