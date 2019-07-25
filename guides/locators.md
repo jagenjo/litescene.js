@@ -8,7 +8,7 @@ This strings are called **locators** and they have the next structure:
 
 ```"node_identifier/component_identifier/property_name"```
 
-Where **node_identifier*** could be the ```node.name``` or the ```node.uid```, and ***component_identifier*** could be the ```component.uid``` or the component class name (if there are two components of the same type then it will reference the first one).
+Where **node_identifier** could be the ```node.name``` or the ```node.uid```, and **component_identifier** could be the ```component.uid``` or the component class name (if there are two components of the same type then it will reference the first one).
 
 Also, you can specify as node_identifier a child node from a child, like this ```"parent_name|child_name/..."```
 
