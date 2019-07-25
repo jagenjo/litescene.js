@@ -19,7 +19,7 @@ Resources can be of many types, depending on the info they store:
 
 Every single resource should have a string to identify it in the system, this string is usually the filename or the url to fetch the file.
 
-In case a resource should not be loaded or stored in the server (a local resource) the name should start with the character colon ':'.
+In case a resource should **not** be loaded or stored in the server (a local resource) the name should start with the character colon ':'.
 
 To access the fullpath of any resource you can get if using the property fullpath.
 
