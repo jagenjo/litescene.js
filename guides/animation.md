@@ -53,6 +53,8 @@ To get the locator of a property you can call the method ```getLocator``` of the
 node.transform.getLocator("x"); //returns "@NODE_uid/@COMP-uid/x"
 ```
 
+To know more about locators check the [locators guide](locators.md).
+
 ## Applying animations
 
 There are two ways to play an animation track, through the ```LS.Components.PlayAnimation``` component, or programatically calling the ```applyTracks``` methods in the ```LS.Animation.Take```.
