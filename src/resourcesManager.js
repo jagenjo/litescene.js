@@ -545,6 +545,8 @@ var ResourcesManager = {
 		delete resource._original_data;
 		delete resource._original_file;
 
+		resource._version = (resource._version || 0) + 1;
+
 		if( resource.remotepath )
 			resource._modified = true;
 

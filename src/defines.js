@@ -53,6 +53,7 @@ LS.LEFT = vec3.fromValues(-1,0,0);
 LS.FRONT = vec3.fromValues(0,0,-1);
 LS.BACK = vec3.fromValues(0,0,1);
 LS.IDENTITY = mat4.create();
+LS.QUAT_IDENTITY = quat.create();
 LS.WHITE = LS.ONES;
 LS.BLACK = LS.ZEROS;
 

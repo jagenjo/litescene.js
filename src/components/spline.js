@@ -99,6 +99,13 @@ Object.defineProperty( Spline.prototype, 'numberOfPoints', {
 	enumerable: false
 });
 
+Object.defineProperty( Spline.prototype, 'points', {
+	get: function() { return this.path.points; },
+	set: function(v) { 
+		throw("points cannot be set, use addPoint");
+	},
+	enumerable: false
+});
 
 Spline.prototype.onAddedToNode = function(node)
 {
@@ -192,6 +199,13 @@ Spline.prototype.getPoint = function( f, out )
 	return out;
 }
 
+Spline.prototype.getPointRef = function( index )
+{
+	if( index < this.path.points.length )
+		return this.path.points[index];
+	return null;
+}
+
 
 Spline.prototype.addPoint = function( point )
 {
@@ -227,6 +241,7 @@ Spline.prototype.renderEditor = function( is_selected )
 	if( this._root.transform )
 		LS.Draw.setMatrix( this._root.transform.getGlobalMatrixRef(true) );
 
+	//draw points
 	if(is_selected)
 	{
 		LS.Draw.setColor(0.9,0.5,0.9,1);
@@ -241,6 +256,17 @@ Spline.prototype.renderEditor = function( is_selected )
 		return;
 	}
 
+	//selection
+	if(window.SelectionModule && SelectionModule.selection && SelectionModule.selection.instance == this && SelectionModule.selection.info != undefined )
+	{
+		var index = SelectionModule.selection.info;
+		var point = this.points[ index ];
+		LS.Draw.setColor(1,1,0.4,1);
+		LS.Draw.setPointSize( 14 );
+		LS.Draw.renderRoundPoints( point );
+	}
+
+	//draw line
 	if(!this._mesh || this._must_update)
 		this.updateMesh();
 

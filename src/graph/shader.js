@@ -197,6 +197,7 @@ if(typeof(LiteGraph) != "undefined")
 	createShaderOperationNode("Add Float", ["float","float"], "float", "@0 + @1", "A+B" );
 	createShaderOperationNode("Add Vec3", ["vec3","vec3"], "vec3", "@0 + @1", "A+B" );
 	createShaderOperationNode("Sub Vec3", ["vec3","vec3"], "vec3", "@0 - @1", "A-B" );
+	createShaderOperationNode("Scale Vec3", ["vec3","float"], "vec3", "@0 * @1", "A*B" );
 	createShaderOperationNode("Sub Float", ["float","float"], "float", "@0 - @1", "A-B" );
 	createShaderOperationNode("Normalize Vec2", ["vec2"], "vec2", "normalize(@0)", "normalize" );
 	createShaderOperationNode("Normalize Vec3", ["vec3"], "vec3", "normalize(@0)", "normalize"  );
@@ -205,12 +206,9 @@ if(typeof(LiteGraph) != "undefined")
 	createShaderOperationNode("Pow Vec3", ["vec3","float"], "vec3", "pow(@0,@1)", "pow" );
 	createShaderOperationNode("Float->Vec3", ["float"], "vec3", "vec3(@0)", "vec3" );
 	createShaderOperationNode("Dot", ["vec3","vec3"], "float", "dot(@0,@1)", "dot" );
+	createShaderOperationNode("Cross", ["vec3","vec3"], "vec3", "cross(@0,@1)", "cross" );
 	createShaderOperationNode("Abs Vec3", ["vec3"], "vec3", "abs(@0)", "abs" );
 	createShaderOperationNode("Abs Float", ["float"], "float", "abs(@0)", "abs" );
-	createShaderOperationNode(".xyz", [""], "vec3", "(@0).xyz", "xyz" );
-	createShaderOperationNode(".x", [""], "float", "(@0).x", "x" );
-	createShaderOperationNode(".y", [""], "float", "(@0).y", "y" );
-	createShaderOperationNode(".z", [""], "float", "(@0).z", "z" );
 
 	function LGraphShaderSurface()
 	{
@@ -287,30 +285,40 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	//mult vec3
-	function LGraphShaderScale()
+	function LGraphShaderVec3ToXYZ()
 	{
 		this.addInput("in","vec3");
-		this.addInput("f","float");
-		this.addOutput("out","vec3");
+		this.addOutput("x","float");
+		this.addOutput("y","float");
+		this.addOutput("z","float");
 	}
 
-	LGraphShaderScale.title = "Scale";
-	LGraphShaderScale.desc = "Multiply by float";
-	LGraphShaderScale.filter = "shader";
+	LGraphShaderVec3ToXYZ.title = "Vec3->XYZ";
+	LGraphShaderVec3ToXYZ.desc = "Split vec3";
+	LGraphShaderVec3ToXYZ.filter = "shader";
 
-	LGraphShaderScale.prototype.onGetCode = function(type)
+	LGraphShaderVec3ToXYZ.prototype.onGetCode = function(type)
 	{
 		if(type != "glsl")
 			return "";
-		var input_0 = getInputLinkID( this, 0 );
-		var input_1 = getInputLinkID( this, 1 );
-		var output = getOutputLinkID( this, 0 );
-		if(input_0 && input_1 && output)
-			return "vec3 "+output+" = "+ input_0 +" * "+ input_1 +";\n";
-		return "";
+		var input = getInputLinkID( this, 0 );
+		var output_0 = getOutputLinkID( this, 0 );
+		var output_1 = getOutputLinkID( this, 1 );
+		var output_2 = getOutputLinkID( this, 2 );
+		if(!input)
+			return "";
+
+		var str = "";
+		if(input && output_0)
+			str +="	float "+output_0+" = "+ input +".x;\n";
+		if(input && output_0)
+			str +="	float "+output_1+" = "+ input +".y;\n";
+		if(input && output_0)
+			str +="	float "+output_2+" = "+ input +".z;\n";
+		return str;
 	}
 
-	LiteGraph.registerShaderNode( "scale", LGraphShaderScale );
+	LiteGraph.registerShaderNode( "Vec3toXYZ", LGraphShaderVec3ToXYZ );
 
 
 	/*

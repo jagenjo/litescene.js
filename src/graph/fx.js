@@ -631,7 +631,81 @@ LGraphVolumetricLight.pixel_shader = "precision highp float;\n\
 
 LiteGraph.registerNodeType("texture/volumetric_light", LGraphVolumetricLight );
 
+if( LiteGraph.Nodes.LGraphTextureCanvas2D )
+{
 
+	function LGraphTextureCanvas2DFromScript() {
+        this.addInput("v");
+		this.addOutput("out", "Texture");
+		this.properties = {
+			filename: "",
+			width: 512,
+			height: 512,
+			clear: true,
+			precision: LGraphTexture.DEFAULT,
+			use_html_canvas: false
+		};
+		this._func = null;
+		this._temp_texture = null;
+		this.size = [180,30];
+	}
+
+	LGraphTextureCanvas2DFromScript.title = "Canvas2DFromScript";
+	LGraphTextureCanvas2DFromScript.desc = "Executes Canvas2D script file inside a texture or the viewport.";
+	LGraphTextureCanvas2DFromScript.help = "Set width and height to 0 to match viewport size.";
+
+	LGraphTextureCanvas2DFromScript.widgets_info = {
+		precision: { widget: "combo", values: LGraphTexture.MODE_VALUES },
+		filename: { type: "script" },
+		width: { type: "Number", precision: 0, step: 1 },
+		height: { type: "Number", precision: 0, step: 1 }
+	};
+
+	LGraphTextureCanvas2DFromScript.prototype.onPropertyChanged = function(	name, value ) {
+		var that = this;
+		if (name == "filename" && LiteGraph.allow_scripts) {
+			this._func = null;
+			if(!value)
+				return;
+			LS.ResourcesManager.load( value, function(script_resource){
+				that.compileCode(script_resource.data);
+				that._code_version = script_resource._version || 0;
+			});
+		}
+	}
+
+	LGraphTextureCanvas2DFromScript.prototype.onExecute = function() {
+
+		if (!this.isOutputConnected(0))
+			return;
+
+		var script_resource = LS.ResourcesManager.getResource( this.properties.filename );
+		if( script_resource && script_resource._version != this._code_version )
+		{
+			this.compileCode( script_resource.data );
+			this._code_version = script_resource._version || 0;
+		}
+
+		var func = this._func;
+		if (!func)
+			return;
+		this.executeDraw( func );
+	}
+
+	LGraphTextureCanvas2DFromScript.prototype.getResources = function(res)
+	{
+		if(this.properties.filename)
+			res[this.properties.filename] = true;
+	}
+
+
+	LGraphTextureCanvas2DFromScript.prototype.compileCode = LiteGraph.Nodes.LGraphTextureCanvas2D.prototype.compileCode;
+
+	LGraphTextureCanvas2DFromScript.prototype.compileCode = LiteGraph.Nodes.LGraphTextureCanvas2D.prototype.compileCode;
+	LGraphTextureCanvas2DFromScript.prototype.executeDraw = LiteGraph.Nodes.LGraphTextureCanvas2D.prototype.executeDraw;
+
+	LiteGraph.registerNodeType("texture/canvas2DfromScript", LGraphTextureCanvas2DFromScript);
+}
 /*
 function LGraphDepthAwareUpscale()
 {

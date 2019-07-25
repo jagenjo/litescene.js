@@ -1128,6 +1128,12 @@ if(typeof(LiteGraph) != "undefined")
 		return null;
 	}
 
+	LGraphRemapWeights.prototype.assignCurrentWeightsToPoint = function( point )
+	{
+		for(var i in this.current_weights)
+			point.weights[i] = this.current_weights[i];
+	}
+
 	LGraphRemapWeights.prototype.onSerialize = function(o)
 	{
 		o.current_weights = this.current_weights;
@@ -1163,11 +1169,11 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		var node = this;
 
-		inspector.addButton(null,"Import points", { callback: function(){
+		inspector.addButton(null,"Import points from input", { callback: function(){
 			node.importPoints();
 			inspector.refresh();
 		}});
-		inspector.addButton(null,"Import weights", { callback: function(){
+		inspector.addButton(null,"Import weights from output", { callback: function(){
 			node.importWeights(null,true);
 			inspector.refresh();
 		}});
@@ -1189,7 +1195,17 @@ if(typeof(LiteGraph) != "undefined")
 		inspector.addCombo("Points",this._selected_point ? this._selected_point.name : "", { values: point_names, callback: function(v){
 			node._selected_point = node.findPoint(v);
 			node.combo.value = v;
+			if(node._selected_point)
+				for(var i in node._selected_point.weights)
+					node.current_weights[i] = node._selected_point.weights[i];
 			node.setDirtyCanvas(true);
+			inspector.refresh();
+		}});
+
+		inspector.addButton(null,"current weights to point", { callback: function(){
+			if(!node._selected_point)
+				return;
+			node.assignCurrentWeightsToPoint(node._selected_point);
 			inspector.refresh();
 		}});
 
@@ -1225,6 +1241,46 @@ if(typeof(LiteGraph) != "undefined")
 
 	LiteGraph.registerNodeType("math/remap_weights", LGraphRemapWeights );
 
+	//******************************************
+
+	function LGraphCameraProject()
+	{
+		this.addInput("camera","component,camera");
+		this.addInput("pos3D","vec3");
+		this.addOutput("screen_pos","vec4");
+		this.properties = {
+			clamp_to_viewport: false,
+			reverse_y: true
+		};
+
+		this._screen_pos = vec4.create();
+		this.size = [160,50];
+	}
+
+	LGraphCameraProject.title = "Camera Project";
+
+	LGraphCameraProject.prototype.onExecute = function()
+	{
+		var camera = this.getInputData(0);
+		var pos = this.getInputData(1);
+		if(!camera || camera.constructor != LS.Camera || !pos)
+			return;
+
+		camera.project( pos, null, this._screen_pos, this.properties.reverse_y );
+		var dist = vec3.distance( camera.eye, pos );
+		this._screen_pos[3] = (Math.sin(camera.fov * DEG2RAD) / dist) * 100.0;
+
+		if( this.properties.clamp_to_viewport )
+		{
+			this._screen_pos[0] = Math.clamp( this._screen_pos[0], 0, gl.canvas.width);
+			this._screen_pos[1] = Math.clamp( this._screen_pos[1], 0, gl.canvas.height);
+		}
+		this.setOutputData(0, this._screen_pos);
+	}
+
+	LiteGraph.registerNodeType("math3d/camera_project", LGraphCameraProject );
+
+	//*********************************************
 
 	function LGraphInputKey()
 	{

@@ -1,4 +1,6 @@
 ///@INFO: UNCOMMON
+//Used to store splines
+//types defined in defines.js: LINEAR, HERMITE, BEZIER
 function Path()
 {
 	this.points = [];
@@ -11,6 +13,7 @@ Path.prototype.clear = function()
 	this.points.length = 0;
 }
 
+//points stored are cloned
 Path.prototype.addPoint = function(p)
 {
 	var pos = vec3.create();
