@@ -18,6 +18,12 @@ Locators could point to sub properties of the object, like:
 
 But in that case the component must handle the set/get properties to work propertly.
 
+To get the locator of a property you can call the method ```getLocator``` of the container (the component) passing the name of the property as a parameter:
+
+```javascript
+node.transform.getLocator("x"); //returns "@NODE_uid/@COMP-uid/x"
+```
+
 # Paths
 
 Because tokenizing the string constantly is slow and generates garbage, the functions processing the locators usually do not receive the string itself but an array of string containing every token like:
