@@ -140,6 +140,10 @@ LS.Formats.addSupportedFormat( "myextension", parserMYFORMAT );
 
 ```
 
+And if your component can have a property (like filename) pointing to a resource of this type, and want to  help the editor to add the according widget then you must tip the editor telling the type of that property:
 
+```js
+MyComponent["@filename"] = { widget: "resource", resource_classname:"MyResourceClass" };
+```
 
 
