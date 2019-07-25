@@ -1,6 +1,6 @@
 # Locators
 
-One of the nice features of LiteScene is that any property of any component of the scene can be referenced using a unique string.
+One of the nice features of LiteScene is that any property of **any component of the scene can be referenced using a unique string**.
 
 This allows to animate properties easily from the timeline editor or connect them using graphs.
 
