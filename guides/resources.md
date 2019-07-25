@@ -59,7 +59,7 @@ All that information is controlled by the LS.Formats class, that contains inform
 
 To know more about File Formats check the [File Formats guide](fileformats.md)
 
-## Example
+## Example to retrieve a Resource
 
 ```js
 this.onStart = function()
