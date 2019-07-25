@@ -57,7 +57,7 @@ Sometimes your component may support some sort of locator property that has subp
 
 MyComponent.prototype.getPropertyInfoFromPath = function( path )
 {
-	if(path[0] == "myproperty")
+  if(path[0] == "myproperty")
   {
     if(path.length == 1)
       return {
