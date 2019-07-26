@@ -91,9 +91,8 @@ But if you want the resource to store the data in an structured way, (for exampl
 Here are the steps to create your own resource type:
 
 - Create a class that contains your resource
-- Define some important properties in that class
+- Define the static property FORMAT **in the class**
 - Register the resource class
-- Register the data parser for that class
 
 ```js
 
@@ -101,6 +100,8 @@ function MyResourceClass()
 {
    //...
 }
+
+MyResourceClass.FORMAT = { extension: "myres", dataType: "text" }
 
 MyResourceClass.prototype.fromData = function(data)
 {
@@ -115,30 +116,6 @@ MyResourceClass.prototype.toData = function()
 
 //register in the system
 LS.registerResourceClass( MyResourceClass );
-
-//register the parser
-var parserMYFORMAT = {
-	extension: 'myextension',
-	type: 'formatName',
-	resource: 'MyResourceClass',
-	format: 'text', //could be arrayBuffer
-	dataType:'text',
-
-	parse: function(data, options)
-	{
-      //create your own class
-		var myres = new MyResourceClass();
-      
-      //parse it
-		myres.fromData(data);
-      
-      //return the resource instance
-		return myres;
-	}
-}
-
-LS.Formats.addSupportedFormat( "myextension", parserMYFORMAT );
-
 ```
 
 And if your component can have a property (like filename) pointing to a resource of this type, and want to  help the editor to add the according widget then you must tip the editor telling the type of that property:
