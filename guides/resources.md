@@ -2,6 +2,11 @@
 
 When working with LiteScene you will need to retrieve many resources to use during the render or to control the behaviour of the application.
 
+Resources are instances that contain relevant information for the system, and that **could be shared among different elements** of the engine. 
+
+All resources are stored in a global container (```LS.ResourcesManager.resources```) so they can be retrieved easily by any element of the engine.
+
+
 ## Classes ##
 
 Resources can be of many types, depending on the info they store:
@@ -11,9 +16,11 @@ Resources can be of many types, depending on the info they store:
 - **Prefab** to store fragments of the scene that could be instantiated many times in the scene.
 - **Animation** to store tracks containing keyframes over a timeline for a property.
 - **ShaderCode** to store and parse GLSL code used by ShaderMaterial.
-- **Resource** Generic class to store text content. Used to store javascript files, data, html, etc.
 - **Material** to store the properties of a material of any class.
 - **Pack** which contains several resources in one single file (useful for deploy).
+- **Resource** Generic class to store text content. Used to store javascript files, data, html, etc.
+
+And you can create your own resource classes in case you have developed your own components that require them.
 
 ## Fullpath ##
 
@@ -78,23 +85,31 @@ this.processData = function( res )
 
 ```
 
-# Creating your own Resource Type
+# Custom Resource Type
 
-By default LiteScene comes with several Resource types (like Texture, Mesh, Animation, Graph, Script, ...).
+By default LiteScene comes with several Resource types but sometimes when creating a new type of component it could require to use a custom Resource Type.
 
-But sometimes your components require to allow the developer to select some resource that is stored in the server (like the Animation from a PlayAnimation).
+Every components will store the info inside the scene JSON when the scene is serialized and saved, so you don't needto create a custom Resource for your component, unless that piece of data could be shared among different components of your scene (or in other scenes).
 
-If your resource is just a bunch of data (text or binary) and most of the use of that data is done from the component itself, then you can use just the ```LS.Resource``` which allows to store general data (in string or ArrayBuffer format).
+In the case that you want the data to me shared, then you can use a Resource class.
 
-But if you want the resource to store the data in an structured way, (for example if your data requires to be parsed) and you want to have methods to interact with that data, then you must create your own class for that resource.
+If your resource is just a bunch of data (text or binary) and most of the use of that data is done from the component itself, then you don't need to create your own resource class. Instead you can use just the ```LS.Resource``` which allows to store general data (in string or ArrayBuffer format). 
+
+For instance if your component requires to store large quantities of binary format and you don't want to store that data inside the scene JSON to make it lighter, then you can use a ```LS.Resource``` in your component.
+
+But if you want the resource to store the data in an structured way, (for example if your data requires to be parsed) and you want to have methods to interact with that data, and that data could be shared, then you must create your own class for that resource.
 
 Here are the steps to create your own resource type:
 
-- Create a class that contains your resource
-- Define the static property FORMAT **in the class** with the properties
+- Create a class for your resource 
+- Define the static property FORMAT **in the class** with the next properties:
    - extension: the string with the file extension associated to this resource
    - dataType: the dataType when requesting this file (could be "text" or "binary")
-- Register the resource class
+- Register the resource class in the system
+
+The FORMAT is necessary so when the engine loads that file knows how to process it and which class is associated with it.
+
+Here is an example of a custom Resource class:
 
 ```js
 
