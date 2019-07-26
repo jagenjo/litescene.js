@@ -29,9 +29,45 @@ All this steps are necesary because different types of resources require differe
 
 ## Guide to add new file formats ##
 
-Adding new file formats requires several steps:
+If you have your own Resource class and you want to make it transparent for the system, the easiest way is to define the FORMAT property in the class object and give the engine the basic info:
 
-- Creating an object with all the info for the file format like:
+- **extension**: which file extension is associated with this file format
+- **dataType**: if the data is in "text" format (you will recieve an string) or binary format (you will receive a ArrayBuffer).
+
+Also your class must define the fromData method (if you want to parse it) or configure method (if you expect a JSON object).
+
+It is also useful to have the toData method in case you want to be able to update the object once modified.
+
+here is an example of a basic resource class:
+
+```js
+MyResourceClass()
+{
+ //define some data
+}
+
+MyResourceClass.FORMAT = { extension:"myext", dataType:"text" };
+
+MyResourceClass.fromData = function(data)
+{
+  //parse data here
+}
+
+MyResourceClass.toData = function()
+{
+  return "here data";
+}
+
+LS.registerResourceClass( MyResourceClass );
+```
+
+In this case when the engine loads a file with the extension specified in FORMAT.extension it will instantiate this class, call fromData and pass the data.
+
+But sometimes you want to parse some file format associated with an existing resource class (like to parse a mesh or an image). In that case you must define a parser.
+
+Here is a list of steps you need to do to add a new file format support:
+
+- Create an object with all the info for the file format like:
   * **extension**: a String with the filename extension that is associated with this format (or comma separated extensions)
   * **type**: which type of resource ("image","scene",mesh"), otherwise is assumed "data"
   * **resource**: the classname to instantiate for this resource (p.e. Mesh, Texture, ...)
@@ -46,8 +82,13 @@ Adding new file formats requires several steps:
 ```js
 //this will allow to load SRTs as text objects instead of binary objects
 LS.Formats.addSupportedFormat( "srt", {
-   extension:"srt",
-   dataType: "text" 
+   extension: "srt",
+   dataType: "text",
+   parse: function(data){
+    var res = new MySRT();
+    res.parse(data);
+    return res
+   }
 });
 ```
 
