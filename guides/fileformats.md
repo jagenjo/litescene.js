@@ -16,7 +16,7 @@ To understand better the file parsing we need to see the steps taken by the LS.R
 - If the resource extension has a preprocessor callback it is executed. A preprocessor is a function that takes the data requested and transforms it to make it ready to be used.
   * If the preprocessor returns true it means it has to wait because the processing is async, once finished it will call ```processFinalResource```
 - If no preprocessor:
- * If if is a Mesh calls ```processTextMesh``` which will call to the file format ```parse``` function
+ * If it is a Mesh calls ```processTextMesh``` which will call to the file format ```parse``` function
  * If it is a Scene calls ```processTextSCene```  which will call to the file format ```parse``` function
  * If it is a Texture calls ```processImage```  which will call to the file format ```parse``` function
  * If the format_info has a parse method call it
