@@ -91,7 +91,9 @@ But if you want the resource to store the data in an structured way, (for exampl
 Here are the steps to create your own resource type:
 
 - Create a class that contains your resource
-- Define the static property FORMAT **in the class**
+- Define the static property FORMAT **in the class** with the properties
+   - extension: the string with the file extension associated to this resource
+   - dataType: the dataType when requesting this file (could be "text" or "binary")
 - Register the resource class
 
 ```js
