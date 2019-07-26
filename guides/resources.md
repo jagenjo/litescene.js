@@ -124,4 +124,5 @@ And if your component can have a property (like filename) pointing to a resource
 MyComponent["@filename"] = { widget: "resource", resource_classname:"MyResourceClass" };
 ```
 
+For more info about File Formats, [check the file format guide](formats.md)
 
