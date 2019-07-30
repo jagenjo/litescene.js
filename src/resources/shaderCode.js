@@ -37,6 +37,8 @@ ShaderCode.INCLUDE = 1;
 ShaderCode.SHADERBLOCK = 2;
 ShaderCode.SNIPPET = 3;
 
+ShaderCode.EXTENSION = "glsl";
+
 Object.defineProperty( ShaderCode.prototype, "code", {
 	enumerable: true,
 	get: function() {

@@ -147,6 +147,8 @@ Material.NO_LIGHTS = 0;
 Material.ONE_LIGHT = 1;
 Material.SEVERAL_LIGHTS = 2;
 
+Material.EXTENSION = "json";
+
 //material info attributes, use this to avoid errors when settings the attributes of a material
 
 /**

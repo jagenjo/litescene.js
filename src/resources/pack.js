@@ -19,6 +19,7 @@ function Pack(o)
 }
 
 Pack.version = "0.2"; //used to know where the file comes from 
+Pack.EXTENSION = "wbin";
 
 /**
 * configure the pack from an unpacked WBin

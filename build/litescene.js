@@ -869,7 +869,7 @@ var LS = {
 	//containers
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
-	ResourceClasses_by_extension: {},
+	ResourceClasses_by_extension: {}, //used to associate JSONs to resources, only used by GRAPHs
 	Globals: {}, //global scope to share info among scripts
 
 	/**
@@ -1115,6 +1115,19 @@ var LS = {
 		resourceClass.is_resource = true;
 		if( resourceClass.EXTENSION ) //used in GRAPH.json
 			this.ResourceClasses_by_extension[ resourceClass.EXTENSION.toLowerCase() ] = resourceClass;
+		if( resourceClass.FORMAT )
+		{
+			if( resourceClass.FORMAT.extension )
+			{
+				this.ResourceClasses_by_extension[ resourceClass.FORMAT.extension.toLowerCase() ] = resourceClass;
+				resourceClass.EXTENSION = resourceClass.FORMAT.extension;
+			}
+			resourceClass.FORMAT.resource_ctor = resourceClass;
+			resourceClass.FORMAT.resource = LS.getClassName( resourceClass );
+			
+			if(LS.Formats)
+				LS.Formats.supported[ resourceClass.FORMAT.extension.toLowerCase() ] = resourceClass.FORMAT;
+		}
 
 		//some validation here? maybe...
 	},
@@ -2141,6 +2154,9 @@ LSQ.getFromInfo = function( info )
 //register resource classes
 if(global.GL)
 {
+	GL.Mesh.EXTENSION = "wbin";
+	GL.Texture.EXTENSION = "png";
+
 	LS.registerResourceClass( GL.Mesh );
 	LS.registerResourceClass( GL.Texture );
 
@@ -2253,7 +2269,11 @@ LS.TYPES = {
 LS.TYPES_INDEX = {};
 var index = 0;
 for(var i in LS.TYPES)
-	LS.TYPES_INDEX[ LS.TYPES[i] ] = index++;
+{
+	LS.TYPES_INDEX[ LS.TYPES[i] ] = index;
+	LS.TYPES_INDEX[ LS.TYPES[i].toUpperCase() ] = index;
+	index++
+}
 
 LS.RESOURCE_TYPES = {};
 LS.RESOURCE_TYPES[ LS.TYPES.RESOURCE ] = true;
@@ -4648,6 +4668,50 @@ var ResourcesManager = {
 		return result;
 	},
 
+	createResource: function( filename, data, must_register )
+	{
+		var resource = null;
+
+		var extension = this.getExtension( filename );
+		//get all the info about this file format
+		var format_info = null;
+		if(extension)
+			format_info = LS.Formats.supported[ extension ];
+
+		//has this resource an special class specified?
+		if(format_info && format_info.resourceClass)
+			resource = new format_info.resourceClass();
+		else //otherwise create a generic LS.Resource (they store data or scripts)
+		{
+			//if we already have a LS.Resource, reuse it (this is to avoid garbage and solve a problem with the editor
+			var old_res = this.resources[ filename ];
+			if( old_res && old_res.constructor === LS.Resource )
+			{
+				resource = old_res;
+				delete resource._original_data;
+				delete resource._original_file;
+				resource._modified = false;
+			}
+			else
+				resource = new LS.Resource();
+		}
+
+		if(data)
+		{
+			if(resource.setData)
+				resource.setData( data, true );
+			else if(resource.fromData)
+				resource.fromData( data );
+			else
+				throw("Resource without setData, cannot assign");
+		}
+
+		if(must_register)
+			LS.ResourcesManager.registerResource( filename, resource );
+
+		return resource;
+	},
+
 	/**
 	* Marks the resource as modified, used in editor to know when a resource data should be updated
 	*
@@ -4864,7 +4928,7 @@ var ResourcesManager = {
 		if(extension)
 			format_info = LS.Formats.supported[ extension ];
 
-		//callback to embede a parameter, ugly but I dont see a work around to create this
+		//callback to embed a parameter, ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
 			if(!resource)
 			{
@@ -4883,7 +4947,7 @@ var ResourcesManager = {
 					options.filename += "." + format_info.convert_to;
 			}
 
-			//apply last changes
+			//apply last changes: add to containers, remove from pending_loads, add special properties like fullpath, load associated resources...
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
 			//Keep original file inside the resource in case we want to save it
@@ -4954,32 +5018,23 @@ var ResourcesManager = {
 			if( resource && resource !== true )
 				process_final( url, resource, options );
 		}
+		else if( format_info && format_info.resource_ctor) //this format has a class associated
+		{
+			var resource = new format_info.resource_ctor();
+			if(resource.fromData)
+				resource.fromData( data );
+			else if(resource.configure)
+				resource.configure( JSON.parse(data) );
+			else
+				console.error("Resource Class doesnt have a function to process data after loading: ", format_info.ctor.name );
+
+			//we have a resource
+			if( resource && resource !== true )
+				process_final( url, resource, options );
+		}
 		else //or just store the resource as a plain data buffer
 		{
-			var resource = null;
-			//has this resource an special class specified?
-			if(format_info && format_info.resourceClass)
-				resource = new format_info.resourceClass();
-			else //otherwise create a generic LS.Resource (they store data or scripts)
-			{
-				//if we already have a LS.Resource, reuse it (this is to avoid garbage and solve a problem with the editor
-				var old_res = this.resources[url];
-				if( old_res && old_res.constructor === LS.Resource )
-				{
-					resource = old_res;
-					delete resource._original_data;
-					delete resource._original_file;
-					resource._modified = false;
-				}
-				else
-					resource = new LS.Resource();
-			}
-
-			if(resource.setData)
-				resource.setData(data, true)
-			else
-				throw("Resource without setData, cannot assign");
-
+			var resource = LS.ResourcesManager.createResource( url, data );
 			if(resource)
 			{
 				resource.filename = resource.fullpath = url;
@@ -6838,6 +6893,218 @@ normalbuffer_block.addCode( GL.FRAGMENT_SHADER, "", "" );
 normalbuffer_block.register();
 
 
+///@FILE:../src/formats.js
+///@INFO: BASE
+/**
+* Formats is the class where all the info about what is every format, how to parse it, etc, is located
+*
+* @class LS.Formats
+* @param{String} id the id (otherwise a random one is computed)
+* @constructor
+*/
+LS.Formats = {
+
+	//all the supported file formats and their parsers
+	supported: {},
+
+	safe_parsing: false, //catch exceptions during parsing
+	merge_smoothgroups: false,
+
+	/**
+	* Tells the system info about this file format
+	* Info should contain fields like type:"image", resource: "Mesh|Texture", format: "text|binary", parse: function, native: true|false
+	* 
+	* @method addFormat
+	*/
+	addSupportedFormat: function( extensions, info )
+	{
+		if( extensions.constructor === String )
+			extensions = extensions.split(",");
+
+		for(var i = 0; i < extensions.length; ++i)
+		{
+			var extension = extensions[i].toLowerCase();
+			if( this.supported[ extension ] )
+				console.warn("There is already another parser associated to this extension: " + extension);
+			this.supported[ extension ] = info;
+		}
+	},
+
+	/**
+	* Parse some data and returns the resulting resource
+	* 
+	* @method parse
+	* @param {string} filename
+	* @param {*} data could be a string, binary, arraybuffer, xml...
+	* @param {Object} options how the file should be parsed
+	* @return {*} the final resource, could be a Texture, a Mesh, or an object
+	*/
+	parse: function( filename, data, options)
+	{
+		options = options || {};
+		var info = this.getFileFormatInfo( filename );
+		if(!info) //unsupported extension
+			return null;
+
+		if(options.extension)
+			info.extension = options.extension; //force a format
+		else
+			info.extension = LS.ResourcesManager.getExtension( filename );
+
+		var format = this.supported[ info.extension ];
+		if(!format || !format.parse)
+		{
+			console.error("Parser Error: No parser found for " + info.extension + " format");
+			return null;
+		}
+
+		var result = null;
+		if(!this.safe_parsing)
+			result = format.parse( data, options, filename );
+		else
+			try
+			{
+				result = format.parse( data, options, filename );
+			}
+			catch (err)
+			{
+				console.error("Error parsing content", err );
+				return null;
+			}
+		if(result)
+			result.name = filename;
+		return result;
+	},
+
+	//Returns info about a resource according to its filename
+	TEXT_FORMAT: "text",
+	JSON_FORMAT: "json",
+	XML_FORMAT: "xml",
+	BINARY_FORMAT: "binary",
+
+	MESH_DATA: "MESH",
+	IMAGE_DATA: "IMAGE",
+	NONATIVE_IMAGE_DATA: "NONATIVE_IMAGE",
+	SCENE_DATA: "SCENE",
+	GENERIC_DATA: "GENERIC",
+	
+	getFileFormatInfo: function( filename )
+	{
+		var extension = filename.substr( filename.lastIndexOf(".") + 1).toLowerCase();
+		return this.supported[ extension ];
+	},
+
+	guessType: function( filename )
+	{
+		if(!filename)
+			return null;
+
+		var ext = LS.RM.getExtension( filename ).toLowerCase();
+		var info = this.supported[ ext ];
+		if(!info)
+			return null;
+		return info.resource;
+	},
+
+	//Helpers ******************************
+
+	//gets raw image information {width,height,pixels:ArrayBuffer} and create a dataurl to use in images
+	convertToDataURL: function( img_data )
+	{
+		var canvas = document.createElement("canvas");
+		canvas.width = img_data.width;
+		canvas.height = img_data.height;
+		//document.body.appendChild(canvas);
+		var ctx = canvas.getContext("2d");
+		var pixelsData = ctx.createImageData(img_data.width, img_data.height);
+		var num_pixels = canvas.width * canvas.height;
+
+		//flip and copy the pixels
+		if(img_data.bytesPerPixel == 3)
+		{
+			for(var i = 0; i < canvas.width; ++i)
+				for(var j = 0; j < canvas.height; ++j)
+				{
+					var pos = j*canvas.width*4 + i*4;
+					var pos2 = (canvas.height - j - 1)*canvas.width*3 + i*3;
+					pixelsData.data[pos+2] = img_data.pixels[pos2];
+					pixelsData.data[pos+1] = img_data.pixels[pos2+1];
+					pixelsData.data[pos+0] = img_data.pixels[pos2+2];
+					pixelsData.data[pos+3] = 255;
+				}
+		}
+		else {
+			for(var i = 0; i < canvas.width; ++i)
+				for(var j = 0; j < canvas.height; ++j)
+				{
+					var pos = j*canvas.width*4 + i*4;
+					var pos2 = (canvas.height - j - 1)*canvas.width*4 + i*4;
+					pixelsData.data[pos+0] = img_data.pixels[pos2+2];
+					pixelsData.data[pos+1] = img_data.pixels[pos2+1];
+					pixelsData.data[pos+2] = img_data.pixels[pos2+0];
+					pixelsData.data[pos+3] = img_data.pixels[pos2+3];
+				}
+		}
+
+		ctx.putImageData(pixelsData,0,0);
+		img_data.dataurl = canvas.toDataURL("image/png");
+		return img_data.dataurl;
+	},
+
+	/* extract important Mesh info from vertices (center, radius, bouding box) */
+	computeMeshBounding: function(vertices)
+	{
+		//compute AABB and useful info
+		var min = [vertices[0],vertices[1],vertices[2]];
+		var max = [vertices[0],vertices[1],vertices[2]];
+		for(var i = 0; i < vertices.length; i += 3)
+		{
+			var v = [vertices[i],vertices[i+1],vertices[i+2]];
+			if (v[0] < min[0]) min[0] = v[0];
+			else if (v[0] > max[0]) max[0] = v[0];
+			if (v[1] < min[1]) min[1] = v[1];
+			else if (v[1] > max[1]) max[1] = v[1];
+			if (v[2] < min[2]) min[2] = v[2];
+			else if (v[2] > max[2]) max[2] = v[2];
+		}
+
+		var center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
+		var halfsize = [ min[0] - center[0], min[1] - center[1], min[2] - center[2]];
+		return BBox.setCenterHalfsize( BBox.create(), center, halfsize );
+	}
+};
+
+//native formats do not need parser
+LS.Formats.addSupportedFormat( "png,jpg,jpeg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
+LS.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
+LS.Formats.addSupportedFormat( "json,js,txt,html,css,csv", { dataType: "text" } );
+LS.Formats.addSupportedFormat( "glsl", { dataType: "text", resource: "ShaderCode", "resourceClass": LS.ShaderCode  } );
+LS.Formats.addSupportedFormat( "zip", { dataType: "arraybuffer" } );
+WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
+
+
+var parserMESH = {
+	extension: 'mesh',
+	type: 'mesh',
+	resource: 'Mesh',
+	format: 'text',
+	dataType:'text',
+
+	parse: function(text, options)
+	{
+		options = options || {};
+		var support_uint = true;
+
+		var parser = GL.Mesh.parsers["mesh"];
+		var mesh = parser(text, options);
+		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
+			console.log("no radius found in mesh");
+		//console.log(mesh);
+		return mesh;
+	}
+}
+
+LS.Formats.addSupportedFormat( "mesh", parserMESH );
 ///@FILE:../src/utils/litegl-extra.js
 ///@INFO: BASE
 //when working with animations sometimes you want the bones to be referenced by node name and no node uid, because otherwise you cannot reuse
@@ -7045,6 +7312,8 @@ Material.last_index = 0;
 Material.NO_LIGHTS = 0;
 Material.ONE_LIGHT = 1;
 Material.SEVERAL_LIGHTS = 2;
+
+Material.EXTENSION = "json";
 
 //material info attributes, use this to avoid errors when settings the attributes of a material
 
@@ -14145,7 +14414,7 @@ function Skeleton()
 	this.bones_by_name = new Map(); //map of nodenames and index in the bones array
 }
 
-Skeleton.EXTENSION = "skanim";
+//Skeleton.EXTENSION = "skanim";
 
 
 function Bone()
@@ -14499,6 +14768,8 @@ function SkeletalAnimation()
 	this.keyframes = null; //mat4 array
 }
 
+SkeletalAnimation.FORMAT = { extension: "skanim", dataType: "text" };
+
 //change the skeleton to the given pose according to time
 SkeletalAnimation.prototype.assignTime = function(time, loop, interpolate, layers )
 {
@@ -14614,6 +14885,8 @@ SkeletalAnimation.prototype.fromData = function(txt)
 SkeletalAnimation.prototype.toData = function()
 {
 	var str = "";
+	//this is currently done from WebGLStudio in the AnimationModule exportTakeInSKANIM
+	console.error("no toData in Skeletal Animation");
 	return str;
 }
 
@@ -14652,6 +14925,7 @@ function Pack(o)
 }
 
 Pack.version = "0.2"; //used to know where the file comes from 
+Pack.EXTENSION = "wbin";
 
 /**
 * configure the pack from an unpacked WBin
@@ -15032,6 +15306,7 @@ function Prefab( o, filename )
 }
 
 Prefab.version = "0.2"; //used to know where the file comes from 
+Prefab.EXTENSION = "wbin";
 
 /**
 * assign the json object
@@ -15427,6 +15702,8 @@ ShaderCode.PRAGMA = 2;
 ShaderCode.INCLUDE = 1;
 ShaderCode.SHADERBLOCK = 2;
 ShaderCode.SNIPPET = 3;
+
+ShaderCode.EXTENSION = "glsl";
 
 Object.defineProperty( ShaderCode.prototype, "code", {
 	enumerable: true,
@@ -20074,8 +20351,11 @@ if(typeof(LiteGraph) != "undefined")
 }
 ///@FILE:../src/helpers/path.js
 ///@INFO: UNCOMMON
-//Used to store splines
-//types defined in defines.js: LINEAR, HERMITE, BEZIER
+/** Path
+* Used to store splines
+* types defined in defines.js: LINEAR, HERMITE, BEZIER
+* @class Path
+*/
 function Path()
 {
 	this.points = [];
@@ -36835,7 +37115,7 @@ LS.registerComponent( AnnotationComponent );
 /**
 * Rotator rotate a mesh over time
 * @class Rotator
-* @namespace LS.Components
+* @namespace Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -37587,15 +37867,13 @@ Target["@up"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "
 
 Target.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene, "beforeRender", this.onBeforeRender, this);
-	//beforeRenderInstances because in case we want to face the camera we need it to be per camera, no per scene
-	LEvent.bind( scene, "beforeRenderInstances", this.onBeforeRender, this);
+	//it must be done before collect, otherwise elements wont have the right orientation
+	LEvent.bind( scene, LS.EVENT.BEFORE_RENDER, this.onBeforeRender, this);
 }
 
 Target.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( scene, "beforeRender", this.onBeforeRender, this);
-	LEvent.unbind( scene, "beforeRenderInstances", this.onBeforeRender, this);
+	LEvent.unbind( scene, LS.EVENT.BEFORE_RENDER, this.onBeforeRender, this);
 }
 
 Target.prototype.onBeforeRender = function(e)
@@ -37603,8 +37881,7 @@ Target.prototype.onBeforeRender = function(e)
 	if(!this.enabled)
 		return;
 
-	if( (this.face_camera && e == "beforeRenderInstances") || (!this.face_camera && e == "beforeRender") )
-		this.updateOrientation();
+	this.updateOrientation();
 }
 
 Target.temp_mat3 = mat3.create();
@@ -37646,7 +37923,7 @@ Target.prototype.updateOrientation = function()
 	}
 	else if( this.face_camera )
 	{
-		var camera = LS.Renderer._main_camera ||  LS.Renderer._current_camera;
+		var camera = LS.Renderer._current_camera ||  LS.Renderer._main_camera;
 		if(!camera)
 			return;
 		target_position = camera.getEye();
@@ -41133,6 +41410,8 @@ PlaySkeletalAnimation.prototype.configure = function(o)
 		this.animation = o.animation;
 	if(o.playback_speed != null)
 		this.playback_speed = parseFloat( o.playback_speed );
+	if(o.current_time != null)
+		this.current_time = parseFloat( o.current_time );
 	if(o.playing !== undefined)
 		this.playing = o.playing;
 }
@@ -45181,6 +45460,7 @@ function Canvas3D(o)
 	this.generate_mipmaps = false;
 	this.max_interactive_distance = 100; //distance beyong which the mouse is no longer projected
 	this.high_precision = false; //use a texture format of more than one byte per channel
+	this.opacity = 1.0;
 
 	this._clear_buffer = true; //not public, just here in case somebody wants it
 	this._skip_backside = true;
@@ -45231,14 +45511,14 @@ Object.defineProperty( Canvas3D.prototype, "texture", {
 
 Canvas3D.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(scene,"readyToRender",this.onRender,this);
-	LEvent.bind(scene,"afterRenderInstances",this.onRender,this);
+	LEvent.bind(scene, LS.EVENT.READY_TO_RENDER, this.onRender,this);
+	LEvent.bind(scene, LS.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
 }
 
 Canvas3D.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind(scene,"readyToRender",this.onRender,this);
-	LEvent.unbind(scene,"afterRenderInstances",this.onRender,this);
+	LEvent.unbind(scene, LS.EVENT.READY_TO_RENDER, this.onRender,this);
+	LEvent.unbind(scene, LS.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
 }
 
 Canvas3D.prototype.onAddedToNode = function( node )
@@ -45246,22 +45526,23 @@ Canvas3D.prototype.onAddedToNode = function( node )
 	if(!this.texture_name)
 		this.texture_name = ":canvas3D";
 
-	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
+	LEvent.bind( node, LS.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
 }
 
 Canvas3D.prototype.onRemovedFromNode = function( node )
 {
-	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this );
+	LEvent.unbind( node, LS.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
 }
 
 //called before rendering scene
 Canvas3D.prototype.onRender = function(e)
 {
-	if(!this.enabled)
+	var camera = LS.Renderer._current_camera;
+	if(!this.enabled || !camera || !camera.checkLayersVisibility( this._root.layers ) )
 		return;
 
-	if(	(e == "readyToRender" && ( this.mode == Canvas3D.MODE_CANVAS2D || this.mode == Canvas3D.MODE_WEBGL)) || 
-		(e == "afterRenderInstances" && this.mode == Canvas3D.MODE_IMMEDIATE)
+	if(	(e == LS.EVENT.READY_TO_RENDER && ( this.mode == Canvas3D.MODE_CANVAS2D || this.mode == Canvas3D.MODE_WEBGL)) || 
+		(e == LS.EVENT.AFTER_RENDER_INSTANCES && this.mode == Canvas3D.MODE_IMMEDIATE)
 	)
 	{
 		this.drawCanvas();
@@ -45352,8 +45633,11 @@ Canvas3D.prototype.drawCanvas = function()
 		gl.disable( gl.CULL_FACE );
 		gl.enable( gl.DEPTH_TEST );
 		gl.depthFunc( gl.LEQUAL );
+		gl.globalAlpha = this.opacity;
+
 		this._root.processActionInComponents("onRenderCanvas",[ctx,this._canvas_info,this._mouse,this]);
 
+		gl.globalAlpha = 1;
 		gl.finish2D();
 		gl.depthFunc( gl.LESS );
 		gl.WebGLCanvas.set3DMatrix(null);
@@ -45401,6 +45685,12 @@ Canvas3D.prototype.onCollectInstances = function(e,instances)
 		material = this._standard_material;
 	if(!material)
 		material = this._standard_material = new LS.MaterialClasses.StandardMaterial({ flags: { ignore_lights: true, cast_shadows: false }, blend_mode: LS.Blend.ALPHA });
+
+	if(!this.use_node_material)
+	{
+		material.opacity = this.opacity;
+		material.blend_mode = material.opacity < 1 ? LS.Blend.ALPHA : LS.Blend.NORMAL;
+	}
 
 	material.setTexture("color", this.texture_name || ":canvas3D" );
 	var sampler = material.textures["color"];
@@ -46092,6 +46382,26 @@ LS.registerComponent( InteractiveController );
 * @constructor
 */
 
+//event definitions for scene
+EVENT.INIT = "init";
+EVENT.CLEAR = "clear";
+EVENT.PRECONFIGURE = "preConfigure";
+EVENT.CONFIGURE = "configure";
+EVENT.CHANGE = "change";
+EVENT.LOAD = "load";
+EVENT.LOAD_COMPLETED = "load_completed";
+EVENT.AWAKE = "awake";
+EVENT.START = "start";
+EVENT.PAUSE = "pause";
+EVENT.UNPAUSE = "unpause";
+EVENT.COLLECT_RENDER_INSTANCES = "collectRenderInstances";
+EVENT.COLLECT_PHYSIC_INSTANCES = "collectPhysicInstances";
+EVENT.COLLECT_LIGHTS = "collectLights";
+EVENT.COLLECT_CAMERAS = "collectCameras";
+EVENT.COLLECT_DATA = "collectData";
+EVENT.SERIALIZE = "serialize";
+EVENT.FINISH = "finish";
+
 function Scene()
 {
 	this.uid = LS.generateUId("TREE-");
@@ -46288,8 +46598,8 @@ Scene.prototype.clear = function()
 	 *
 	 * @event clear
 	 */
-	LEvent.trigger(this,"clear");
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CLEAR );
+	LEvent.trigger(this, EVENT.CHANGE );
 }
 
 /**
@@ -46305,7 +46615,7 @@ Scene.prototype.configure = function( scene_info )
 	if(!scene_info || scene_info.constructor === String)
 		throw("Scene configure requires object");
 
-	LEvent.trigger(this,"preConfigure",scene_info);
+	LEvent.trigger(this, EVENT.PRECONFIGURE, scene_info);
 
 	this._root.removeAllComponents(); //remove light, camera, skybox
 
@@ -46366,14 +46676,14 @@ Scene.prototype.configure = function( scene_info )
 	 * @event configure
 	 * @param {Object} scene_info contains all the info to do the configuration
 	 */
-	LEvent.trigger(this,"configure",scene_info);
-	LEvent.trigger(this,"awake");
+	LEvent.trigger(this, EVENT.CONFIGURE,scene_info);
+	LEvent.trigger(this, EVENT.AWAKE );
 	/**
 	 * Fired when something changes in the scene
 	 * @event change
 	 * @param {Object} scene_info contains all the info to do the configuration
 	 */
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CHANGE );
 }
 
 /**
@@ -46420,7 +46730,7 @@ Scene.prototype.serialize = function( simplified  )
 	 * @event serialize
 	 * @param {Object} object to store the persistent info
 	 */
-	LEvent.trigger(this,"serialize",o);
+	LEvent.trigger(this,EVENT.SERIALIZE,o);
 
 	return o;
 }
@@ -46487,7 +46797,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		 * Fired when the scene has been loaded but before the resources
 		 * @event load
 		 */
-		LEvent.trigger(that,"load");
+		LEvent.trigger(that, EVENT.LOAD );
 
 		if(!LS.ResourcesManager.isLoading())
 			inner_all_loaded();
@@ -46504,7 +46814,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		 * Fired after all resources have been loaded
 		 * @event loadCompleted
 		 */
-		LEvent.trigger( that, "loadCompleted");
+		LEvent.trigger( that, EVENT.LOAD_COMPLETED );
 	}
 
 	function inner_error(err,script_url)
@@ -46619,7 +46929,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 			on_complete(that, url);
 
 		that.loadResources( inner_all_loaded );
-		LEvent.trigger(that,"load");
+		LEvent.trigger(that, EVENT.LOAD );
 
 		if(!LS.ResourcesManager.isLoading())
 			inner_all_loaded();
@@ -46629,7 +46939,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 	{
 		if(on_resources_loaded)
 			on_resources_loaded(that, url);
-		LEvent.trigger(that,"loadCompleted");
+		LEvent.trigger(that, EVENT.LOAD_COMPLETED );
 	}
 
 	function inner_error(e)
@@ -46841,7 +47151,7 @@ Scene.prototype.getCamera = function()
 Scene.prototype.getActiveCameras = function( force )
 {
 	if(force)
-		LEvent.trigger(this, "collectCameras", this._cameras );
+		LEvent.trigger(this, EVENT.COLLECT_CAMERAS, this._cameras );
 	return this._cameras;
 }
 
@@ -46879,7 +47189,7 @@ Scene.prototype.getLight = function()
 Scene.prototype.getActiveLights = function( force )
 {
 	if(force)
-		LEvent.trigger(this, "collectLights", this._lights );
+		LEvent.trigger(this, EVENT.COLLECT_LIGHTS, this._lights );
 	return this._lights;
 }
 
@@ -46926,7 +47236,7 @@ Scene.prototype.onNodeAdded = function(e,node)
 	 * @param {LS.SceneNode} node
 	 */
 	LEvent.trigger(this,"nodeAdded", node);
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CHANGE );
 }
 
 Scene.prototype.onNodeRemoved = function(e,node)
@@ -46953,7 +47263,7 @@ Scene.prototype.onNodeRemoved = function(e,node)
 	 * @param {LS.SceneNode} node
 	 */
 	LEvent.trigger(this,"nodeRemoved", node);
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CHANGE );
 	return true;
 }
 
@@ -47469,16 +47779,16 @@ Scene.prototype.start = function()
 	 * @event init
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"init",this);
-	this.triggerInNodes("init");
+	LEvent.trigger(this, EVENT.INIT, this);
+	this.triggerInNodes( EVENT.INIT );
 	/**
 	 * Fired when the scene is starting to play
 	 *
 	 * @event start
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"start",this);
-	this.triggerInNodes("start");
+	LEvent.trigger(this, EVENT.START ,this);
+	this.triggerInNodes( EVENT.START );
 }
 
 /**
@@ -47498,8 +47808,8 @@ Scene.prototype.pause = function()
 	 * @event pause
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"pause",this);
-	this.triggerInNodes("pause");
+	LEvent.trigger(this, EVENT.PAUSE,this);
+	this.triggerInNodes( EVENT.PAUSE );
 	this.purgeResidualEvents();
 }
 
@@ -47520,8 +47830,8 @@ Scene.prototype.unpause = function()
 	 * @event unpause
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"unpause",this);
-	this.triggerInNodes("unpause");
+	LEvent.trigger(this, EVENT.UNPAUSE,this);
+	this.triggerInNodes( EVENT.UNPAUSE );
 	this.purgeResidualEvents();
 }
 
@@ -47544,8 +47854,8 @@ Scene.prototype.finish = function()
 	 * @event finish
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"finish",this);
-	this.triggerInNodes("finish");
+	LEvent.trigger(this, EVENT.FINISH,this);
+	this.triggerInNodes( EVENT.FINISH );
 	this.purgeResidualEvents();
 }
 
@@ -47572,7 +47882,7 @@ Scene.prototype.collectData = function( cameras )
 	{
 		cameras = this._cameras;
 		cameras.length = 0;
-		LEvent.trigger( this, "collectCameras", cameras );
+		LEvent.trigger( this, EVENT.COLLECT_CAMERAS, cameras );
 	}
 
 	//get nodes: TODO find nodes close to the active cameras
@@ -47595,20 +47905,20 @@ Scene.prototype.collectData = function( cameras )
 		node._instances.length = 0;
 
 		//get render instances: remember, triggers only support one parameter
-		LEvent.trigger( node, "collectRenderInstances", node._instances );
-		LEvent.trigger( node, "collectPhysicInstances", colliders );
+		LEvent.trigger( node, EVENT.COLLECT_RENDER_INSTANCES, node._instances );
+		LEvent.trigger( node, EVENT.COLLECT_PHYSIC_INSTANCES, colliders );
 
 		//concatenate all instances in a single array
 		instances.push.apply(instances, node._instances);
 	}
 
 	//we also collect from the scene itself (used for lights, skybox, etc)
-	LEvent.trigger( this, "collectRenderInstances", instances );
-	LEvent.trigger( this, "collectPhysicInstances", colliders );
-	LEvent.trigger( this, "collectLights", lights );
+	LEvent.trigger( this, EVENT.COLLECT_RENDER_INSTANCES, instances );
+	LEvent.trigger( this, EVENT.COLLECT_PHYSIC_INSTANCES, colliders );
+	LEvent.trigger( this, EVENT.COLLECT_LIGHTS, lights );
 
 	//before processing (in case somebody wants to add some data to the containers)
-	LEvent.trigger( this, "collectData" );
+	LEvent.trigger( this, EVENT.COLLECT_DATA );
 
 	//for each render instance collected
 	for(var i = 0, l = instances.length; i < l; ++i)
@@ -50652,237 +50962,6 @@ Player.prototype.setDebugRender = function(v)
 
 
 LS.Player = Player;
-
-///@FILE:../src/formats.js
-///@INFO: BASE
-/**
-* Formats is the class where all the info about what is every format, how to parse it, etc, is located
-*
-* @class LS.Formats
-* @param{String} id the id (otherwise a random one is computed)
-* @constructor
-*/
-LS.Formats = {
-
-	//all the supported file formats and their parsers
-	supported: {},
-
-	safe_parsing: false, //catch exceptions during parsing
-	merge_smoothgroups: false,
-
-	/**
-	* Tells the system info about this file format
-	* Info should contain fields like type:"image", resource: "Mesh|Texture", format: "text|binary", parse: function, native: true|false
-	* 
-	* @method addFormat
-	*/
-	addSupportedFormat: function( extensions, info )
-	{
-		if( extensions.constructor === String )
-			extensions = extensions.split(",");
-
-		for(var i = 0; i < extensions.length; ++i)
-		{
-			var extension = extensions[i].toLowerCase();
-			if( this.supported[ extension ] )
-				console.warn("There is already another parser associated to this extension: " + extension);
-			this.supported[ extension ] = info;
-		}
-	},
-
-	/**
-	* Parse some data and returns the resulting resource
-	* 
-	* @method parse
-	* @param {string} filename
-	* @param {*} data could be a string, binary, arraybuffer, xml...
-	* @param {Object} options how the file should be parsed
-	* @return {*} the final resource, could be a Texture, a Mesh, or an object
-	*/
-	parse: function( filename, data, options)
-	{
-		options = options || {};
-		var info = this.getFileFormatInfo( filename );
-		if(!info) //unsupported extension
-			return null;
-
-		if(options.extension)
-			info.extension = options.extension; //force a format
-		else
-			info.extension = LS.ResourcesManager.getExtension( filename );
-
-		var format = this.supported[ info.extension ];
-		if(!format || !format.parse)
-		{
-			console.error("Parser Error: No parser found for " + info.extension + " format");
-			return null;
-		}
-
-		var result = null;
-		if(!this.safe_parsing)
-			result = format.parse( data, options, filename );
-		else
-			try
-			{
-				result = format.parse( data, options, filename );
-			}
-			catch (err)
-			{
-				console.error("Error parsing content", err );
-				return null;
-			}
-		if(result)
-			result.name = filename;
-		return result;
-	},
-
-	//Returns info about a resource according to its filename
-	TEXT_FORMAT: "text",
-	JSON_FORMAT: "json",
-	XML_FORMAT: "xml",
-	BINARY_FORMAT: "binary",
-
-	MESH_DATA: "MESH",
-	IMAGE_DATA: "IMAGE",
-	NONATIVE_IMAGE_DATA: "NONATIVE_IMAGE",
-	SCENE_DATA: "SCENE",
-	GENERIC_DATA: "GENERIC",
-	
-	getFileFormatInfo: function( filename )
-	{
-		var extension = filename.substr( filename.lastIndexOf(".") + 1).toLowerCase();
-		return this.supported[ extension ];
-	},
-
-	guessType: function( filename )
-	{
-		if(!filename)
-			return null;
-
-		var ext = LS.RM.getExtension( filename ).toLowerCase();
-		var info = this.supported[ ext ];
-		if(!info)
-			return null;
-		return info.resource;
-	},
-
-	//Helpers ******************************
-
-	//gets raw image information {width,height,pixels:ArrayBuffer} and create a dataurl to use in images
-	convertToDataURL: function( img_data )
-	{
-		var canvas = document.createElement("canvas");
-		canvas.width = img_data.width;
-		canvas.height = img_data.height;
-		//document.body.appendChild(canvas);
-		var ctx = canvas.getContext("2d");
-		var pixelsData = ctx.createImageData(img_data.width, img_data.height);
-		var num_pixels = canvas.width * canvas.height;
-
-		//flip and copy the pixels
-		if(img_data.bytesPerPixel == 3)
-		{
-			for(var i = 0; i < canvas.width; ++i)
-				for(var j = 0; j < canvas.height; ++j)
-				{
-					var pos = j*canvas.width*4 + i*4;
-					var pos2 = (canvas.height - j - 1)*canvas.width*3 + i*3;
-					pixelsData.data[pos+2] = img_data.pixels[pos2];
-					pixelsData.data[pos+1] = img_data.pixels[pos2+1];
-					pixelsData.data[pos+0] = img_data.pixels[pos2+2];
-					pixelsData.data[pos+3] = 255;
-				}
-		}
-		else {
-			for(var i = 0; i < canvas.width; ++i)
-				for(var j = 0; j < canvas.height; ++j)
-				{
-					var pos = j*canvas.width*4 + i*4;
-					var pos2 = (canvas.height - j - 1)*canvas.width*4 + i*4;
-					pixelsData.data[pos+0] = img_data.pixels[pos2+2];
-					pixelsData.data[pos+1] = img_data.pixels[pos2+1];
-					pixelsData.data[pos+2] = img_data.pixels[pos2+0];
-					pixelsData.data[pos+3] = img_data.pixels[pos2+3];
-				}
-		}
-
-		ctx.putImageData(pixelsData,0,0);
-		img_data.dataurl = canvas.toDataURL("image/png");
-		return img_data.dataurl;
-	},
-
-	/* extract important Mesh info from vertices (center, radius, bouding box) */
-	computeMeshBounding: function(vertices)
-	{
-		//compute AABB and useful info
-		var min = [vertices[0],vertices[1],vertices[2]];
-		var max = [vertices[0],vertices[1],vertices[2]];
-		for(var i = 0; i < vertices.length; i += 3)
-		{
-			var v = [vertices[i],vertices[i+1],vertices[i+2]];
-			if (v[0] < min[0]) min[0] = v[0];
-			else if (v[0] > max[0]) max[0] = v[0];
-			if (v[1] < min[1]) min[1] = v[1];
-			else if (v[1] > max[1]) max[1] = v[1];
-			if (v[2] < min[2]) min[2] = v[2];
-			else if (v[2] > max[2]) max[2] = v[2];
-		}
-
-		var center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
-		var halfsize = [ min[0] - center[0], min[1] - center[1], min[2] - center[2]];
-		return BBox.setCenterHalfsize( BBox.create(), center, halfsize );
-	}
-};
-
-//native formats do not need parser
-LS.Formats.addSupportedFormat( "png,jpg,jpeg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
-LS.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
-LS.Formats.addSupportedFormat( "json,js,txt,html,css,csv", { dataType: "text" } );
-LS.Formats.addSupportedFormat( "glsl", { dataType: "text", resource: "ShaderCode", "resourceClass": LS.ShaderCode  } );
-LS.Formats.addSupportedFormat( "zip", { dataType: "arraybuffer" } );
-WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
-
-
-var parserMESH = {
-	extension: 'mesh',
-	type: 'mesh',
-	resource: 'Mesh',
-	format: 'text',
-	dataType:'text',
-
-	parse: function(text, options)
-	{
-		options = options || {};
-		var support_uint = true;
-
-		var parser = GL.Mesh.parsers["mesh"];
-		var mesh = parser(text, options);
-		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
-			console.log("no radius found in mesh");
-		//console.log(mesh);
-		return mesh;
-	}
-}
-
-LS.Formats.addSupportedFormat( "mesh", parserMESH );
-
-var parserSKANIM = {
-	extension: 'skanim',
-	type: 'skeletalAnimation',
-	resource: 'SkeletalAnimation',
-	format: 'text',
-	dataType:'text',
-
-	parse: function(text, options)
-	{
-		options = options || {};
-		var anim = new LS.SkeletalAnimation();
-		anim.fromData(text);
-		return anim;
-	}
-}
-
-LS.Formats.addSupportedFormat( "skanim", parserSKANIM );
 
 ///@FILE:../src/parsers/parserDDS.js
 ///@INFO: PARSER

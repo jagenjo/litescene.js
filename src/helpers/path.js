@@ -1,6 +1,9 @@
 ///@INFO: UNCOMMON
-//Used to store splines
-//types defined in defines.js: LINEAR, HERMITE, BEZIER
+/** Path
+* Used to store splines
+* types defined in defines.js: LINEAR, HERMITE, BEZIER
+* @class Path
+*/
 function Path()
 {
 	this.points = [];

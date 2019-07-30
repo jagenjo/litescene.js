@@ -11,6 +11,7 @@
 ../src/gui.js
 ../src/resourcesManager.js
 ../src/shaders.js
+../src/formats.js
 
 ../src/utils/litegl-extra.js
 
@@ -120,7 +121,6 @@
 ../src/player.js
 
 # base formats
-../src/formats.js
 ../src/parsers/parserDDS.js
 ../src/parsers/parserOBJ.js
 ../src/parsers/parserSTL.js

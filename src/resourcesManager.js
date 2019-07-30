@@ -524,6 +524,50 @@ var ResourcesManager = {
 		return result;
 	},
 
+	createResource: function( filename, data, must_register )
+	{
+		var resource = null;
+
+		var extension = this.getExtension( filename );
+		//get all the info about this file format
+		var format_info = null;
+		if(extension)
+			format_info = LS.Formats.supported[ extension ];
+
+		//has this resource an special class specified?
+		if(format_info && format_info.resourceClass)
+			resource = new format_info.resourceClass();
+		else //otherwise create a generic LS.Resource (they store data or scripts)
+		{
+			//if we already have a LS.Resource, reuse it (this is to avoid garbage and solve a problem with the editor
+			var old_res = this.resources[ filename ];
+			if( old_res && old_res.constructor === LS.Resource )
+			{
+				resource = old_res;
+				delete resource._original_data;
+				delete resource._original_file;
+				resource._modified = false;
+			}
+			else
+				resource = new LS.Resource();
+		}
+
+		if(data)
+		{
+			if(resource.setData)
+				resource.setData( data, true );
+			else if(resource.fromData)
+				resource.fromData( data );
+			else
+				throw("Resource without setData, cannot assign");
+		}
+
+		if(must_register)
+			LS.ResourcesManager.registerResource( filename, resource );
+
+		return resource;
+	},
+
 	/**
 	* Marks the resource as modified, used in editor to know when a resource data should be updated
 	*
@@ -740,7 +784,7 @@ var ResourcesManager = {
 		if(extension)
 			format_info = LS.Formats.supported[ extension ];
 
-		//callback to embede a parameter, ugly but I dont see a work around to create this
+		//callback to embed a parameter, ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
 			if(!resource)
 			{
@@ -759,7 +803,7 @@ var ResourcesManager = {
 					options.filename += "." + format_info.convert_to;
 			}
 
-			//apply last changes
+			//apply last changes: add to containers, remove from pending_loads, add special properties like fullpath, load associated resources...
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
 			//Keep original file inside the resource in case we want to save it
@@ -830,32 +874,23 @@ var ResourcesManager = {
 			if( resource && resource !== true )
 				process_final( url, resource, options );
 		}
+		else if( format_info && format_info.resource_ctor) //this format has a class associated
+		{
+			var resource = new format_info.resource_ctor();
+			if(resource.fromData)
+				resource.fromData( data );
+			else if(resource.configure)
+				resource.configure( JSON.parse(data) );
+			else
+				console.error("Resource Class doesnt have a function to process data after loading: ", format_info.ctor.name );
+
+			//we have a resource
+			if( resource && resource !== true )
+				process_final( url, resource, options );
+		}
 		else //or just store the resource as a plain data buffer
 		{
-			var resource = null;
-			//has this resource an special class specified?
-			if(format_info && format_info.resourceClass)
-				resource = new format_info.resourceClass();
-			else //otherwise create a generic LS.Resource (they store data or scripts)
-			{
-				//if we already have a LS.Resource, reuse it (this is to avoid garbage and solve a problem with the editor
-				var old_res = this.resources[url];
-				if( old_res && old_res.constructor === LS.Resource )
-				{
-					resource = old_res;
-					delete resource._original_data;
-					delete resource._original_file;
-					resource._modified = false;
-				}
-				else
-					resource = new LS.Resource();
-			}
-
-			if(resource.setData)
-				resource.setData(data, true)
-			else
-				throw("Resource without setData, cannot assign");
-
+			var resource = LS.ResourcesManager.createResource( url, data );
 			if(resource)
 			{
 				resource.filename = resource.fullpath = url;

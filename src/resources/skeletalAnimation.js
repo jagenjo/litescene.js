@@ -12,7 +12,7 @@ function Skeleton()
 	this.bones_by_name = new Map(); //map of nodenames and index in the bones array
 }
 
-Skeleton.EXTENSION = "skanim";
+//Skeleton.EXTENSION = "skanim";
 
 
 function Bone()
@@ -366,6 +366,8 @@ function SkeletalAnimation()
 	this.keyframes = null; //mat4 array
 }
 
+SkeletalAnimation.FORMAT = { extension: "skanim", dataType: "text" };
+
 //change the skeleton to the given pose according to time
 SkeletalAnimation.prototype.assignTime = function(time, loop, interpolate, layers )
 {
@@ -481,6 +483,8 @@ SkeletalAnimation.prototype.fromData = function(txt)
 SkeletalAnimation.prototype.toData = function()
 {
 	var str = "";
+	//this is currently done from WebGLStudio in the AnimationModule exportTakeInSKANIM
+	console.error("no toData in Skeletal Animation");
 	return str;
 }
 

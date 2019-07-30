@@ -25,6 +25,7 @@ function Canvas3D(o)
 	this.generate_mipmaps = false;
 	this.max_interactive_distance = 100; //distance beyong which the mouse is no longer projected
 	this.high_precision = false; //use a texture format of more than one byte per channel
+	this.opacity = 1.0;
 
 	this._clear_buffer = true; //not public, just here in case somebody wants it
 	this._skip_backside = true;
@@ -75,14 +76,14 @@ Object.defineProperty( Canvas3D.prototype, "texture", {
 
 Canvas3D.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(scene,"readyToRender",this.onRender,this);
-	LEvent.bind(scene,"afterRenderInstances",this.onRender,this);
+	LEvent.bind(scene, LS.EVENT.READY_TO_RENDER, this.onRender,this);
+	LEvent.bind(scene, LS.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
 }
 
 Canvas3D.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind(scene,"readyToRender",this.onRender,this);
-	LEvent.unbind(scene,"afterRenderInstances",this.onRender,this);
+	LEvent.unbind(scene, LS.EVENT.READY_TO_RENDER, this.onRender,this);
+	LEvent.unbind(scene, LS.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
 }
 
 Canvas3D.prototype.onAddedToNode = function( node )
@@ -90,22 +91,23 @@ Canvas3D.prototype.onAddedToNode = function( node )
 	if(!this.texture_name)
 		this.texture_name = ":canvas3D";
 
-	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
+	LEvent.bind( node, LS.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
 }
 
 Canvas3D.prototype.onRemovedFromNode = function( node )
 {
-	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this );
+	LEvent.unbind( node, LS.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
 }
 
 //called before rendering scene
 Canvas3D.prototype.onRender = function(e)
 {
-	if(!this.enabled)
+	var camera = LS.Renderer._current_camera;
+	if(!this.enabled || !camera || !camera.checkLayersVisibility( this._root.layers ) )
 		return;
 
-	if(	(e == "readyToRender" && ( this.mode == Canvas3D.MODE_CANVAS2D || this.mode == Canvas3D.MODE_WEBGL)) || 
-		(e == "afterRenderInstances" && this.mode == Canvas3D.MODE_IMMEDIATE)
+	if(	(e == LS.EVENT.READY_TO_RENDER && ( this.mode == Canvas3D.MODE_CANVAS2D || this.mode == Canvas3D.MODE_WEBGL)) || 
+		(e == LS.EVENT.AFTER_RENDER_INSTANCES && this.mode == Canvas3D.MODE_IMMEDIATE)
 	)
 	{
 		this.drawCanvas();
@@ -196,8 +198,11 @@ Canvas3D.prototype.drawCanvas = function()
 		gl.disable( gl.CULL_FACE );
 		gl.enable( gl.DEPTH_TEST );
 		gl.depthFunc( gl.LEQUAL );
+		gl.globalAlpha = this.opacity;
+
 		this._root.processActionInComponents("onRenderCanvas",[ctx,this._canvas_info,this._mouse,this]);
 
+		gl.globalAlpha = 1;
 		gl.finish2D();
 		gl.depthFunc( gl.LESS );
 		gl.WebGLCanvas.set3DMatrix(null);
@@ -245,6 +250,12 @@ Canvas3D.prototype.onCollectInstances = function(e,instances)
 		material = this._standard_material;
 	if(!material)
 		material = this._standard_material = new LS.MaterialClasses.StandardMaterial({ flags: { ignore_lights: true, cast_shadows: false }, blend_mode: LS.Blend.ALPHA });
+
+	if(!this.use_node_material)
+	{
+		material.opacity = this.opacity;
+		material.blend_mode = material.opacity < 1 ? LS.Blend.ALPHA : LS.Blend.NORMAL;
+	}
 
 	material.setTexture("color", this.texture_name || ":canvas3D" );
 	var sampler = material.textures["color"];

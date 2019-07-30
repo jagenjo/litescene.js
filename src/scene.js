@@ -6,6 +6,26 @@
 * @constructor
 */
 
+//event definitions for scene
+EVENT.INIT = "init";
+EVENT.CLEAR = "clear";
+EVENT.PRECONFIGURE = "preConfigure";
+EVENT.CONFIGURE = "configure";
+EVENT.CHANGE = "change";
+EVENT.LOAD = "load";
+EVENT.LOAD_COMPLETED = "load_completed";
+EVENT.AWAKE = "awake";
+EVENT.START = "start";
+EVENT.PAUSE = "pause";
+EVENT.UNPAUSE = "unpause";
+EVENT.COLLECT_RENDER_INSTANCES = "collectRenderInstances";
+EVENT.COLLECT_PHYSIC_INSTANCES = "collectPhysicInstances";
+EVENT.COLLECT_LIGHTS = "collectLights";
+EVENT.COLLECT_CAMERAS = "collectCameras";
+EVENT.COLLECT_DATA = "collectData";
+EVENT.SERIALIZE = "serialize";
+EVENT.FINISH = "finish";
+
 function Scene()
 {
 	this.uid = LS.generateUId("TREE-");
@@ -202,8 +222,8 @@ Scene.prototype.clear = function()
 	 *
 	 * @event clear
 	 */
-	LEvent.trigger(this,"clear");
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CLEAR );
+	LEvent.trigger(this, EVENT.CHANGE );
 }
 
 /**
@@ -219,7 +239,7 @@ Scene.prototype.configure = function( scene_info )
 	if(!scene_info || scene_info.constructor === String)
 		throw("Scene configure requires object");
 
-	LEvent.trigger(this,"preConfigure",scene_info);
+	LEvent.trigger(this, EVENT.PRECONFIGURE, scene_info);
 
 	this._root.removeAllComponents(); //remove light, camera, skybox
 
@@ -280,14 +300,14 @@ Scene.prototype.configure = function( scene_info )
 	 * @event configure
 	 * @param {Object} scene_info contains all the info to do the configuration
 	 */
-	LEvent.trigger(this,"configure",scene_info);
-	LEvent.trigger(this,"awake");
+	LEvent.trigger(this, EVENT.CONFIGURE,scene_info);
+	LEvent.trigger(this, EVENT.AWAKE );
 	/**
 	 * Fired when something changes in the scene
 	 * @event change
 	 * @param {Object} scene_info contains all the info to do the configuration
 	 */
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CHANGE );
 }
 
 /**
@@ -334,7 +354,7 @@ Scene.prototype.serialize = function( simplified  )
 	 * @event serialize
 	 * @param {Object} object to store the persistent info
 	 */
-	LEvent.trigger(this,"serialize",o);
+	LEvent.trigger(this,EVENT.SERIALIZE,o);
 
 	return o;
 }
@@ -401,7 +421,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		 * Fired when the scene has been loaded but before the resources
 		 * @event load
 		 */
-		LEvent.trigger(that,"load");
+		LEvent.trigger(that, EVENT.LOAD );
 
 		if(!LS.ResourcesManager.isLoading())
 			inner_all_loaded();
@@ -418,7 +438,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		 * Fired after all resources have been loaded
 		 * @event loadCompleted
 		 */
-		LEvent.trigger( that, "loadCompleted");
+		LEvent.trigger( that, EVENT.LOAD_COMPLETED );
 	}
 
 	function inner_error(err,script_url)
@@ -533,7 +553,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 			on_complete(that, url);
 
 		that.loadResources( inner_all_loaded );
-		LEvent.trigger(that,"load");
+		LEvent.trigger(that, EVENT.LOAD );
 
 		if(!LS.ResourcesManager.isLoading())
 			inner_all_loaded();
@@ -543,7 +563,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 	{
 		if(on_resources_loaded)
 			on_resources_loaded(that, url);
-		LEvent.trigger(that,"loadCompleted");
+		LEvent.trigger(that, EVENT.LOAD_COMPLETED );
 	}
 
 	function inner_error(e)
@@ -755,7 +775,7 @@ Scene.prototype.getCamera = function()
 Scene.prototype.getActiveCameras = function( force )
 {
 	if(force)
-		LEvent.trigger(this, "collectCameras", this._cameras );
+		LEvent.trigger(this, EVENT.COLLECT_CAMERAS, this._cameras );
 	return this._cameras;
 }
 
@@ -793,7 +813,7 @@ Scene.prototype.getLight = function()
 Scene.prototype.getActiveLights = function( force )
 {
 	if(force)
-		LEvent.trigger(this, "collectLights", this._lights );
+		LEvent.trigger(this, EVENT.COLLECT_LIGHTS, this._lights );
 	return this._lights;
 }
 
@@ -840,7 +860,7 @@ Scene.prototype.onNodeAdded = function(e,node)
 	 * @param {LS.SceneNode} node
 	 */
 	LEvent.trigger(this,"nodeAdded", node);
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CHANGE );
 }
 
 Scene.prototype.onNodeRemoved = function(e,node)
@@ -867,7 +887,7 @@ Scene.prototype.onNodeRemoved = function(e,node)
 	 * @param {LS.SceneNode} node
 	 */
 	LEvent.trigger(this,"nodeRemoved", node);
-	LEvent.trigger(this,"change");
+	LEvent.trigger(this, EVENT.CHANGE );
 	return true;
 }
 
@@ -1383,16 +1403,16 @@ Scene.prototype.start = function()
 	 * @event init
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"init",this);
-	this.triggerInNodes("init");
+	LEvent.trigger(this, EVENT.INIT, this);
+	this.triggerInNodes( EVENT.INIT );
 	/**
 	 * Fired when the scene is starting to play
 	 *
 	 * @event start
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"start",this);
-	this.triggerInNodes("start");
+	LEvent.trigger(this, EVENT.START ,this);
+	this.triggerInNodes( EVENT.START );
 }
 
 /**
@@ -1412,8 +1432,8 @@ Scene.prototype.pause = function()
 	 * @event pause
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"pause",this);
-	this.triggerInNodes("pause");
+	LEvent.trigger(this, EVENT.PAUSE,this);
+	this.triggerInNodes( EVENT.PAUSE );
 	this.purgeResidualEvents();
 }
 
@@ -1434,8 +1454,8 @@ Scene.prototype.unpause = function()
 	 * @event unpause
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"unpause",this);
-	this.triggerInNodes("unpause");
+	LEvent.trigger(this, EVENT.UNPAUSE,this);
+	this.triggerInNodes( EVENT.UNPAUSE );
 	this.purgeResidualEvents();
 }
 
@@ -1458,8 +1478,8 @@ Scene.prototype.finish = function()
 	 * @event finish
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"finish",this);
-	this.triggerInNodes("finish");
+	LEvent.trigger(this, EVENT.FINISH,this);
+	this.triggerInNodes( EVENT.FINISH );
 	this.purgeResidualEvents();
 }
 
@@ -1486,7 +1506,7 @@ Scene.prototype.collectData = function( cameras )
 	{
 		cameras = this._cameras;
 		cameras.length = 0;
-		LEvent.trigger( this, "collectCameras", cameras );
+		LEvent.trigger( this, EVENT.COLLECT_CAMERAS, cameras );
 	}
 
 	//get nodes: TODO find nodes close to the active cameras
@@ -1509,20 +1529,20 @@ Scene.prototype.collectData = function( cameras )
 		node._instances.length = 0;
 
 		//get render instances: remember, triggers only support one parameter
-		LEvent.trigger( node, "collectRenderInstances", node._instances );
-		LEvent.trigger( node, "collectPhysicInstances", colliders );
+		LEvent.trigger( node, EVENT.COLLECT_RENDER_INSTANCES, node._instances );
+		LEvent.trigger( node, EVENT.COLLECT_PHYSIC_INSTANCES, colliders );
 
 		//concatenate all instances in a single array
 		instances.push.apply(instances, node._instances);
 	}
 
 	//we also collect from the scene itself (used for lights, skybox, etc)
-	LEvent.trigger( this, "collectRenderInstances", instances );
-	LEvent.trigger( this, "collectPhysicInstances", colliders );
-	LEvent.trigger( this, "collectLights", lights );
+	LEvent.trigger( this, EVENT.COLLECT_RENDER_INSTANCES, instances );
+	LEvent.trigger( this, EVENT.COLLECT_PHYSIC_INSTANCES, colliders );
+	LEvent.trigger( this, EVENT.COLLECT_LIGHTS, lights );
 
 	//before processing (in case somebody wants to add some data to the containers)
-	LEvent.trigger( this, "collectData" );
+	LEvent.trigger( this, EVENT.COLLECT_DATA );
 
 	//for each render instance collected
 	for(var i = 0, l = instances.length; i < l; ++i)

@@ -22,6 +22,7 @@ function Prefab( o, filename )
 }
 
 Prefab.version = "0.2"; //used to know where the file comes from 
+Prefab.EXTENSION = "wbin";
 
 /**
 * assign the json object

@@ -2,7 +2,7 @@
 /**
 * Rotator rotate a mesh over time
 * @class Rotator
-* @namespace LS.Components
+* @namespace Components
 * @constructor
 * @param {String} object to configure from
 */

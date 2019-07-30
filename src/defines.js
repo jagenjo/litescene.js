@@ -96,7 +96,11 @@ LS.TYPES = {
 LS.TYPES_INDEX = {};
 var index = 0;
 for(var i in LS.TYPES)
-	LS.TYPES_INDEX[ LS.TYPES[i] ] = index++;
+{
+	LS.TYPES_INDEX[ LS.TYPES[i] ] = index;
+	LS.TYPES_INDEX[ LS.TYPES[i].toUpperCase() ] = index;
+	index++
+}
 
 LS.RESOURCE_TYPES = {};
 LS.RESOURCE_TYPES[ LS.TYPES.RESOURCE ] = true;

@@ -38,7 +38,7 @@ var LS = {
 	//containers
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
-	ResourceClasses_by_extension: {},
+	ResourceClasses_by_extension: {}, //used to associate JSONs to resources, only used by GRAPHs
 	Globals: {}, //global scope to share info among scripts
 
 	/**
@@ -284,6 +284,19 @@ var LS = {
 		resourceClass.is_resource = true;
 		if( resourceClass.EXTENSION ) //used in GRAPH.json
 			this.ResourceClasses_by_extension[ resourceClass.EXTENSION.toLowerCase() ] = resourceClass;
+		if( resourceClass.FORMAT )
+		{
+			if( resourceClass.FORMAT.extension )
+			{
+				this.ResourceClasses_by_extension[ resourceClass.FORMAT.extension.toLowerCase() ] = resourceClass;
+				resourceClass.EXTENSION = resourceClass.FORMAT.extension;
+			}
+			resourceClass.FORMAT.resource_ctor = resourceClass;
+			resourceClass.FORMAT.resource = LS.getClassName( resourceClass );
+			
+			if(LS.Formats)
+				LS.Formats.supported[ resourceClass.FORMAT.extension.toLowerCase() ] = resourceClass.FORMAT;
+		}
 
 		//some validation here? maybe...
 	},
@@ -1310,6 +1323,9 @@ LSQ.getFromInfo = function( info )
 //register resource classes
 if(global.GL)
 {
+	GL.Mesh.EXTENSION = "wbin";
+	GL.Texture.EXTENSION = "png";
+
 	LS.registerResourceClass( GL.Mesh );
 	LS.registerResourceClass( GL.Texture );
 

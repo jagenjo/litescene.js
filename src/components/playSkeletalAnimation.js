@@ -55,6 +55,8 @@ PlaySkeletalAnimation.prototype.configure = function(o)
 		this.animation = o.animation;
 	if(o.playback_speed != null)
 		this.playback_speed = parseFloat( o.playback_speed );
+	if(o.current_time != null)
+		this.current_time = parseFloat( o.current_time );
 	if(o.playing !== undefined)
 		this.playing = o.playing;
 }

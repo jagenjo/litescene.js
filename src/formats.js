@@ -209,21 +209,3 @@ var parserMESH = {
 }
 
 LS.Formats.addSupportedFormat( "mesh", parserMESH );
-
-var parserSKANIM = {
-	extension: 'skanim',
-	type: 'skeletalAnimation',
-	resource: 'SkeletalAnimation',
-	format: 'text',
-	dataType:'text',
-
-	parse: function(text, options)
-	{
-		options = options || {};
-		var anim = new LS.SkeletalAnimation();
-		anim.fromData(text);
-		return anim;
-	}
-}
-
-LS.Formats.addSupportedFormat( "skanim", parserSKANIM );
