@@ -188,7 +188,9 @@ Also if you want to save a Resource in the server from the editor (it only works
 DriveModule.saveResource( res, on_complete ); //callback when the resource has been saved
 ```
 
-If you want your resource to be inspectionable by the editor, you can define the method inspect:
+# Inspector
+
+By default the editor will create an interface to inspect a resource, but if you want to create your custom editor for your resource you can define the method inspect:
 
 ```js
 MyResourceClass.prototype.inspect = function( widgets )
@@ -200,4 +202,4 @@ MyResourceClass.prototype.inspect = function( widgets )
 }
 ```
 
-
+For more info about inspecting instances, check (the guide in LiteGUI)[https://github.com/jagenjo/litegui.js/blob/master/guides/inspector.md]
