@@ -202,4 +202,4 @@ MyResourceClass.prototype.inspect = function( widgets )
 }
 ```
 
-For more info about inspecting instances, check (the guide in LiteGUI)[https://github.com/jagenjo/litegui.js/blob/master/guides/inspector.md]
+For more info about inspecting instances, check [the guide in LiteGUI](https://github.com/jagenjo/litegui.js/blob/master/guides/inspector.md)
