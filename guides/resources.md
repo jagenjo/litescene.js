@@ -22,6 +22,29 @@ Resources can be of many types, depending on the info they store:
 
 And you can create your own resource classes in case you have developed your own components that require them.
 
+## Common properties
+
+There is a list of properties that are added automatically to every resource uppon use:
+
+* filename: the local filename
+* fullpath: the filename including folder
+* remotepath: if the resource was loaded from the server, its path in the server
+* \_modified: if the resource has been modified from the server version
+
+## Common methods
+
+Some resource require to have some common methods to help the editor load/store them:
+
+* ```toData```: to serialize to any sort of data
+* ```fromData```: to deserialize from any sort of data
+
+Alternative you can define the method configure and serialize if you use JSON objects:
+
+* ```serialize```: convert to JSON object
+* ```configure```: reads state from JSON object
+
+There are some special resources (like Mesh,Texture and Prefab/Pack) that do not use this methods as they already have special parsers to deal with this.
+
 ## Fullpath ##
 
 Every single resource should have a string to identify it in the system, this string is usually the filename or the url to fetch the file.
@@ -159,5 +182,10 @@ resource.myprop = 10;
 LS.ResourcesManager.resourceModified( resource );
 ```
 
+Also if you want to save a Resource in the server from the editor (it only works in webglstudio), you must call:
+
+```js
+DriveModule.saveResource( res, on_complete ); //callback when the resource has been saved
+```
 
 
