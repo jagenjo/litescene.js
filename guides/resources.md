@@ -47,6 +47,7 @@ Here is a list of the common methods:
 - ```getResource( fullpath )``` to retrieve a resource, if not found null is returned.
 - ```registerResource( filename, resource )``` to make a resource available to the system
 - ```unregisterResource( resource )``` to remove a resource from the system
+- ```resourceModified( resource )``` to indicate that a resource has been modified in case it must be saved on the server
 
 Resources are stored in a container called ```LS.ResourcesManager.resources``` but also there are independent containers for textures and meshes to speed up fetching.
 
@@ -142,4 +143,21 @@ MyComponent["@filename"] = { widget: "resource", resource_classname:"MyResourceC
 ```
 
 For more info about File Formats, [check the file format guide](fileformats.md)
+
+## Resources in the editor
+
+Some resources are usually edited from the editor, so you will need to have a proper way to interact with this resource from WebGLStudio.
+
+This implies having probably a widget in charge of creating an editor for that resource (like Timeline for Animations, GraphEditor for graphs, or Codepad for Scripts).
+
+There are examples of widgets in the ```js/widgets/ui/``` folder of webglstudio.
+
+Also if a resource is modified from the editor, you must call ```LS.ResourcesManager.resourceModified( resource )``` function that will mark this resource as *must be saved*, otherwise the editor won't know it must be saved again:
+
+```js
+resource.myprop = 10;
+LS.ResourcesManager.resourceModified( resource );
+```
+
+
 
