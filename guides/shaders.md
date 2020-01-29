@@ -45,31 +45,32 @@ The valid types for uniforms are:
 
 ## RenderState ##
 
-Some properties for the rendering cannot be defined inside the GLSL code (like GPU flags) so they are defined in a class called ```LS.RenderState``` that contains all the common flags.
+Some properties for the rendering cannot be defined inside the GLSL code (like GPU flags) so they are defined in a class called ```LS.RenderState``` that contains all the common flags. This is stored in the material in ```this.render_state```.
 
 If you want to use an special rendering pass consider changing those, here is a list with the flags and their default types:
 
 ```js
-	this.front_face = GL.CCW;
-	this.cull_face = true;
+	this.render_state.front_face = GL.CCW;
+	this.render_state.cull_face = true;
 
 	//depth buffer
-	this.depth_test = true;
-	this.depth_mask = true; //write in depth buffer
-	this.depth_func = GL.LESS;
+	this.render_state.depth_test = true;
+	this.render_state.depth_mask = true; //write in depth buffer
+	this.render_state.depth_func = GL.LESS;
 	//depth range: never used
 
 	//blend function
-	this.blend = false;
-	this.blendFunc0 = GL.SRC_ALPHA;
-	this.blendFunc1 = GL.ONE_MINUS_SRC_ALPHA;
-	//blend equation
+	this.render_state.blend = false;
+	this.render_state.blendFunc0 = GL.SRC_ALPHA;
+	this.render_state.blendFunc1 = GL.ONE_MINUS_SRC_ALPHA;
 
 	//color mask
-	this.colorMask0 = true;
-	this.colorMask1 = true;
-	this.colorMask2 = true;
-	this.colorMask3 = true;
+	this.render_state.colorMask0 = true;
+	this.render_state.colorMask1 = true;
+	this.render_state.colorMask2 = true;
+	this.render_state.colorMask3 = true;
+	
+	//...
 ```
 
 ## RenderQueue ##
