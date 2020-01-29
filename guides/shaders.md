@@ -50,6 +50,7 @@ Some properties for the rendering cannot be defined inside the GLSL code (like G
 If you want to use an special rendering pass consider changing those, here is a list with the flags and their default types:
 
 ```js
+\js
 	this.render_state.front_face = GL.CCW;
 	this.render_state.cull_face = true;
 
