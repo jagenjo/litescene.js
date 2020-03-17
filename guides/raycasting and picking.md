@@ -34,10 +34,10 @@ var collided = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { t
 ```
 
 Other available options are:
-- layers: a mask specifiying which layers to test collision with ( p.e. 0b1010 to test the second and the foruth layer)
+- layers: a mask specifiying which layers to test collision with ( p.e. 0b1010 to test the second and the fourth layer)
 - instances: an array of instances if you do not want to test against all the instances
 - max_distance: if you want to stop testing after some distance
-- first_collision: returns the first collision it find (which is not the closest one to the camera, is faster but not accurate).
+- first_collision: returns the first collision it finds (which is not the closest one to the camera, is faster but not accurate).
 
 ## LS.Collision
 
