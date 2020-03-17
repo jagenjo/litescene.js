@@ -40,7 +40,7 @@ Other available options are:
 - first_collision: returns the first collision it finds (which is not the closest one to the camera, is faster but not accurate).
 
 ```js
-
+//from Script
 this.onMouseDown = function(e)
 {
   var cam = LS.Renderer.getCurrentCamera();
