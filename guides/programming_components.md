@@ -57,7 +57,20 @@ Check the [Component class](https://github.com/jagenjo/litescene.js/blob/master/
 
 ## Adding public variables
 
-Every property of the class is public and can be accessed. If you are working from the WebGLStudio editor then you will see that all properties are exposed in the component interface. To avoid that you should start all the properties with an underscore (```this._internal_data = 10;```) and only use regular names with variables that can be edited.
+Every property of the class is public and can be accessed.
+
+```js
+	function MyComponent()
+	{
+		this.data = 1; //this is public so it will be serialized when the scene is saved
+	}
+```
+
+If you are working from the WebGLStudio editor then you will see that all properties are exposed in the component interface. If you do not want it to be exposed, you should start the name of the properties with an underscore:
+
+```js
+	this._internal_data = 10; //private var, it wont be serialized
+```
 
 When creating variables that are editable remember that only some basic types are supported. If the variable has a special type then the editor wont know how to create an interface.
 
@@ -164,6 +177,17 @@ MyComponent.prototype.configure = function(o)
 
 ## Resources used
 
+Sometimes you want that one of the properties of the component is a resource that can be selected by the user, in that case you can specify it as:
+
+```js
+MyComponent["@my_res"] = { type: "resource" };
+```
+But in this case remember that the variable won't contain the resource, but the name of the resource, if you want the resource you must fetch it:
+
+```js
+var res = LS.ResourcesManager.get( this.my_res );
+```
+
 Usually components use resources that mast be preloaded before the scene starts.
 
 To inform the system which resources are being used by this component you must create the ```getResources``` method in your component.
@@ -182,6 +206,16 @@ MyComponentClass.prototype.getResources = function( res )
 	if( this.mymesh_url )
 		res[ this.mymesh_url ] = GL.Mesh;
 	return res;
+}
+```
+
+Also keep in mind that when resources are stored in variables, if the resource changes its name you must change the value of the property (the engine won't do it automatically), to capture this event you must have the function onResourceRenamed:
+
+```js
+MyComp.prototype.onResourceRenamed = function( old_name, new_name )
+{
+	if(this.my_res == old_name)
+		this.my_res = new_name;
 }
 ```
 
