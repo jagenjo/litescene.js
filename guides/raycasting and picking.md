@@ -39,6 +39,18 @@ Other available options are:
 - max_distance: if you want to stop testing after some distance
 - first_collision: returns the first collision it find (which is not the closest one to the camera, is faster but not accurate).
 
+## LS.Collision
+
+When testing collisions with a ray you will get an array containing all the collisions stored as ```LS.Collision```.
+
+From there you can check:
+- position: the position of the collision.
+- node: the node that contained the object
+- instance: the component that stored the collision shape (could be a PhysicsInstance or a RenderInstance)
+- distance: the distance of the collision from the origin
+- normal: the collision normal (perpendicular vector to the surface).
+- hit: info of the collision in local space
+
 ## Raycast against colliders
 
 Sometimes you do not want to test against all the objects in the scene (that could be slow), only the ones defining a collision volume. For that purpose you can use the raycast method:
