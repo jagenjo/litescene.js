@@ -41,13 +41,13 @@ Other available options are:
 
 ## Raycast against colliders
 
-Sometimes you do not want to test against all the objects in the scene, only the ones defining a collision volume. For that purpose you can use the raycast method:
+Sometimes you do not want to test against all the objects in the scene (that could be slow), only the ones defining a collision volume. For that purpose you can use the raycast method:
 
 ```js
 var collided = LS.Physics.raycast( ray.origin, ray.direction, { triangle_collision: true} );
 ```
 
-This will test only with the ```Colliders``` (components of type collider) in the scene, which is much faster.
+This will test only with the colliders (components of type ```LS.Component.Collider```) in the scene, which is much faster.
 
 
 ## Picking
