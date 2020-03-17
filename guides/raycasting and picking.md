@@ -39,6 +39,19 @@ Other available options are:
 - max_distance: if you want to stop testing after some distance
 - first_collision: returns the first collision it finds (which is not the closest one to the camera, is faster but not accurate).
 
+```js
+
+this.onMouseDown = function(e)
+{
+  var cam = LS.Renderer.getCurrentCamera();
+  var ray = cam.getRayInPixel( e.canvasx, e.canvasy );
+  var collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
+  console.log(collisions);
+}
+
+```
+
+
 ## LS.Collision
 
 When testing collisions with a ray you will get an array containing all the collisions stored as ```LS.Collision```.
