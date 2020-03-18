@@ -12,13 +12,22 @@ function GraphCode( data )
 	this._data = { "object_class":"GraphCode" };
 	this._modified = false;
 
-	//graph?
+	//graph
 	this._graph = new LiteGraph.LGraph();
 	this._graph._graphcode = this; //double link
-	this.extra = {
-		type: GraphCode.LOGIC_GRAPH
-	}
+
+	//type
+	this.type = LS.GraphCode.LOGIC_GRAPH;
+
+	//properties
+	this.properties = [];
+
+	//extra
+	this.extra = {};
+
+	//versioning
 	this._version = 0;
+
 	//this._shader_code is created in case is a shader_code
 
 	if(data)
@@ -61,22 +70,15 @@ Object.defineProperty( GraphCode.prototype, "version", {
 	}
 });
 
-Object.defineProperty( GraphCode.prototype, "type", {
-	enumerable: false,
-	get: function() {
-		return this.extra.type;
-	},
-	set: function(v) {
-		this.extra.type = v;
-	}
-});
-
 //used when storing/retrieving the resource
 GraphCode.prototype.setData = function( data, skip_modified_flag )
 {
 	if(!data)
 	{
 		this._data = null;
+		this.properties = [];
+		this.type = LS.GraphCode.LOGIC_GRAPH;
+		this.extra = {};
 		return;
 	}
 
@@ -102,8 +104,10 @@ GraphCode.prototype.setData = function( data, skip_modified_flag )
 	}
 
 	this._graph.configure( this._data );
-	if( this._data.extra )
-		this.extra = this._data.extra;
+	
+	this.type = this._data.type || LS.GraphCode.LOGIC_GRAPH;
+	this.extra = this._data.extra || {};
+	this.properties = this._data.properties || [];
 
 	if(!skip_modified_flag)
 	{
@@ -115,6 +119,8 @@ GraphCode.prototype.setData = function( data, skip_modified_flag )
 GraphCode.prototype.getData = function() {
 	var data = this.graph.serialize();
 	data.object_class = "GraphCode";
+	data.type = this.type;
+	data.properties = this.properties;
 	data.extra = this.extra;
 	return data;
 }
@@ -125,6 +131,14 @@ GraphCode.prototype.getDataToStore = function() {
 
 GraphCode.prototype.getCategory = function() {
 	return "Graph";
+}
+
+GraphCode.prototype.getProperty = function(name)
+{
+	for(var i = 0; i < this.properties.length; ++i)
+		if( this.properties[i].name == name )
+			return this.properties[i];
+	return null;
 }
 
 //sends changes in this graphcode to all nodes using this graph
@@ -147,59 +161,80 @@ GraphCode.prototype.propagate = function()
 
 //used in graph materials
 //as_string for debug
-GraphCode.prototype.getShaderCode = function( as_string )
+GraphCode.prototype.getShaderCode = function( as_string, template )
 {
-	if( this._shader_code && this._code_version == this._graph._version && !as_string )
+	if( this._shader_code && this._code_version == this._graph._version )
+	{
+		if( as_string )
+			return this._shader_code._code;
 		return this._shader_code;
+	}
 
 	if(!this._shader_code)
 		this._shader_code = new LS.ShaderCode();
 
-	//find final node
-	//assuming a SurfaceShader here
-	var surface_node = this._graph.findNodesByClass("shader/surface");
-	if(!surface_node)
+	var output_node = this._graph.findNodesByClass("shader/output")[0];
+	if(!output_node)
 		return null;
 
-	var final_code = LS.SurfaceMaterial.code_template;
-	var context = { uniforms: [] };
-	var graph_code = "";
+	//get code
+	var code = output_node.getShaderCode( template );
+	if( as_string )
+		return code;
+	this._shader_code.code = code;
+	this._code_version = this._graph._version;
+	return this._shader_code;
+
+	/*
+	var context = {
+		vs_out: "",
+		vs_local: "",
+		vs_global: "",
+		fs_snippets: {}, //to request once snippets from LS.Shaders.snippets
+		fs_functions: {}, //to add once functions code
+		fs_out: "",
+		fs_code: ""
+	};
+
+	//place uniforms
+	for(var i = 0; i < this.properties.length; ++i)
+	{
+		var prop = this.properties[i];
+		var type = LS.GLSLCode.types_conversor[ prop.type.toLowerCase() ] || prop.type;
+		context.fs_out += "	uniform " + type + " u_" + prop.name + ";\n";
+	}
 
 	var nodes = this._graph._nodes_in_order;
+	this._graph.runStep(1);
 	if(nodes)
 		for(var i = 0; i < nodes.length; ++i)
 		{
 			var node = nodes[i];
 			if( node.onGetCode )
-				graph_code += node.onGetCode( "glsl", context );
+				node.onGetCode( "glsl", context );
 		}
 
-	var uniforms_code = "";
-	for(var i = 0; i < context.uniforms.length; ++i)
-	{
-		var uniform = context.uniforms[i];
-		uniforms_code += "uniform " + uniform.type + " " + uniform.link_name + ";\n";
-	}
-
-	var surface_code = "void surf( in Input IN, inout SurfaceOutput o ) {\n\
-	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
-	o.Normal = IN.worldNormal;\n\
-	o.Emission = vec3(0.0);\n\
-	o.Specular = 1.0;\n\
-	o.Gloss = 40.0;\n\
-	o.Reflectivity = 0.0;\n\
-	o.Alpha = IN.color.a;\n";
-
-	var context = {
-		fs_out: uniforms_code + "\n\n" + surface_code + "\n" + graph_code + "\n}\n"
-	};
-
 	if( as_string )
-		return context.fs_out;
+		return context.fs_code;
 
-	this._shader_code.code = LS.ShaderCode.replaceCode( final_code, context );
+	//expand requested functions
+	var fs_snippets_code = "";
+	for(var i in context.fs_snippets)
+		fs_snippets_code += "#pragma snippet \"" + i + "\"\n";
+	if(fs_snippets_code)
+		context.fs_out = fs_snippets_code + "\n" + context.fs_out;
+
+	var fs_functions_code = "";
+	for(var i in context.fs_functions)
+		fs_functions_code += context.fs_functions[i] + "\n";
+	if(fs_functions_code)
+		context.fs_out = fs_functions_code + "\n" + context.fs_out;
+
+
+	this._shader_code.code = LS.ShaderCode.replaceCode( template, context );
 	this._code_version = this._graph._version;
 	return this._shader_code;
+	*/
 }
 
 LS.GraphCode = GraphCode;

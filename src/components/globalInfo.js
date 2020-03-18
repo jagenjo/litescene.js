@@ -2,9 +2,12 @@
 function GlobalInfo(o)
 {
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
+	this.createProperty( "irradiance_color", [1,1,1], "color" );
 	this._render_settings = null;
 	this._textures = {};
-	this._irradiance = null; //in SH form of float32(3*9)
+	this.irradiance = null; //in SH form of float32(3*9)
+	this._irradiance_final = null; 
+	this._uniforms = {};
 
 	if(o)
 		this.configure(o);
@@ -48,7 +51,7 @@ Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 	enumerable: true
 });
 
-
+//called when updating the coefficients from the editor
 GlobalInfo.prototype.computeIrradiance = function( position, near, far, background_color )
 {
 	if(!LS.Components.IrradianceCache)
@@ -61,13 +64,13 @@ GlobalInfo.prototype.computeIrradiance = function( position, near, far, backgrou
 	var temp_cubemap = new GL.Texture( texture_size, texture_size, texture_settings );
 	//renders scene to cubemap
 	LS.Components.IrradianceCache.captureIrradiance( position, cubemap, render_settings, near || 0.1, far || 1000, background_color || [0,0,0,1], true, temp_cubemap );
-	this._irradiance = LS.Components.IrradianceCache.computeSH( cubemap );
-	console.log( "IR factor", this._irradiance );
+	this.irradiance = LS.Components.IrradianceCache.computeSH( cubemap );
+	console.log( "IR factor", this.irradiance );
 }
 
 GlobalInfo.prototype.clearIrradiance = function()
 {
-	this._irradiance = null;
+	this.irradiance = null;
 }
 
 GlobalInfo.icon = "mini-icon-bg.png";
@@ -76,12 +79,29 @@ GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
 GlobalInfo.prototype.onAddedToScene = function(scene)
 {
 	scene.info = this;
+	LEvent.bind( scene, "fillSceneUniforms", this.fillSceneUniforms, this);
 }
 
 GlobalInfo.prototype.onRemovedFromScene = function(scene)
 {
 	//scene.info = null;
+	LEvent.unbind( scene, "fillSceneUniforms", this.fillSceneUniforms, this);
 }
+
+GlobalInfo.prototype.fillSceneUniforms = function()
+{
+	if(this.irradiance && 1)
+	{
+		if(!this._irradiance_final)
+			this._irradiance_final = new Float32Array( this.irradiance.length );
+		for(var i = 0; i < this._irradiance_final.length; ++i)
+			this._irradiance_final[i] = this.irradiance[i] * this._irradiance_color[i%3];
+
+		this._uniforms.u_sh_coeffs = this._irradiance_final;
+		LS.Renderer.enableFrameShaderBlock( "applyIrradiance", this._uniforms );
+	}
+}
+
 
 GlobalInfo.prototype.getResources = function(res)
 {

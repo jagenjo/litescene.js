@@ -27,9 +27,13 @@ function ShaderMaterial( o )
 
 	this._version = -1;	
 
+	this._last_valid_properties = null; //used to recover from a shader error
+
 	if(o) 
 		this.configure(o);
 }
+
+ShaderMaterial.description = "This material allows full control of the shader being used to render it.\nIt forces to code not only the surface properties but also the light equation.\nIt may be a little bit complex but it comes with examples.";
 
 //assign a shader from a filename to a shadercode and reprocesses the code
 Object.defineProperty( ShaderMaterial.prototype, "shader", {
@@ -204,6 +208,14 @@ ShaderMaterial.prototype.processShaderCode = function()
 		return false;
 
 	var old_properties = this._properties_by_name;
+	if( shader_code._has_error ) //save them
+		this._last_valid_properties = old_properties; 
+	else if( this._last_valid_properties )
+	{
+		old_properties = this._last_valid_properties;
+		this._last_valid_properties = null;
+	}
+
 	this._properties.length = 0;
 	this._properties_by_name = {};
 	this._passes = {};
@@ -256,6 +268,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//restore old values
 	this.assignOldProperties( old_properties );
+
 }
 
 //used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties
@@ -308,6 +321,7 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 }
 
 ShaderMaterial.nolights_vec4 = new Float32Array([0,0,0,1]);
+ShaderMaterial.missing_color = new Float32Array([1,0,1,1]);
 
 //called from LS.Renderer when rendering an instance
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings, pass )
@@ -315,7 +329,12 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	//get shader code
 	var shader_code = this.getShaderCode( instance, render_settings, pass );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
-		return true; //skip rendering
+	{
+		//return true; //skip rendering
+		shader_code = LS.ShaderCode.getDefaultCode( instance, render_settings, pass  ); //use default shader
+		if( pass.id == COLOR_PASS.id) //to assign some random color
+			this._uniforms.u_material_color = ShaderMaterial.missing_color;
+	}
 
 	//this is in case the shader has been modified in the editor (reapplies the shadercode to the material)
 	if( shader_code._version !== this._shader_version && this.processShaderCode )
@@ -381,15 +400,17 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	LS.Renderer.bindSamplers( this._samplers ); //material samplers
 	LS.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
 
-	//blocks for extra streams
+	//blocks for extra streams and instancing
 	if( instance.vertex_buffers["colors"] )
 		block_flags |= LS.Shaders.vertex_color_block.flag_mask;
 	if( instance.vertex_buffers["coords1"] )
 		block_flags |= LS.Shaders.coord1_block.flag_mask;
+	if( instance.instanced_models && instance.instanced_models.length && gl.extensions.ANGLE_instanced_arrays ) //use instancing if supported
+		block_flags |= LS.Shaders.instancing_block.flag_mask;
 
 	//for those cases
 	if(this.onRenderInstance)
-		this.onRenderInstance( instance );
+		this.onRenderInstance( instance, pass );
 
 	if( pass == SHADOW_PASS )
 	{
@@ -524,7 +545,8 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	//get shader code
 	var shader_code = this.getShaderCode( instance, render_settings, pass );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
-		return;
+		shader_code = LS.ShaderCode.getDefaultCode( instance, render_settings, pass  ); //use default shader
+
 
 	//some globals
 	var renderer = LS.Renderer;
@@ -875,6 +897,23 @@ ShaderMaterial.prototype.createProperty = function( name, value, type, options )
 }
 
 /**
+* returns the value of a property taking into account dynamic properties defined in the material
+* @method getProperty
+* @param {String} name the property name as it should be shown
+* @param {*} value of the property
+*/
+ShaderMaterial.prototype.getProperty = function(name)
+{
+	var r = Material.prototype.getProperty.call( this, name );
+	if(r != null)
+		return;
+	var p = this._properties_by_name[ name ];
+	if (p)
+		return p.value;
+	return null;
+}
+
+/**
 * Event used to inform if one resource has changed its name
 * @method onResourceRenamed
 * @param {Object} resources object where all the resources are stored
@@ -907,6 +946,7 @@ ShaderMaterial.prototype.onResourceRenamed = function (old_name, new_name, resou
 	return v;
 }
 
+
 ShaderMaterial.getDefaultPickingShaderCode = function()
 {
 	if( ShaderMaterial.default_picking_shader_code )
@@ -915,6 +955,14 @@ ShaderMaterial.getDefaultPickingShaderCode = function()
 	sc.code = LS.ShaderCode.flat_code;
 	ShaderMaterial.default_picking_shader_code = sc;
 	return sc;
+}
+
+//creates a material with flat color, used for debug stuff, shadowmaps, picking, etc
+ShaderMaterial.createFlatMaterial = function()
+{
+	var material = new LS.ShaderMaterial();
+	material.shader_code = LS.ShaderCode.getDefaultCode();
+	return material;
 }
 
 LS.registerMaterialClass( ShaderMaterial );

@@ -798,7 +798,6 @@ MorphDeformer.prototype.getProperty = function(name)
 	}
 }
 
-
 MorphDeformer.prototype.getPropertiesInfo = function()
 {
 	var properties = {

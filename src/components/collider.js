@@ -13,6 +13,7 @@ function Collider(o)
 
 Collider.icon = "mini-icon-collider.png";
 
+Collider.PLANE = LS.PhysicsInstance.PLANE;
 Collider.BOX = LS.PhysicsInstance.BOX;
 Collider.SPHERE = LS.PhysicsInstance.SPHERE;
 Collider.MESH = LS.PhysicsInstance.MESH;
@@ -21,7 +22,7 @@ Collider.MESH = LS.PhysicsInstance.MESH;
 Collider["@size"] = { type: "vec3", step: 0.01 };
 Collider["@center"] = { type: "vec3", step: 0.01 };
 Collider["@mesh"] = { type: "mesh" };
-Collider["@shape"] = { type:"enum", values: {"Box": Collider.BOX, "Sphere": Collider.SPHERE, "Mesh": Collider.MESH }};
+Collider["@shape"] = { type:"enum", values: {"Plane":Collider.PLANE, "Box": Collider.BOX, "Sphere": Collider.SPHERE, "Mesh": Collider.MESH }};
 
 //Collider["@adjustToNodeBounding"] = { type:"action" };
 
@@ -111,6 +112,11 @@ Collider.prototype.onGetColliders = function(e, colliders)
 		else
 			BBox.setCenterHalfsize( PI.oobb, this.center, this.size);
 	}
+	else if(PI.type === LS.PhysicsInstance.PLANE)
+	{
+		this.size[1] = 0.0001; //flatten
+		BBox.setCenterHalfsize( PI.oobb, this.center, this.size );
+	}
 
 	if(mesh)
 		vec3.copy( PI.center, BBox.getCenter( mesh.bounding ) );
@@ -130,5 +136,6 @@ Collider.prototype.onGetColliders = function(e, colliders)
 	colliders.push(PI);
 }
 
+//rendered from LS.DebugRender.prototype.renderColliders
 
 LS.registerComponent( Collider );

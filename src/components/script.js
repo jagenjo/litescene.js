@@ -67,7 +67,8 @@ Script.API_functions = {};
 Script.API_events_to_function = {};
 
 Script.defineAPIFunction = function( func_name, target, event, info ) {
-	event = event || func_name;
+	if(!event)
+		throw("Script function requires event");
 	target = target || Script.BIND_TO_SCENE;
 	var data = { name: func_name, target: target, event: event, info: info };
 	Script.API_functions[ func_name ] = data;
@@ -75,25 +76,25 @@ Script.defineAPIFunction = function( func_name, target, event, info ) {
 }
 
 //init
-Script.defineAPIFunction( "onStart", Script.BIND_TO_SCENE, "start" );
-Script.defineAPIFunction( "onAwake", Script.BIND_TO_SCENE, "awake" );
-Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, "finish" );
+Script.defineAPIFunction( "onStart", Script.BIND_TO_SCENE, LS.EVENT.START );
+Script.defineAPIFunction( "onAwake", Script.BIND_TO_SCENE, LS.EVENT.AWAKE );
+Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, LS.EVENT.FINISH );
 Script.defineAPIFunction( "onPrefabReady", Script.BIND_TO_NODE, "prefabReady" );
 //behaviour
-Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, "update" );
-Script.defineAPIFunction( "onFixedUpdate", Script.BIND_TO_SCENE, "fixedUpdate" );
+Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, LS.EVENT.UPDATE );
+Script.defineAPIFunction( "onFixedUpdate", Script.BIND_TO_SCENE, LS.EVENT.FIXED_UPDATE );
 Script.defineAPIFunction( "onNodeClicked", Script.BIND_TO_NODE, "node_clicked" );
 Script.defineAPIFunction( "onClicked", Script.BIND_TO_NODE, "clicked" );
 //rendering
-Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, "beforeRender" );
-Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, "collectRenderInstances" ); //TODO: move to SCENE
-Script.defineAPIFunction( "onRender", Script.BIND_TO_SCENE, "beforeRenderInstances" );
-Script.defineAPIFunction( "onAfterRender", Script.BIND_TO_SCENE, "afterRenderInstances" );
-Script.defineAPIFunction( "onAfterSceneRender", Script.BIND_TO_SCENE, "afterRender" );
-Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, "renderHelpers" );
-Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
-Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, "enableFrameContext" );
-Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, "showFrameContext" );
+Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, LS.EVENT.BEFORE_RENDER );
+Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, LS.EVENT.COLLECT_RENDER_INSTANCES ); //TODO: move to SCENE
+Script.defineAPIFunction( "onRender", Script.BIND_TO_SCENE, LS.EVENT.BEFORE_RENDER_INSTANCES );
+Script.defineAPIFunction( "onAfterRender", Script.BIND_TO_SCENE, LS.EVENT.AFTER_RENDER_INSTANCES );
+Script.defineAPIFunction( "onAfterSceneRender", Script.BIND_TO_SCENE, LS.EVENT.AFTER_RENDER );
+Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, LS.EVENT.RENDER_HELPERS );
+Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, LS.EVENT.RENDER_GUI );
+Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, LS.EVENT.ENABLE_FRAME_CONTEXT );
+Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, LS.EVENT.SHOW_FRAME_CONTEXT );
 //input
 Script.defineAPIFunction( "onMouseDown", Script.BIND_TO_SCENE, "mousedown" );
 Script.defineAPIFunction( "onMouseMove", Script.BIND_TO_SCENE, "mousemove" );
@@ -571,17 +572,7 @@ Script.prototype.onScriptEvent = function( event_type, params )
 		return;
 
 	//special case: sometimes we want to pass several parameters to the 
-	var expand = false;
 	var type = event_type;
-	/*
-	if( type.constructor !== String && type.constructor !== Number ) //you can pass an event directly, in that case it will send all directly
-	{
-		type = event_type.type;
-		params = Array.prototype.slice.call(arguments, 0);
-		expand = true;
-	}
-	*/
-
 	if(!type)
 		throw("Event without type");
 
@@ -589,26 +580,36 @@ Script.prototype.onScriptEvent = function( event_type, params )
 	if(!event_info)
 		return; //????
 
+	return this.callMethod( event_info.name, params );
+}
+
+/**
+* safely executes a function inside the script given a name
+* @method callMethod
+*/
+Script.prototype.callMethod = function( name, params, expand )
+{
 	var has_breakpoint = false;
 	if( this._breakpoints )
 	{
-		if( this._breakpoints[ event_info.name ] )
+		if( this._breakpoints[ name ] )
 		{
 			has_breakpoint = true;
-			this.setBreakpoint( event_info.name, false );
+			this.setBreakpoint( name, false );
 		}
 	}
 
-	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
+	if( this._blocked_functions.has( name ) ) //prevent calling code with errors
 	{
-		console.warn("Script: blocked function trying to be executed, skipping: " + event_info.name );
+		console.warn("Script: blocked function trying to be executed, skipping: " + name );
 		return;
 	}
 
 	if(has_breakpoint)
 		{{debugger}}; //stops the execution if the console is open
 
-	var r = this._script.callMethod( event_info.name, params, expand, this );
+	//this method will call onError if error happens
+	var r = this._script.callMethod( name, params, expand, this );
 	return r;
 }
 
@@ -635,6 +636,7 @@ Script.prototype.onAddedToScene = function( scene )
 	//avoid to parse it again
 	if(this._script && this._script._context && this._script._context._initialized )
 	{
+		this.hookEvents(); //because they were unbinded before
 		if(this._script._context.onBind)
 			this._script._context.onBind();
 		return;

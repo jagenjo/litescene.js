@@ -14,6 +14,7 @@ function Target(o)
 	this.cylindrical = false;
 	this.front = Target.NEGZ;
 	this.up = Target.POSY;
+	this.use_iterative_method = false; //this method reuses previous orientation as a reinforcement to avoid weird cases but it gives an approxiate orientation
 	
 	this._global_position = vec3.create();
 	this._target_position = vec3.create();
@@ -107,10 +108,13 @@ Target.prototype.updateOrientation = function()
 		//up.set([0,1,0]);
 	}
 
+	/*
 	mat4.lookAt( Target.temp_mat, position, target_position, up );
 	quat.fromMat4( transform._rotation, Target.temp_mat );
+	*/
 
 	//transform.lookAt( position, target_position, up, true );
+	transform.orientTo( target_position, true, up, this.use_iterative_method );
 
 	switch( this.front )
 	{

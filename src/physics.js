@@ -107,7 +107,7 @@ var Physics = {
 	* @param {vec3} origin in world space
 	* @param {vec3} direction in world space
 	* @param {Object} options ( max_dist maxium distance, layers which layers to check, scene, first_collision )
-	* @return {Array} Array of Collision objects containing all the nodes that collided with the ray or null in the form [SceneNode, Collider, collision point, distance]
+	* @return {Array} Array of Collision objects containing all the nodes that collided with the ray or null in the form of a LS.Collision
 	*/
 	raycast: function( origin, direction, options )
 	{
@@ -137,7 +137,7 @@ var Physics = {
 		//for every instance
 		for(var i = 0; i < colliders.length; ++i)
 		{
-			var instance = colliders[i];
+			var instance = colliders[i]; //of LS.Collider
 
 			if( (layers & instance.layers) === 0 )
 				continue;
@@ -158,6 +158,15 @@ var Physics = {
 					continue;
 				if(compute_normal)
 					collision_normal = vec3.sub( vec3.create(), collision_point, instance.center );
+			}
+			else if( instance.type == PhysicsInstance.PLANE )
+			{
+				var N = vec3.fromValues(0,1,0);
+				mat4.rotateVec3( N, model, N );
+				if(!geo.testRayPlane( origin, direction, instance.center, N, collision_point, max_distance))
+					continue;
+				if(compute_normal)
+					collision_normal = N;
 			}
 			else //the rest test first with the local BBox
 			{
@@ -378,6 +387,12 @@ var Physics = {
 
 			if(instance.material && instance.material.render_state.blend && ignore_transparent)
 				continue; //avoid semitransparent
+
+			if( !instance.use_bounding && options.add_instances_without_aabb)
+			{
+				collisions.push( new LS.Collision( instance.node, instance, vec3.clone(origin), 0, vec3.clone(direction), null ) );
+				continue;
+			}
 
 			//test against AABB
 			var collision_point = vec3.create();

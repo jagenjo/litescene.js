@@ -123,7 +123,6 @@ Light._vs_shaderblock_code = "\n\
 ";
 
 Light._enabled_fs_shaderblock_code = "\n\
-	#pragma snippet \"input\"\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\

@@ -1,4 +1,12 @@
-//standalone class for skeletal animations
+// Standalone class for skeletal animations
+// By Javi Agenjo (@tamat)
+// ***************************************
+// It uses a filetype called SKANIM, the format is similar to BVH but much more easy to parser
+// ASCII Format description:
+// HEADER: {duration}, {samples_per_second}, {num_keyframes}, {num_bones}
+// FOR EVERY BONE (ordered by hierarchy): B{bone index}, {bone_name}, {bind matrix of bone in mat44}
+// KEYFRAMES HEADER: @{num_animated_bones},{index to bone referenced by the first matrix}, {index to bone referenced by the second matrix}, ...
+// KEYFRAME: K{time},{mat4},{mat4},{mat4},....
 
 function lerp(a,b,f) { return a*(1.0-f)+b*f; }
 

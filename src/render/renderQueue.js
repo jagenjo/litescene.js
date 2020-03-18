@@ -2,14 +2,35 @@
 //RenderQueue is in charge of storing the RenderInstances that must be rendered
 //There could be several RenderQueue (for opaque, transparent, overlays, etc)
 //It works similar to the one in Unity
-function RenderQueue( sort_mode )
+function RenderQueue( value, sort_mode, options )
 {
-	this.sort_mode = sort_mode || LS.RenderQueue.NO_SORT;
+	//container for all instances that belong to this render queue
 	this.instances = [];
+
+	this.value = value || 0;
+	this.sort_mode = sort_mode || LS.RenderQueue.NO_SORT;
+	this.range_start = 0;
+	this.range_end = 9;
+	this.must_clone_buffers = false; //used for readback rendering like refracion
+	//this.visible_in_pass = null;
+
+	//callbacks
+	this.onStart = null;
+	this.onFinish = null;
+
+	//configure
+	if(options)
+		for(var i in options)
+			this[i] = options[i];
 }
+
+RenderQueue.readback_allowed = true;
 
 RenderQueue.prototype.sort = function()
 {
+	if(!this.instances.length)
+		return;
+
 	var func = null;
 	switch(this.sort_mode)
 	{
@@ -32,12 +53,38 @@ RenderQueue.prototype.clear = function()
 	this.instances.length = 0;
 }
 
-RenderQueue.DEFAULT = 0;
-RenderQueue.BACKGROUND = 5;
-RenderQueue.GEOMETRY = 10;
-RenderQueue.TRANSPARENT = 15;
-RenderQueue.READBACK_COLOR = 20;
-RenderQueue.OVERLAY = 25;
+RenderQueue.prototype.start = function( pass, render_settings )
+{
+	if(this.onStart)
+	{
+		var r = this.onStart( pass, render_settings); //cancels rendering
+		if (r === false)
+			return false;
+	}
+
+	if(this.instances.length && this.must_clone_buffers && RenderQueue.readback_allowed && pass === LS.COLOR_PASS )
+	{
+		if( LS.RenderFrameContext.current )
+			LS.RenderFrameContext.current.cloneBuffers();
+		//cubemaps are not cloned... too much work
+	}
+}
+
+//not used...
+RenderQueue.prototype.finish = function( pass )
+{
+	if(this.onFinish)
+		this.onFinish( pass, render_settings );
+}
+
+
+//we use 5 so from 0 to 9 is one queue, from 10 to 19 another one, etc
+RenderQueue.AUTO =			-1;
+RenderQueue.BACKGROUND =	5;
+RenderQueue.GEOMETRY =		15;
+RenderQueue.TRANSPARENT =	25;
+RenderQueue.READBACK_COLOR = 35;
+RenderQueue.OVERLAY =		45;
 
 RenderQueue.NO_SORT = 0;
 RenderQueue.SORT_NEAR_TO_FAR = 1;

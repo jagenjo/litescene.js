@@ -12,19 +12,31 @@ EVENT.CLEAR = "clear";
 EVENT.PRECONFIGURE = "preConfigure";
 EVENT.CONFIGURE = "configure";
 EVENT.CHANGE = "change";
+EVENT.BEFORE_LOAD = "beforeLoad";
 EVENT.LOAD = "load";
 EVENT.LOAD_COMPLETED = "load_completed";
+EVENT.BEFORE_RELOAD = "beforeReload";
+EVENT.RELOAD = "reload";
 EVENT.AWAKE = "awake";
 EVENT.START = "start";
 EVENT.PAUSE = "pause";
 EVENT.UNPAUSE = "unpause";
+EVENT.FINISH = "finish";
+EVENT.BEFORE_UPDATE = "before_update";
+EVENT.UPDATE = "update";
+EVENT.FIXED_UPDATE = "fixedUpdate";
+EVENT.AFTER_UPDATE = "afterUpdate";
 EVENT.COLLECT_RENDER_INSTANCES = "collectRenderInstances";
 EVENT.COLLECT_PHYSIC_INSTANCES = "collectPhysicInstances";
 EVENT.COLLECT_LIGHTS = "collectLights";
 EVENT.COLLECT_CAMERAS = "collectCameras";
 EVENT.COLLECT_DATA = "collectData";
 EVENT.SERIALIZE = "serialize";
-EVENT.FINISH = "finish";
+EVENT.NODE_ADDED = "nodeAdded";
+EVENT.NODE_REMOVED = "nodeRemoved";
+EVENT.REQUEST_FRAME = "requestFrame";
+
+
 
 function Scene()
 {
@@ -132,7 +144,7 @@ Object.defineProperty( Scene.prototype, "frame", {
 });
 
 //Some useful events
-Scene.supported_events = ["start","update","finish","clear","beforeReload","change","afterRender","configure","nodeAdded","nodeChangeParent","nodeComponentRemoved","reload","renderPicking","scene_loaded","serialize"];
+Scene.supported_events = [LS.EVENT.START,LS.EVENT.UPDATE,LS.EVENT.FINISH,LS.EVENT.CLEAR,LS.EVENT.BEFORE_RELOAD,LS.EVENT.CHANGE,EVENT.AFTER_RENDER,LS.EVENT.CONFIGURE,EVENT.NODE_ADDED,"nodeChangeParent","nodeComponentRemoved",LS.EVENT.RELOAD,"renderPicking","scene_loaded",LS.EVENT.SERIALIZE];
 
 //methods
 
@@ -393,6 +405,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 	}
 
 	var scripts = LS.Scene.getScriptsList( data, true );
+	this.external_scripts = data.external_scripts; //must be copyed before, because it is used inside loadScripts to check origin 
 
 	//check JSON for special scripts
 	if ( scripts.length )
@@ -490,7 +503,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 	 * Fired before loading scene
 	 * @event beforeLoad
 	 */
-	LEvent.trigger(this,"beforeLoad");
+	LEvent.trigger(this,EVENT.BEFORE_LOAD);
 
 	function inner_data_loaded( response )
 	{
@@ -670,7 +683,7 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 	{
 		var script_url = scripts[i];
 		var is_external = this.external_scripts.indexOf( script_url ) != -1;
-		if( !is_external )
+		if( !is_external ) //comes from scene.external_scripts
 		{
 			var res = LS.ResourcesManager.getResource( script_url );
 			if(!res || force_reload)
@@ -859,7 +872,7 @@ Scene.prototype.onNodeAdded = function(e,node)
 	 * @event nodeAdded
 	 * @param {LS.SceneNode} node
 	 */
-	LEvent.trigger(this,"nodeAdded", node);
+	LEvent.trigger(this, EVENT.NODE_ADDED, node);
 	LEvent.trigger(this, EVENT.CHANGE );
 }
 
@@ -886,7 +899,7 @@ Scene.prototype.onNodeRemoved = function(e,node)
 	 * @event nodeRemoved
 	 * @param {LS.SceneNode} node
 	 */
-	LEvent.trigger(this,"nodeRemoved", node);
+	LEvent.trigger(this, EVENT.NODE_REMOVED, node);
 	LEvent.trigger(this, EVENT.CHANGE );
 	return true;
 }
@@ -1579,7 +1592,7 @@ Scene.prototype.update = function(dt)
 	 * @event beforeUpdate
 	 * @param {LS.Scene} scene
 	 */
-	LEvent.trigger(this,"beforeUpdate", this);
+	LEvent.trigger(this,LS.EVENT.BEFORE_UPDATE, this);
 
 	this._global_time = getTime() * 0.001;
 	//this._time = this._global_time - this._start_time;
@@ -1592,7 +1605,7 @@ Scene.prototype.update = function(dt)
 	 * @event update
 	 * @param {number} dt
 	 */
-	LEvent.trigger(this,"update", dt);
+	LEvent.trigger(this, LS.EVENT.UPDATE, dt);
 
 	/**
 	 * Fired while updating but using a fixed timestep (1/60)
@@ -1603,10 +1616,10 @@ Scene.prototype.update = function(dt)
 	if(this._fixed_update_timestep > 0)
 	{
 		this._remaining_fixed_update_time += dt;
-		if(LEvent.hasBind(this,"fixedUpdate"))
+		if(LEvent.hasBind(this, LS.EVENT.FIXED_UPDATE))
 			while( this._remaining_fixed_update_time > this._fixed_update_timestep )
 			{
-				LEvent.trigger(this, "fixedUpdate", this._fixed_update_timestep );
+				LEvent.trigger(this, LS.EVENT.FIXED_UPDATE, this._fixed_update_timestep );
 				this._remaining_fixed_update_time -= this._fixed_update_timestep;
 			}
 		else
@@ -1618,7 +1631,7 @@ Scene.prototype.update = function(dt)
 	 *
 	 * @event afterUpdate
 	 */
-	LEvent.trigger(this,"afterUpdate", this);
+	LEvent.trigger(this, LS.EVENT.AFTER_UPDATE, this);
 }
 
 /**
@@ -1672,7 +1685,7 @@ Scene.prototype.generateUniqueNodeName = function(prefix)
 Scene.prototype.requestFrame = function()
 {
 	this._must_redraw = true;
-	LEvent.trigger( this, "requestFrame" );
+	LEvent.trigger( this, LS.EVENT.REQUEST_FRAME );
 }
 
 Scene.prototype.refresh = Scene.prototype.requestFrame; //DEPRECATED
@@ -1862,7 +1875,7 @@ Scene.prototype.findNearestReflectionProbe = function( position )
 	for(var i = 0; i < probes.length; ++i)
 	{
 		var probe = probes[i];
-		var dist = vec3.distance( position, probe._position );
+		var dist = vec3.squaredDistance( position, probe._position );
 		if( dist > min_dist )
 			continue;
 		min_dist = dist;
@@ -1918,7 +1931,21 @@ Scene.prototype.sendResourceRenamedEvent = function( old_name, new_name, resourc
 		{
 			var component = node._components[j];
 			if(component.onResourceRenamed)
-				component.onResourceRenamed( old_name, new_name, resource )
+				component.onResourceRenamed( old_name, new_name, resource );
+			else //automatic
+			{
+				for(var k in component)
+				{
+					if(component[k] != old_name )
+						continue;
+					var propinfo = component.constructor["@" + k];
+					if(!propinfo)
+						continue;
+					var type = propinfo.type || propinfo.widget;
+					if(type && (type == LS.TYPES.RESOURCE || LS.ResourceClasses[ type ])) //is a resource
+						component[k] = new_name;
+				}
+			}
 		}
 
 		//materials

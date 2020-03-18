@@ -177,7 +177,7 @@ GeometricPrimitive.prototype.updateMesh = function()
 	switch (this._geometry)
 	{
 		case GeometricPrimitive.CUBE: 
-			this._mesh = GL.Mesh.cube({size: this.size, normals:true,coords:true});
+			this._mesh = GL.Mesh.cube({size: this.size, normals:true,coords:true, wireframe: true});
 			break;
 		case GeometricPrimitive.PLANE:
 			this._mesh = GL.Mesh.plane({size: this.size, xz: true, detail: subdivisions, normals:true,coords:true});

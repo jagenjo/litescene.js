@@ -347,21 +347,33 @@ var GUI = {
 	},
 
 	/**
-	* Renders an immediate gui BOX, used as background
-	*
+	* Renders an immediate gui BOX, used as background for panels
+	* It blocks mouse events
 	* @method Box
 	* @param {Array} area [x,y,width,height]
 	* @param {String} color a color in string format "#AFAFAF"
+	* @param {Number} border_radius [optional] 
+	* @param {Number} bottom_border_radius [optional] 
 	*/
-	Box: function( area, color )
+	Box: function( area, color, border_radius, bottom_border_radius )
 	{
 		if(!area)
 			throw("No area");
 		this.blockEventArea( area );
 
+		border_radius = border_radius || 0;
+		bottom_border_radius = bottom_border_radius || border_radius;
+
 		var ctx = gl;
 		ctx.fillStyle = color || "#333";
-		ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
+		if( border_radius )
+		{
+			ctx.beginPath();
+			ctx.roundRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3], border_radius, bottom_border_radius );
+			ctx.fill();
+		}
+		else
+			ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 	},
 
 	/**

@@ -300,7 +300,17 @@ ReflectionProbe.prototype.renderProbe = function( visualize_irradiance, picking_
 		var shader = GL.Shader.getCubemapShowShader();
 
         if(visualize_irradiance)
-		    this._irradiance_texture.bind(0);
+		{
+			if(this._irradiance_texture)
+			    this._irradiance_texture.bind(0);
+			else if(this._irradiance_shs)
+			{
+				shader = LS.Components.ReflectionProbe.sh_shader;
+				if(!shader)
+					shader = LS.Components.ReflectionProbe.sh_shader = new GL.Shader( GL.Shader.DEFAULT_VERTEX_SHADER, LS.Components.IrradianceCache.fs_shader_code );
+				shader.uniforms({ u_sh_coeffs: this._irradiance_shs });
+			}
+		}
         else
 		    this._texture.bind(0);
             
@@ -428,6 +438,11 @@ IrradianceCache["@intensity_color"] = { type:"color" };
 IrradianceCache.default_coeffs = new Float32Array([ 0,0,0, 0.5,0.75,1, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0 ]);
 
 IrradianceCache.use_sh_low = false; //set to false before shader compilation to use 9 coeffs instead of 4
+
+IrradianceCache.getExtraProperties = function(r)
+{
+	r.push(["recompute",LiteGraph.ACTION]);
+}
 
 IrradianceCache.prototype.onAddedToScene = function(scene)
 {
@@ -1191,6 +1206,7 @@ ShaderMaterial.irradiance_block = irradiance_block;
 irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
 irradiance_block.register( true );
 
+//single probe
 var irradiance_single_code = "\n\
 	uniform vec3 u_sh_coeffs[9];\n\
 	" + IrradianceCache.include_code + "\n\
@@ -1211,7 +1227,6 @@ var irradiance_single_code = "\n\
 	}\n\
 ";
 
-//single
 var irradiance_single_block = new LS.ShaderBlock("applyIrradianceSingle");
 ShaderMaterial.irradiance_single_block = irradiance_single_block;
 irradiance_single_block.addCode( GL.FRAGMENT_SHADER, irradiance_single_code, irradiance_disabled_code );

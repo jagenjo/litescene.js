@@ -323,7 +323,7 @@ Light.prototype.updateLightCamera = function( face_index )
 		var target = Light._temp_target;
 		vec3.add( target, Light._temp_position, info.dir );
 		camera.center = target;
-		camera.fov = 45;
+		camera.fov = 90;
 		camera.up = info.up;
 	}
 	else

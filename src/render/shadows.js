@@ -18,6 +18,7 @@ function Shadowmap( light )
 
 Shadowmap.use_shadowmap_depth_texture = true;
 
+//enable block
 Shadowmap.prototype.getReadShaderBlock = function()
 {
 	if( this.texture.format != GL.DEPTH_COMPONENT )
@@ -87,6 +88,8 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 		}
 	}
 
+	var prev_pass = LS.Renderer._current_pass;
+
 	LS.Renderer.setRenderPass( SHADOW_PASS );
 	LS.Renderer._current_light = light;
 	var tmp_layer = render_settings.layers;
@@ -116,8 +119,9 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	for(var i = 0; i < sides; ++i) //in case of omni
 	{
 		var shadow_camera = light.getLightCamera(i);
-		this.shadow_params[2] = shadow_camera.near;
-		this.shadow_params[3] = shadow_camera.far;
+		shadow_camera.near;
+		this.shadow_params[2] = this.texture.near = shadow_camera.near;
+		this.shadow_params[3] = this.texture.far = shadow_camera.far;
 		LS.Renderer.enableCamera( shadow_camera, render_settings, true );
 
 		var viewport_y = 0;
@@ -125,7 +129,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 			viewport_y = i * viewport_height;
 		gl.viewport(0,viewport_y,viewport_width,viewport_height);
 
-		if(this.reverse_faces)
+		if(this.reverse_faces) //used to avoid leaking in some situations
 			LS.Renderer._reverse_faces = true;
 
 		//RENDER INSTANCES in the shadowmap
@@ -139,7 +143,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	gl.colorMask(true,true,true,true);
 
 	render_settings.layers = tmp_layer;
-	LS.Renderer.setRenderPass( COLOR_PASS );
+	LS.Renderer.setRenderPass( prev_pass );
 	LS.Renderer._current_light = null;
 	
 	if(this.onPostProcessShadowMap)
@@ -177,7 +181,12 @@ Shadowmap.prototype.toViewport = function()
 Shadowmap._enabled_vertex_code ="\n\
 	#pragma snippet \"light_structs\"\n\
 	varying vec4 v_light_coord;\n\
-	void applyLight( vec3 pos ) { v_light_coord = u_light_matrix * vec4(pos,1.0); }\n\
+	void applyLight( vec3 pos ) { \n\
+		if( u_light_info.x == 1.0 ) //Omni\n\
+			v_light_coord.xyz = pos - u_light_position;\n\
+		else\n\
+			v_light_coord = u_light_matrix * vec4(pos,1.0);\n\
+	}\n\
 ";
 
 Shadowmap._disabled_vertex_code ="\n\
@@ -204,6 +213,16 @@ Shadowmap._enabled_fragment_code = "\n\
 			return depth.x;\n\
 		#endif\n\
 	}\n\
+	float VectorToDepthValue(vec3 Vec)\n\
+	{\n\
+		vec3 AbsVec = abs(Vec);\n\
+		float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));\n\
+		float n = u_shadow_params.z;\n\
+		float f = u_shadow_params.w;\n\
+		float NormZComp = (f+n) / (f-n) - (2.0*f*n)/(f-n)/LocalZcomp;\n\
+		return (NormZComp + 1.0) * 0.5;\n\
+	}\n\
+	\n\
 	float texsize = 1.0 / u_shadow_params.x;\n\
 	float real_depth = 0.0;\n\
 	\n\
@@ -220,17 +239,34 @@ Shadowmap._enabled_fragment_code = "\n\
 		return f*f*f*(f*(f*6.0-15.0)+10.0);\n\
 	}\n\
 	\n\
+	#pragma snippet \"vec3ToCubemap2D\"\n\
+	\n\
 	float testShadow( Light LIGHT )\n\
 	{\n\
 		vec3 offset = vec3(0.0);\n\
 		float depth = 0.0;\n\
 		float bias = u_shadow_params.y;\n\
 		\n\
-		vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset.xy;\n\
+		vec2 sample;\n\
+		if( LIGHT.Info.x == 1.0 ) //Omni\n\
+		{\n\
+			vec3 l_vector = (v_pos - u_light_position);\n\
+			float dist = length(l_vector);\n\
+			float pixel_z = VectorToDepthValue( l_vector );\n\
+			if(pixel_z >= 0.998)\n\
+				return 1.0; //fixes a little bit the far edge bug\n\
+			//vec4 depth_color = textureCube( shadowmap, l_vector + offset * dist );\n\
+			sample = vec3ToCubemap2D( l_vector/dist );\n\
+			vec4 depth_color = texture2D( shadowmap, sample );\n\
+			float ShadowVec = UnpackDepth( depth_color );\n\
+			if ( ShadowVec > pixel_z - bias )\n\
+				return 1.0; //no shadow\n\
+			return 0.0; //full shadow\n\
+		}\n\
+		sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset.xy;\n\
 		//is inside light frustum\n\
 		if (clamp(sample, 0.0, 1.0) != sample) \n\
-			return LIGHT.Info.x == 3.0 ? 1.0 : 0.0; //outside of shadowmap, no shadow\n\
-		\n\
+			return LIGHT.Info.x == 3.0 ? 1.0 : 0.0; //directional: outside of shadowmap, no shadow\n\
 		real_depth = (v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5;\n\
 		#ifdef BLOCK_DEPTH_IN_COLOR\n\
 			//real_depth = linearDepthNormalized( real_depth, u_shadow_params.z, u_shadow_params.w );\n\

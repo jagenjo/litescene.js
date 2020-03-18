@@ -51,12 +51,13 @@ function RenderInstance( node, component )
 	this.uniforms = {};
 	this.samplers = [];
 
-	this.instanced_models = [];
+	//array of all the model matrix for all the instanced
+	this.instanced_models = null;
 
 	this.shader_block_flags = 0;
 	this.shader_blocks = [];
 
-	this.picking_node = null; //for picking
+	this.picking_node = null; //in case of picking, which node to reference
 
 	//this.deformers = []; //TODO
 
@@ -76,17 +77,21 @@ RenderInstance.SORT_FAR_FIRST = 2;
 
 RenderInstance.fast_normalmatrix = false; //avoid doint the inverse transpose for normal matrix, and just copies the model
 
-RenderInstance.prototype.fromNode = function(node)
+RenderInstance.prototype.fromNode = function(node, skip_matrices)
 {
 	if(!node)
 		throw("no node");
 	this.node = node;
-	if(node.transform)
-		this.setMatrix( node.transform._global_matrix );
-	else
-		this.setMatrix( LS.IDENTITY );
-	mat4.multiplyVec3( this.position, this.matrix, LS.ZEROS );
 	this.layers = node.layers;
+
+	if(!skip_matrices)
+	{
+		if(node.transform)
+			this.setMatrix( node.transform._global_matrix );
+		else
+			this.setMatrix( LS.IDENTITY );
+		mat4.multiplyVec3( this.position, this.matrix, LS.ZEROS );
+	}
 }
 
 //set the matrix 
@@ -128,9 +133,9 @@ RenderInstance.prototype.computeNormalMatrix = function()
 */
 RenderInstance.prototype.applyTransform = function( matrix, normal_matrix )
 {
-	mat4.mul( this.matrix, this.matrix, matrix );
+	mat4.mul( this.matrix, matrix, this.matrix );
 	if( normal_matrix )
-		mat4.mul( this.normal_matrix, this.normal_matrix, normal_matrix );
+		mat4.mul( this.normal_matrix, normal_matrix, this.normal_matrix );
 	else
 		this.computeNormalMatrix();
 }
@@ -352,10 +357,35 @@ RenderInstance.prototype.render = function(shader, primitive)
 		this.vertex_buffers["colors"] = this.mesh.vertexBuffers["colors"];
 	}
 
-	shader.drawBuffers( this.vertex_buffers,
-	  this.index_buffer,
-	  primitive !== undefined ? primitive : this.primitive,
-	  this.range[0], this.range[1] );
+
+	if(primitive === undefined)
+		primitive = this.primitive;
+
+	//instancing
+	if(this.instanced_models && this.instanced_models.length)
+	{
+		if( shader.attributes["u_model"] ) //if extension enabled
+		{
+			if(!this._instanced_uniforms)
+				this._instanced_uniforms = {};
+			this._instanced_uniforms.u_model = this.instanced_models;
+			shader.drawInstanced( this.mesh, primitive,
+			  this.index_buffer, this._instanced_uniforms,
+			  this.range[0], this.range[1], this.instanced_models.length );
+		}
+		else //not supported the extension
+		{
+			for(var i = 0; i < this.instanced_models.length; ++i)
+			{
+				shader.setUniform("u_model", this.instanced_models[i] );
+				shader.drawBuffers( this.vertex_buffers, this.index_buffer, primitive, this.range[0], this.range[1] );
+			}
+		}
+	}
+	else //no instancing
+	{
+		shader.drawBuffers( this.vertex_buffers, this.index_buffer, primitive, this.range[0], this.range[1] );
+	}
 }
 
 RenderInstance.prototype.addShaderBlock = function( block, uniforms )

@@ -1,6 +1,8 @@
 ///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
+	//scene/component is in another file, components.js
+	
 	/* Scene LNodes ***********************/
 
 	global.LGraphScene = function()
@@ -123,6 +125,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.title = "SceneNode";
 	LGraphSceneNode.desc = "Node on the scene";
+	LGraphSceneNode.highlight_color = "#CCC";
 
 	LGraphSceneNode.prototype.onRemoved = function()
 	{
@@ -145,14 +148,23 @@ if(typeof(LiteGraph) != "undefined")
 		//first check input
 		if(this.inputs && this.inputs[0])
 			node_id = this.getInputData(0);
-		if(node_id)
+
+		//hardcoded node
+		if( node_id && node_id.constructor === LS.SceneNode )
+		{
+			if(this._node != node_id)
+				this.bindNodeEvents(node_id);
+			return node_id;
+		}
+
+		if(node_id && node_id.constructor === String)
 			this.properties.node_id = node_id;
 
 		//then check properties
 		if(	!node_id && this.properties.node_id )
 			node_id = this.properties.node_id;
 
-		if( node_id == "@" )
+		if( node_id == "@" || !node_id )
 		{
 			if( this.graph._scenenode )
 				return this.graph._scenenode;
@@ -216,7 +228,9 @@ if(typeof(LiteGraph) != "undefined")
 			{
 				case "SceneNode": this.setOutputData( i, node ); break;
 				case "Material": this.setOutputData( i, node.getMaterial() ); break;
+				case "Mesh": this.setOutputData( i, node.getMesh() ); break;
 				case "Transform": this.setOutputData( i, node.transform ); break;
+				case "Global Model": this.setOutputData( i, node.transform ? node.transform._global_matrix : LS.IDENTITY ); break;
 				case "Name": this.setOutputData( i, node.name ); break;
 				case "Children": this.setOutputData( i, node.children ); break;
 				case "UID": this.setOutputData( i, node.uid ); break;
@@ -242,6 +256,30 @@ if(typeof(LiteGraph) != "undefined")
 					break;
 			}
 		}
+	}
+
+	LGraphSceneNode.prototype.onDrawBackground = function(ctx)
+	{
+		var node = this.getNode();
+		if(!node)
+		{
+			this.boxcolor = "red";
+			return;
+		}
+
+		var highlight = node._is_selected;
+
+		if(highlight)
+		{
+			this.boxcolor = LGraphSceneNode.highlight_color;
+			if(!this.flags.collapsed)
+			{
+				ctx.fillStyle = LGraphSceneNode.highlight_color;
+				ctx.fillRect(0,0,this.size[0],2);
+			}
+		}
+		else
+			this.boxcolor = null;
 	}
 
 	LGraphSceneNode.prototype.getComponents = function(result)
@@ -315,7 +353,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["SceneNode","SceneNode"],["Visible","boolean"],["Material","Material"],["Name","string"],["UID","string"],["Children","scenenode[]"],["on_clicked",LiteGraph.EVENT]];
+		var result = [["SceneNode","SceneNode"],["Visible","boolean"],["Material","Material"],["Mesh","Mesh"],["Name","string"],["UID","string"],["Global Model","mat4"],["Children","scenenode[]"],["on_clicked",LiteGraph.EVENT]];
 		return this.getComponents(result);
 	}
 
@@ -337,12 +375,48 @@ if(typeof(LiteGraph) != "undefined")
 	global.LGraphMaterial = function()
 	{
 		this.properties = { material_id: "", node_id: "" };
-		this.addInput("Material","Material");
-		this.size = [100,30];
+		this.addInput("","Material");
+		this.addOutput("","Material");
+		this.material = null;
+
+		this.addWidget("button","Create", "", this.onCreateMaterial.bind(this) );
 	}
 
 	LGraphMaterial.title = "Material";
 	LGraphMaterial.desc = "Material of a node";
+
+	LGraphMaterial.prototype.onCreateMaterial = function(w, graphcanvas, node, pos, event)
+	{
+		var types = Object.keys( LS.MaterialClasses );
+		types.push(null,"clear");
+		var menu = new LiteGraph.ContextMenu(types, { event: event, callback: inner });
+		var that = this;
+		function inner(v)
+		{
+			if(v == "clear")
+			{
+				that.material = null;
+				return;
+			}
+
+			if(!LS.MaterialClasses[ v ])
+				return;
+			var mat = new LS.MaterialClasses[ v ];
+			that.material = mat;
+			EditorModule.inspect( that );
+		}
+	}
+
+	LGraphMaterial.prototype.getResources = function(res)
+	{
+		if(this.material && this.material.getResources)
+			this.material.getResources(res);
+	}
+
+	LGraphTexture.prototype.onResourceRenamed = function( old_name, new_name ) {
+		if(this.material && this.material.onResourceRenamed)
+			this.material.onResourceRenamed( old_name, new_name );
+	};
 
 	LGraphMaterial.prototype.onExecute = function()
 	{
@@ -365,18 +439,24 @@ if(typeof(LiteGraph) != "undefined")
 
 		//write outputs
 		if(this.outputs)
-		for(var i = 0; i < this.outputs.length; ++i)
 		{
-			var output = this.outputs[i];
-			if(!output.links || !output.links.length)
-				continue;
-			var v = mat.getProperty( output.name );
-			this.setOutputData( i, v );
+			this.setOutputData( 0, mat );
+			for(var i = 1; i < this.outputs.length; ++i)
+			{
+				var output = this.outputs[i];
+				if(!output.links || !output.links.length)
+					continue;
+				var v = mat.getProperty( output.name );
+				this.setOutputData( i, v );
+			}
 		}
 	}
 
 	LGraphMaterial.prototype.getMaterial = function()
 	{
+		if(this.material)
+			return this.material;
+
 		//if it has an input material, use that one
 		var slot = this.findInputSlot("Material");
 		if( slot != -1)
@@ -434,14 +514,44 @@ if(typeof(LiteGraph) != "undefined")
 		*/
 	}
 
+	LGraphMaterial.prototype.onSerialize = function(o)
+	{
+		if( this.material && this.material.serialize )
+		{
+			o.material = this.material.serialize();
+			o.material.className = LS.getObjectClassName( this.material );
+		}
+	}
+
+	LGraphMaterial.prototype.onConfigure = function(o)
+	{
+		if(o.material)
+		{
+			var ctor = LS.MaterialClasses[ o.material.className ];
+			if(ctor)
+			{
+				this.material = new ctor();
+				this.material.configure( o.material );
+			}
+		}
+	}
+
 	LGraphMaterial.prototype.onInspect = function( inspector )
 	{
 		var that = this;
+		var mat = this.getMaterial();
+		if(mat)
+		{
+			inspector.addTitle("Material (" + LS.getObjectClassName(mat) + ")" );
+			EditorModule.showMaterialProperties( mat, inspector );
+		}
+		/*
 		inspector.addButton(null, "Inspect material", function(){
 			var mat = that.getMaterial();
 			if(mat)
 				EditorModule.inspect( mat );
 		});
+		*/
 	}
 
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );
@@ -542,6 +652,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphLocatorProperty.title = "Property";
 	LGraphLocatorProperty.desc = "A property of a node or component of the scene specified by its locator string";
+	LGraphLocatorProperty.highlight_color = "#CCC";
 
 	LGraphLocatorProperty.prototype.getLocatorInfo = function( force )
 	{
@@ -556,6 +667,19 @@ if(typeof(LiteGraph) != "undefined")
 		if(this._locator_info && this.inputs && this.inputs.length)
 			this.inputs[0].type = this._locator_info.type;
 		return this._locator_info;
+	}
+
+	LGraphLocatorProperty.prototype.onDropItem = function( event )
+	{
+		var item_type = event.dataTransfer.getData("type");
+		//if(item_type != "property")
+		//	return;
+		var locator = event.dataTransfer.getData("uid");
+		if(!locator)
+			return;
+		this.properties.locator = locator;
+		this.onExecute();
+		return true;
 	}
 
 	LGraphLocatorProperty.prototype.onPropertyChanged = function(name,value)
@@ -583,17 +707,48 @@ if(typeof(LiteGraph) != "undefined")
 		return this.title || LGraphLocatorProperty.title;
 	}
 
+	LGraphLocatorProperty.prototype.onDrawBackground = function(ctx)
+	{
+		var info = this.getLocatorInfo();
+		if(!info)
+		{
+			this.boxcolor = "red";
+			return;
+		}
+
+		var highlight = info.node && info.node._is_selected;
+
+		if(highlight)
+		{
+			this.boxcolor = LGraphLocatorProperty.highlight_color;
+			if(!this.flags.collapsed) //render line
+			{
+				ctx.fillStyle = LGraphLocatorProperty.highlight_color;
+				ctx.fillRect(0,0,this.size[0],2);
+			}
+		}
+		else
+			this.boxcolor = null;
+	}
+
 	LGraphLocatorProperty.prototype.onExecute = function()
 	{
 		var info = this.getLocatorInfo();
+		this._last_info = info;
 
 		if(info && info.target)
 		{
 			if( this.inputs.length && this.inputs[0].link !== null )
-				LSQ.setFromInfo( info, this.getInputData(0) );
+			{
+				var v = this.getInputData(0);
+				if(v !== undefined)
+					LSQ.setFromInfo( info, v );
+			}
 			if( this.outputs.length && this.outputs[0].links && this.outputs[0].links.length )
 				this.setOutputData( 0, LSQ.getFromInfo( info ));
 		}
+
+		this.setOutputData( 1, this.properties.locator );
 	}
 
 	LGraphLocatorProperty.prototype.onInspect = function( inspector )
@@ -617,6 +772,11 @@ if(typeof(LiteGraph) != "undefined")
 		}});
 	}
 
+	LGraphLocatorProperty.prototype.onGetOutputs = function()
+	{
+		return [["locator","string"]];
+	}
+
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
 
 	//***********************************
@@ -626,7 +786,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("target","Component");
 		this.addInput("toggle",LiteGraph.ACTION);
-		this.properties = {property_name:"enabled"};
+		this.properties = { property_name: "enabled" };
 	}
 
 	LGraphToggleValue.title = "Toggle";

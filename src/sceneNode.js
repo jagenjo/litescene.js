@@ -38,6 +38,9 @@ function SceneNode( name )
 	this._in_tree = null;
 	this._instances = []; //render instances
 
+	//bounding box in world space
+	//this._aabb = BBox.create();
+
 	//flags
 	this.flags = {
 		visible: true,
@@ -735,8 +738,26 @@ SceneNode.prototype.getResources = function( res, include_children )
 {
 	//resources in components
 	for(var i in this._components)
-		if( this._components[i].getResources )
-			this._components[i].getResources( res );
+	{
+		var comp = this._components[i];
+		if( comp.getResources )
+			comp.getResources( res );
+		else
+		{
+			//automatic
+			for(var j in comp)
+			{
+				if(!comp[j] || comp[j].constructor === Function || j[0] == "_")
+					continue;
+				var propinfo = comp.constructor["@" + j];
+				if(!propinfo)
+					continue;
+				var type = propinfo.type || propinfo.widget;
+				if(type && (type == LS.TYPES.RESOURCE || LS.ResourceClasses[ type ]) ) //is a resource
+					res[ comp[j] ] = LS.ResourceClasses[ type ];
+			}
+		}
+	}
 
 	//res in material
 	if(this.material)

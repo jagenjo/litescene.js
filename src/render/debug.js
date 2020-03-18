@@ -329,6 +329,9 @@ DebugRender.prototype.renderGrid = function()
 	else
 	{
 		//texture grid
+		gl.enable( gl.POLYGON_OFFSET_FILL );
+		gl.depthFunc( gl.LEQUAL );
+		gl.polygonOffset(1,-100.0);
 		gl.enable(gl.BLEND);
 		this.grid_texture.bind(0);
 		gl.depthMask( false );
@@ -337,6 +340,9 @@ DebugRender.prototype.renderGrid = function()
 		LS.Draw.scale( 10000, 10000, 10000 );
 		LS.Draw.renderMesh( this.plane_mesh, gl.TRIANGLES, settings.grid_plane == "xy" ? this.grid_shader_xy : (settings.grid_plane == "yz" ? this.grid_shader_yz : this.grid_shader) );
 		gl.depthMask( true );
+		gl.depthFunc( gl.LESS );
+		gl.disable( gl.POLYGON_OFFSET_FILL );
+		gl.polygonOffset(0,0);
 	}
 
 	LS.Draw.pop();
@@ -375,6 +381,11 @@ DebugRender.prototype.renderColliders = function( scene )
 		{
 			LS.Draw.translate( BBox.getCenter(oobb) );
 			LS.Draw.renderWireBox( halfsize[0]*2, halfsize[1]*2, halfsize[2]*2 );
+		}
+		else if(instance.type == LS.PhysicsInstance.PLANE)
+		{
+			LS.Draw.translate( BBox.getCenter(oobb) );
+			LS.Draw.renderWireBox( halfsize[0]*2, 0.0001, halfsize[2]*2 );
 		}
 		else if(instance.type == LS.PhysicsInstance.SPHERE)
 		{
@@ -417,7 +428,7 @@ DebugRender.prototype.renderPaths = function( scene )
 DebugRender.prototype.createMeshes = function()
 {
 	//plane
-	this.plane_mesh = GL.Mesh.plane({xz:true});
+	this.plane_mesh = GL.Mesh.plane({xz:true, detail: 10});
 
 	//grid
 	var dist = 10;

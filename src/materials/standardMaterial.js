@@ -30,6 +30,7 @@ function StandardMaterial(o)
 	this.specular_on_alpha = false;
 
 	this.backlight_factor = 0;
+	this.translucency = 0;
 
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
@@ -50,8 +51,9 @@ function StandardMaterial(o)
 	this._texture_settings = new Uint8Array(9);
 
 	this.use_scene_ambient = true;
+	this.point_size = 1.0;
 
-	this.createProperty( "extra", new Float32Array([1,1,1,1]), "color" ); //used in special situations
+	this.createProperty( "extra", new Float32Array([0,0,0,1]), "color" ); //used in special situations
 
 	//used to change the render state
 	this.flags = {
@@ -64,7 +66,6 @@ function StandardMaterial(o)
 		ignore_lights: false,
 		cast_shadows: true,
 		receive_shadows: true,
-//		flat_normals: false,
 		ignore_frustum: false
 	};
 
@@ -125,6 +126,8 @@ Object.defineProperty( StandardMaterial.prototype, 'specular_gloss', {
 	set: function(v) { this._specular_data[1] = v; },
 	enumerable: true
 });
+
+StandardMaterial.description = "This material is a general use material that allows to control the most common properties.";
 
 StandardMaterial["@blend_mode"] = { type: "enum", values: LS.Blend };
 StandardMaterial.actions = {};
@@ -271,6 +274,7 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	//generate code
 	var code = {
 		vs_local: "",
+		vs_global: "",
 		fs: "",
 		fs_shadows: ""
 	};
@@ -287,7 +291,10 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 		uvs[3] = (vec3(uvs[1],1.0) * u_texture_matrix).xy;\n\
 	#else\n\
 		uvs[3] = uvs[2];\n\
-	#endif\n";
+	#endif\n\
+	uvs[4] = gl_PointCoord;\n\
+	";
+
 	code.fs += uvs_common;
 	code.fs_shadows += uvs_common;
 
@@ -384,11 +391,13 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	uniforms.u_reflection_info[0] = this.reflection_factor;
 	uniforms.u_reflection_info[1] = this.reflection_fresnel;
 	uniforms.u_backlight_factor = this.backlight_factor;
+	uniforms.u_translucency = this.translucency;
 	uniforms.u_normal_info[0] = this.normalmap_factor;
 	uniforms.u_normal_info[1] = this.normalmap_tangent ? 1 : 0;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
 	uniforms.u_velvet_info.set( this._velvet );
 	uniforms.u_velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
+	uniforms.u_point_size = this.point_size;
 
 	//iterate through textures in the material
 	var last_texture_slot = 0;
@@ -400,7 +409,14 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 		if(!sampler)
 			continue;
 
-		var texture = sampler.texture;
+		var texture = null;
+		
+		//hardcoded textures
+		if(sampler.constructor === GL.Texture)
+			texture = sampler;
+		else
+			texture = sampler.texture;
+
 		if(!texture)
 			continue;
 
@@ -451,6 +467,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "specular_factor":
 		case "specular_gloss":
 		case "backlight_factor":
+		case "translucency":
 		case "reflection_factor":
 		case "reflection_fresnel":
 		case "velvet_exp":
@@ -461,6 +478,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "displacementmap_factor":
 		case "detail_factor":
 		case "emissive_extra":
+		case "point_size":
 		//strings
 		case "shader_name":
 		//bools
@@ -513,9 +531,11 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 		specular_factor: LS.TYPES.NUMBER,
 		specular_gloss: LS.TYPES.NUMBER,
 		backlight_factor: LS.TYPES.NUMBER,
+		translucency: LS.TYPES.NUMBER,
 		reflection_factor: LS.TYPES.NUMBER,
 		reflection_fresnel: LS.TYPES.NUMBER,
 		velvet_exp: LS.TYPES.NUMBER,
+		point_size: LS.TYPES.NUMBER,
 
 		normalmap_factor: LS.TYPES.NUMBER,
 		bumpmap_factor: LS.TYPES.NUMBER,
@@ -555,6 +575,7 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 	{
 		case "blend_mode":
 		case "backlight_factor":
+		case "translucency":
 		case "reflection_factor":
 		case "reflection_fresnel":
 		case "velvet_exp":
@@ -563,6 +584,7 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "displacementmap_factor":
 		case "emissive_extra":
 		case "detail_factor":
+		case "point_size":
 			type = LS.TYPES.NUMBER; break;
 		case "extra":
 			type = LS.TYPES.VEC4; break;
@@ -610,7 +632,7 @@ LS.Classes["newStandardMaterial"] = StandardMaterial;
 var UVS_CODE = "\n\
 uniform int u_texture_settings[11];\n\
 \n\
-vec2 uvs[4];\n\
+vec2 uvs[5];\n\
 vec2 getUVs(int index)\n\
 {\n\
 	if(index == 0)\n\
@@ -621,6 +643,8 @@ vec2 getUVs(int index)\n\
 		return uvs[2];\n\
 	if(index == 3)\n\
 		return uvs[3];\n\
+	if(index == 4)\n\
+		return uvs[4];\n\
 	return uvs[0];\n\
 }\n\
 ";
@@ -628,12 +652,13 @@ vec2 getUVs(int index)\n\
 StandardMaterial.code_template = "\n\
 \n\
 \n\
-\\color.vs\n\
+\\default.vs\n\
 \n\
 precision mediump float;\n\
 //global defines from blocks\n\
 #pragma shaderblock \"vertex_color\"\n\
 #pragma shaderblock \"coord1\"\n\
+#pragma shaderblock \"instancing\"\n\
 \n\
 attribute vec3 a_vertex;\n\
 attribute vec3 a_normal;\n\
@@ -646,6 +671,7 @@ attribute vec2 a_coord;\n\
 	attribute vec4 a_color;\n\
 	varying vec4 v_vertex_color;\n\
 #endif\n\
+#pragma event \"vs_attributes\"\n\
 \n\
 //varyings\n\
 varying vec3 v_pos;\n\
@@ -653,6 +679,7 @@ varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
 varying vec3 v_local_pos;\n\
 varying vec3 v_local_normal;\n\
+varying vec4 v_screenpos;\n\
 \n\
 //matrices\n\
 #ifdef BLOCK_INSTANCING\n\
@@ -679,6 +706,7 @@ uniform float u_point_size;\n\
 //camera\n\
 uniform vec3 u_camera_eye;\n\
 uniform vec2 u_camera_planes;\n\
+uniform vec3 u_camera_perspective;\n\
 \n\
 #pragma event \"vs_functions\"\n\
 \n\
@@ -710,7 +738,7 @@ void main() {\n\
 	applyLight(v_pos);\n\
 	\n\
 	//normal\n\
-	#ifdef SHADERBLOCK_INSTANCING\n\
+	#ifdef BLOCK_INSTANCING\n\
 		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
 	#else\n\
 		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
@@ -722,6 +750,7 @@ void main() {\n\
 	\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 	gl_PointSize = u_point_size;\n\
+	v_screenpos = gl_Position;\n\
 	#pragma event \"vs_final\"\n\
 }\n\
 \n\
@@ -751,6 +780,7 @@ varying vec3 v_local_normal;\n\
 #ifdef BLOCK_VERTEX_COLOR\n\
 	varying vec4 v_vertex_color;\n\
 #endif\n\
+varying vec4 v_screenpos;\n\
 \n\
 //globals\n\
 uniform vec4 u_viewport;\n\
@@ -770,6 +800,7 @@ uniform vec3 u_detail_info;\n\
 uniform mat3 u_texture_matrix;\n\
 uniform vec4 u_extra_color;\n\
 uniform float u_backlight_factor;\n\
+uniform float u_translucency;\n\
 \n\
 uniform sampler2D color_texture;\n\
 uniform sampler2D opacity_texture;\n\
@@ -782,6 +813,7 @@ uniform sampler2D normal_texture;\n\
 uniform sampler2D extra_texture;\n\
 \n\
 \n\
+#pragma snippet \"input\"\n\
 #pragma shaderblock \"light\"\n\
 #pragma shaderblock \"light_texture\"\n\
 #pragma shaderblock \"applyReflection\"\n\
@@ -846,6 +878,7 @@ void main() {\n\
 		o.Normal *= -1.0;\n\
 	FinalLight FINALLIGHT = computeLight( o, IN, LIGHT );\n\
 	FINALLIGHT.Diffuse += u_backlight_factor * max(0.0, dot(FINALLIGHT.Vector, -o.Normal));\n\
+	FINALLIGHT.Diffuse = mix(FINALLIGHT.Diffuse,1.0, u_translucency);\n\
 	vec4 final_color = vec4( 0.0,0.0,0.0, o.Alpha );\n\
 	#ifdef SPEC_ON_ALPHA\n\
 		final_color.a += FINALLIGHT.Specular;\n\
@@ -878,77 +911,6 @@ void main() {\n\
 	#pragma event \"fs_final\"\n\
 }\n\
 \n\
-\\shadow.vs\n\
-\n\
-precision mediump float;\n\
-attribute vec3 a_vertex;\n\
-attribute vec3 a_normal;\n\
-attribute vec2 a_coord;\n\
-varying vec3 v_local_pos;\n\
-varying vec3 v_local_normal;\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-varying vec4 v_screenpos;\n\
-\n\
-//matrices\n\
-#ifdef BLOCK_INSTANCING\n\
-	attribute mat4 u_model;\n\
-#else\n\
-	uniform mat4 u_model;\n\
-#endif\n\
-uniform mat4 u_normal_model;\n\
-uniform mat4 u_view;\n\
-uniform mat4 u_viewprojection;\n\
-//material\n\
-uniform float u_displacementmap_factor;\n\
-uniform sampler2D displacement_texture;\n\
-\n\
-//globals\n\
-uniform float u_time;\n\
-uniform vec4 u_viewport;\n\
-uniform float u_point_size;\n\
-\n\
-#pragma shaderblock \"light\"\n\
-#pragma shaderblock \"morphing\"\n\
-#pragma shaderblock \"skinning\"\n\
-\n\
-//camera\n\
-uniform vec3 u_camera_eye;\n\
-uniform vec2 u_camera_planes;\n\
-\n\
-{{vs_out}}\n\
-\n\
-void main() {\n\
-	\n\
-	vec4 vertex4 = vec4(a_vertex,1.0);\n\
-	v_local_pos = a_vertex;\n\
-	v_local_normal = a_normal;\n\
-	v_normal = a_normal;\n\
-	v_uvs = a_coord;\n\
-  \n\
-  //deforms\n\
-  {{vs_local}}\n\
-  applyMorphing( vertex4, v_normal );\n\
-  applySkinning( vertex4, v_normal );\n\
-	\n\
-	//vertex\n\
-	v_pos = (u_model * vertex4).xyz;\n\
-  \n\
-  applyLight(v_pos);\n\
-  \n\
-	//normal\n\
-	#ifdef SHADERBLOCK_INSTANCING\n\
-		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
-	#else\n\
-		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
-	#endif\n\
-	{{vs_global}}\n\
-	v_screenpos = u_viewprojection * vec4(v_pos,1.0);\n\
-	gl_Position = v_screenpos;\n\
-}\n\
 \\shadow.fs\n\
 \n\
 precision mediump float;\n\
@@ -1003,80 +965,6 @@ void main() {\n\
 	final_color = PackDepth32(depth);\n\
 	{{fs_shadow_encode}}\n\
 	gl_FragColor = final_color;\n\
-}\n\
-\\picking.vs\n\
-\n\
-precision mediump float;\n\
-attribute vec3 a_vertex;\n\
-attribute vec3 a_normal;\n\
-attribute vec2 a_coord;\n\
-#ifdef VERTEX_COLOR_BLOCK\n\
-	attribute vec4 a_color;\n\
-#endif\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-varying vec3 v_local_pos;\n\
-varying vec3 v_local_normal;\n\
-\n\
-//matrices\n\
-#ifdef BLOCK_INSTANCING\n\
-	attribute mat4 u_model;\n\
-#else\n\
-	uniform mat4 u_model;\n\
-#endif\n\
-uniform mat4 u_normal_model;\n\
-uniform mat4 u_view;\n\
-uniform mat4 u_viewprojection;\n\
-//material\n\
-uniform float u_displacementmap_factor;\n\
-uniform sampler2D displacement_texture;\n\
-\n\
-//globals\n\
-uniform float u_time;\n\
-uniform vec4 u_viewport;\n\
-uniform float u_point_size;\n\
-\n\
-#pragma shaderblock \"light\"\n\
-#pragma shaderblock \"morphing\"\n\
-#pragma shaderblock \"skinning\"\n\
-\n\
-//camera\n\
-uniform vec3 u_camera_eye;\n\
-\n\
-{{vs_out}}\n\
-\n\
-#pragma event \"vs_functions\"\n\
-\n\
-void main() {\n\
-	\n\
-	vec4 vertex4 = vec4(a_vertex,1.0);\n\
-	v_local_pos = a_vertex;\n\
-	v_local_normal = a_normal;\n\
-	v_normal = a_normal;\n\
-	v_uvs = a_coord;\n\
-  \n\
-  //deforms\n\
-  {{vs_local}}\n\
-  applyMorphing( vertex4, v_normal );\n\
-  applySkinning( vertex4, v_normal );\n\
-	\n\
-	//vertex\n\
-	v_pos = (u_model * vertex4).xyz;\n\
-  \n\
-  applyLight(v_pos);\n\
-  \n\
-	//normal\n\
-	#ifdef SHADERBLOCK_INSTANCING\n\
-		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
-	#else\n\
-		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
-	#endif\n\
-  {{vs_global}}\n\
-	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
-	#pragma event \"vs_final\"\n\
 }\n\
 \\picking.fs\n\
 	precision mediump float;\n\

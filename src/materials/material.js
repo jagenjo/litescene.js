@@ -33,9 +33,9 @@ function Material( o )
 	* render queue: which order should this be rendered
 	* @property queue
 	* @type {Number}
-	* @default LS.RenderQueue.DEFAULT
+	* @default LS.RenderQueue.AUTO
 	*/
-	this._queue = LS.RenderQueue.DEFAULT;
+	this._queue = LS.RenderQueue.AUTO;
 
 	/**
 	* render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
@@ -187,8 +187,9 @@ Material.COORDS_UV0 = 0;
 Material.COORDS_UV1 = 1;
 Material.COORDS_UV0_TRANSFORMED = 2;
 Material.COORDS_UV1_TRANSFORMED = 3;
+Material.COORDS_UV_POINTCOORD = 4;
 
-Material.TEXTURE_COORDINATES = { "uv0":Material.COORDS_UV0, "uv1":Material.COORDS_UV1, "uv0_transformed":Material.COORDS_UV0_TRANSFORMED, "uv1_transformed":Material.COORDS_UV1_TRANSFORMED };
+Material.TEXTURE_COORDINATES = { "uv0":Material.COORDS_UV0, "uv1":Material.COORDS_UV1, "uv0_transformed":Material.COORDS_UV0_TRANSFORMED, "uv1_transformed":Material.COORDS_UV1_TRANSFORMED, "uv_pointcoord": Material.COORDS_UV_POINTCOORD  };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
@@ -253,6 +254,11 @@ Material.prototype.configure = function(o)
 */
 Material.prototype.serialize = function( simplified )
 {
+	//remove hardcoded data from containers before serializing
+	for(var i in this.textures)
+		if (this.textures[i] && this.textures[i].constructor === GL.Texture)
+			this.textures[i] = null;
+
 	var o = LS.cloneObject(this);
 	delete o.filename;
 	delete o.fullpath;
@@ -367,6 +373,9 @@ Material.prototype.setProperty = function( name, value )
 	{
 		//numbers
 		case "queue": 
+			if(value === 0)
+				value = RenderQueue.AUTO; //legacy
+			//nobreak
 		case "opacity": 
 			if(value !== null && value.constructor === Number)
 				this[name] = value; 
@@ -385,8 +394,13 @@ Material.prototype.setProperty = function( name, value )
 		case "textures":
 			for(var i in value)
 			{
-				var tex = value[i];
-				if( tex && tex.constructor === String )
+				var tex = value[i]; //sampler
+				if(tex == null)
+				{
+					delete this.textures[i];
+					continue;
+				}
+				if( tex.constructor === String )
 					tex = { texture: tex, uvs: 0, wrap: 0, minFilter: 0, magFilter: 0 };
 				tex._must_update = true;
 				this.textures[i] = tex;
@@ -452,7 +466,18 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 		case "color": 
 			type = "vec3"; break;
 		case "textures":
-			type = "Texture"; break;
+			if( path.length > 1 )
+			{
+				return {
+					node: this._root,
+					target: this.textures,
+					name: path[1],
+					value: this.textures[path[1]] || null,
+					type: "Texture"
+				}
+			}
+			type = "Texture"; 
+			break;
 		default:
 			return null;
 	}

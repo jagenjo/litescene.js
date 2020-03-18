@@ -456,8 +456,19 @@ Take.prototype.addTrack = function( track )
 	this.tracks.push( track );
 }
 
+/**
+* returns a track given its index or the property string
+* @method getTrack
+* @param {Number|String} property could be index or property
+* @return {LS.Animation.Track} the track
+*/
 Take.prototype.getTrack = function( property )
 {
+	if(property == null)
+		return null;
+	if(property.constructor === Number)
+		return this.tracks[property];
+	if(property.constructor === String)
 	for(var i = 0; i < this.tracks.length; ++i)
 		if(this.tracks[i].property == property)
 			return this.tracks[i];
@@ -731,6 +742,8 @@ Track.prototype.configure = function( o )
 		{
 			if( this.packed_data )
 				this.data = new Float32Array( o.data );
+			else
+				this.data = o.data.concat();
 		}
 		//else
 		//	this.unpackData();
@@ -761,7 +774,7 @@ Track.prototype.serialize = function()
 			if(this.data.concat)
 				o.data = this.data.concat(); //regular array, clone it
 			else
-				o.data = new this.data.constructor( o.data ); //clone for typed arrays (weird, this should never happen but it does)
+				o.data = new this.data.constructor( this.data ); //clone for typed arrays (weird, this should never happen but it does)
 		}
 		else //pack data
 		{

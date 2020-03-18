@@ -33,6 +33,10 @@
 * @constructor
 * @param {Object} options settings for the webgl context creation
 */
+
+EVENT.RENDER_LOADING = "render_loading";
+EVENT.FILEDROP = "fileDrop";
+
 function Player(options)
 {
 	options = options || {};
@@ -235,6 +239,9 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 		if(	that.loading )
 			that.loading.visible = false;
 		that._ondraw( true );
+		setTimeout(function(){ that._ondraw( true ); },1000); //render a frame after some time to ensure loading
+		if(window.onSceneReady)
+			window.onSceneReady();
 		if(on_complete)
 			on_complete();
 	}
@@ -462,7 +469,7 @@ Player.prototype.enableLoadingBar = function()
 
 Player.prototype._onfiledrop = function( file, evt )
 {
-	return LEvent.trigger( LS.GlobalScene, "fileDrop", { file: file, event: evt } );
+	return LEvent.trigger( LS.GlobalScene, LS.EVENT.FILEDROP, { file: file, event: evt } );
 }
 
 Player.prototype.showPlayDialog = function()
@@ -509,7 +516,7 @@ Player.prototype._ondraw = function( force )
 	if(this.loading && this.loading.visible )
 	{
 		this.renderLoadingBar( this.loading );
-		LEvent.trigger( this.scene, "render_loading" );
+		LEvent.trigger( this.scene, LS.EVENT.RENDER_LOADING );
 		if(this.onDrawLoading)
 			this.onDrawLoading();
 	}

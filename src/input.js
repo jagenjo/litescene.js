@@ -12,6 +12,16 @@
 //mouse.canvasy 0 is bottom
 //mouse.y is mousey
 
+EVENT.MOUSEDOWN = "mousedown";
+EVENT.MOUSEMOVE = "mousemove";
+EVENT.MOUSEUP = "mouseup";
+EVENT.MOUSEWHEEL = "mousewheel";
+EVENT.TOUCHSTART = "touchstart";
+EVENT.TOUCHMOVE = "touchmove";
+EVENT.TOUCHEND = "touchend";
+EVENT.KEYDOWN = "keydown";
+EVENT.KEYUP = "keyup";
+
 var Input = {
 	mapping: {
 
@@ -45,12 +55,18 @@ var Input = {
 		RIGHT:2
 	},
 
-	LEFT_MOUSE_BUTTON: 1,
-	MIDDLE_MOUSE_BUTTON: 2,
-	RIGHT_MOUSE_BUTTON: 3,
+	//according to the specification, read from which
+	LEFT_MOUSE_BUTTON: 0,
+	MIDDLE_MOUSE_BUTTON: 1,
+	RIGHT_MOUSE_BUTTON: 2,
 
-	Keyboard: [],
-	Keyboard_previous: [],
+	//MouseEvent.buttons use a different identifier than e.which...
+	BUTTONS_LEFT: 1,
+	//BUTTONS_RIGHT: 2,
+	//BUTTONS_MIDDLE: 3,
+
+	Keyboard: null, //gl.keys
+	Keyboard_previous: {},
 
 	Mouse: {},
 	Gamepads: [],
@@ -80,7 +96,9 @@ var Input = {
 	update: function()
 	{
 		//copy prev keys state
-		for(var i = 0, l = this.Keyboard.length; i < l; ++i)
+		for(var i in this.Keyboard_previous) //first reset
+			this.Keyboard_previous[i] = false;
+		for(var i in this.Keyboard) //then copy
 			this.Keyboard_previous[i] = this.Keyboard[i];
 
 		//copy prev mouse state (this is only necessary if the update is not called from litegl main loop)
@@ -218,6 +236,8 @@ var Input = {
 	//called from LS.Player when onkey
 	onKey: function(e)
 	{
+		//Info: this.Keyboard is not updated here, litegl already does it and stores it in gl.keys which is the same object as LS.Input.Keyboard
+
 		if(e.type == "keydown")
 		{
 			this.current_key = e;
@@ -230,7 +250,9 @@ var Input = {
 				this.keys_buffer.push(e);
 		}
 		else
+		{
 			this.current_key = null;
+		}
 	},
 
 	/**

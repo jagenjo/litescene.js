@@ -49,6 +49,16 @@
 			"description":"Allows to render heightmaps from a texture",
 			"preview_url":null,
 			"video_url":null
+		},
+		{
+			"name":"SillyClient",
+			"author":"Javi Agenjo",
+			"version": "0.1",
+			"script_url":"https://tamats.com/projects/sillyserver/src/sillyclient.js",
+			"includes":[],
+			"description":"Allows to connect to a SillyServer to connect users",
+			"preview_url":null,
+			"video_url":null
 		}
 	]
 }

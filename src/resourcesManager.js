@@ -792,6 +792,11 @@ var ResourcesManager = {
 				return;
 			}
 
+			//do it again to avoid reusing old
+			var extension = LS.ResourcesManager.getExtension( url );
+			if(extension)
+				format_info = LS.Formats.supported[ extension ];
+
 			//convert format
 			if( format_info && format_info.convert_to && extension != format_info.convert_to )
 			{
@@ -874,15 +879,15 @@ var ResourcesManager = {
 			if( resource && resource !== true )
 				process_final( url, resource, options );
 		}
-		else if( format_info && format_info.resource_ctor) //this format has a class associated
+		else if( format_info && format_info.resourceClass) //this format has a class associated
 		{
-			var resource = new format_info.resource_ctor();
+			var resource = new format_info.resourceClass();
 			if(resource.fromData)
 				resource.fromData( data );
 			else if(resource.configure)
 				resource.configure( JSON.parse(data) );
 			else
-				console.error("Resource Class doesnt have a function to process data after loading: ", format_info.ctor.name );
+				console.error("Resource Class doesnt have a function to process data after loading: ", format_info.resourceClass.name );
 
 			//we have a resource
 			if( resource && resource !== true )

@@ -162,6 +162,19 @@ Object.defineProperty( Transform.prototype, 'scaling', {
 });
 
 /**
+* The scaling relative to its parent in vec3 format (default is [1,1,1])
+* @property scaling {vec3}
+*/
+Object.defineProperty( Transform.prototype, 'uniform_scaling', {
+	get: function() { return this._scaling[0]; },
+	set: function(v) { 
+		this._scaling[0] = this._scaling[1] = this._scaling[2] = v;
+		this._must_update = true;
+	},
+	enumerable: true
+});
+
+/**
 * The local matrix transform relative to its parent in mat4 format
 * @property matrix {mat4}
 */
@@ -1175,34 +1188,79 @@ Transform.prototype.lookAt = (function() {
 * @param {vec3} target the position where to look at
 * @param {boolean} in_world tells if the target is in world coordinates (otherwise asume its in local coordinates)
 * @param {vec3} top [optional] a helper top vector, otherwise [0,1,0] is assumed
-* @param {vec3} right [optional] a helper right vector, otherwise [1,0,0] is assumed
+* @param {bool} iterative_method [optional] uses an iterative method which smoothes a little bit the result over time but gives better results
 */
 Transform.prototype.orientTo = (function() { 
 
 	//avoid garbage
 	var GM = mat4.create();
 	var temp = mat3.create();
+	var temp4 = mat4.create();
+	var temp_front = vec3.create();
+	var temp_right = vec3.create();
+	var temp_top = vec3.create();
 	var temp_pos = vec3.create();
 	//function
-	return function( pos, in_world, top, right )
+	return function( pos, in_world, top, iterative_method )
 	{
-		right = right || LS.RIGHT;
 		top = top || LS.TOP;
 		//convert to local space
+		/*
 		if(in_world && this._parent)
 		{
-			this._parent.getGlobalMatrix( GM );
-			var inv = mat4.invert(GM,GM);
-			if(!inv)
-				return;
-			mat4.multiplyVec3(temp_pos, inv, pos);
+			this._parent.globalToLocal( pos, temp_front );
 		}
 		else
-			temp_pos.set( pos );
-		mat3.setColumn( temp, right, 0 );
-		mat3.setColumn( temp, top, 1 );
-		mat3.setColumn( temp, pos, 2 );
-		quat.fromMat3( this._rotation, temp );
+			temp_front.set( pos );
+		*/
+
+		if(in_world)
+		{
+			this.getGlobalPosition( temp_pos );
+			vec3.sub( temp_front, pos, temp_pos );
+		}
+		else
+			temp_front.set( pos );
+
+		vec3.scale( temp_front,temp_front,-1); //reverse?
+
+		//vec3.sub( temp_front, temp_pos, temp_front );
+		vec3.normalize( temp_front, temp_front );
+		if(iterative_method)
+		{
+			mat3.setColumn( temp, LS.RIGHT, 0 );
+			mat3.setColumn( temp, top, 1 );
+			mat3.setColumn( temp, temp_front, 2 );
+			quat.fromMat3AndQuat( this._rotation, temp );
+		}
+		else
+		{
+			/*
+			vec3.cross( temp_right, temp_front, top );
+			vec3.normalize( temp_right, temp_right );
+			vec3.cross( temp_top, temp_right, temp_front );
+			vec3.normalize( temp_top, temp_top );
+			quat.lookRotation( this._rotation, temp_front, temp_top );
+			*/
+			quat.lookRotation( this._rotation, temp_front, top );
+
+			/* using mat4 doesnt work
+			temp4.set(temp_right);
+			temp4.set(temp_top,4);
+			temp4.set(temp_front,8);
+			mat4.transpose(temp4,temp4);
+			quat.fromMat4( this._rotation, temp4 );
+			*/
+			
+			/* using mat3, doesnt work
+			mat3.setColumn( temp, temp_right, 0 );
+			mat3.setColumn( temp, temp_top, 1 );
+			mat3.setColumn( temp, temp_front, 2 );
+			mat3.transpose( temp, temp );
+			quat.fromMat3( this._rotation, temp );
+			*/
+		}
+		quat.normalize( this._rotation, this._rotation );
 		this._must_update = true;
 	}
 })();
@@ -1345,6 +1403,7 @@ Transform.prototype.transformPointGlobal = Transform.prototype.localToGlobal;
 * @method globalToLocal
 * @param {vec3} point
 * @param {vec3} destination (optional)
+* @return {vec3} the global coordinate in local coordinates
 */
 Transform.prototype.globalToLocal = (function(){ 
 	var inv = mat4.create();
@@ -1353,7 +1412,7 @@ Transform.prototype.globalToLocal = (function(){
 		if(this._must_update)
 			this.updateMatrix();
 		if( !mat4.invert( inv, this.getGlobalMatrixRef() ) )
-			return inv;
+			return dest;
 		return mat4.multiplyVec3( dest, inv, vec );
 	};
 })();

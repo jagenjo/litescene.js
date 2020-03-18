@@ -16,6 +16,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphComponent.title = "Component";
 	LGraphComponent.desc = "A component from a node";
+	LGraphComponent.highlight_color = "#CCC";
 
 	LGraphComponent.prototype.onRemoved = function()
 	{
@@ -107,11 +108,32 @@ if(typeof(LiteGraph) != "undefined")
 			this.setOutputData( slot, compo[ output.name ] );
 	}
 
-	LGraphComponent.prototype.onDrawBackground = function()
+	LGraphComponent.prototype.onDrawBackground = function(ctx)
 	{
 		var compo = this.getComponent();
-		if(compo)
+		if(compo && compo._root)
+		{
+			this.boxcolor = null;
+			var color = null;
+			if(compo._root._is_selected)
+				color = LGraphComponent.highlight_color;
+			if(compo._is_selected)
+				color = "#39F";
+
+			if(color)
+			{
+				this.boxcolor = color;
+				if(!this.flags.collapsed)
+				{
+					ctx.fillStyle = color;
+					ctx.fillRect(0,0,this.size[0],2);
+				}
+			}
+
 			this.title = LS.getClassName( compo.constructor );
+		}
+		else
+			this.boxcolor = "red";
 	}
 
 	LGraphComponent.prototype.onConnectionsChange = function( type, slot, created, link_info, slot_info )
@@ -215,6 +237,9 @@ if(typeof(LiteGraph) != "undefined")
 		result = result || [];
 		for(var i in attrs)
 			result.push( [i, attrs[i]] );
+
+		if(compo.constructor.getExtraProperties)
+			compo.constructor.getExtraProperties( result );
 
 		if(compo.getExtraProperties)
 			compo.getExtraProperties( result );

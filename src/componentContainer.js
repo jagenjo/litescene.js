@@ -91,7 +91,22 @@ ComponentContainer.prototype.configureComponents = function( info )
 	//this is to avoid problems with components that check if the node has other components and if not they create it
 	for(var i = 0, l = to_configure.length; i < l; i+=2)
 	{
-		to_configure[i].configure( to_configure[i+1] );
+		if(LS.catch_exceptions)
+		{
+			var comp = to_configure[i];
+			var data = to_configure[i+1];
+			try
+			{
+				comp.configure( data );
+			}
+			catch (err)
+			{
+				console.error("Error found when configuring node of type ", LS.getObjectClassName(comp),", skipping. All data for this component is lost.");
+				console.error(err);
+			}
+		}
+		else
+			comp.configure( data );
 	}
 }
 
@@ -552,7 +567,9 @@ ComponentContainer.prototype.processActionInComponents = function( method_name, 
 			if(skip_scripts)
 				continue;
 
-			if(comp._script)
+			if(comp.callMethod)
+				comp.callMethod( method_name, params, true );
+			else if(comp._script)
 				comp._script.callMethod( method_name, params, true );
 		}
 	}

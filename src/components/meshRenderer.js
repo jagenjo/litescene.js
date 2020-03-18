@@ -57,7 +57,7 @@ Object.defineProperty( MeshRenderer.prototype, 'primitive', {
 		if( v < -1 || v > 10 )
 			return;
 		this._primitive = v;
-		this.updateRIs();
+		//this.updateRIs();
 	},
 	enumerable: true
 });
@@ -71,7 +71,7 @@ Object.defineProperty( MeshRenderer.prototype, 'material', {
 	get: function() { return this._material; },
 	set: function(v) { 
 		this._material = v;
-		this.updateRIs();
+		//this.updateRIs();
 	},
 	enumerable: true
 });
@@ -85,7 +85,7 @@ Object.defineProperty( MeshRenderer.prototype, 'mesh', {
 	get: function() { return this._mesh; },
 	set: function(v) { 
 		this._mesh = v;
-		this.updateRIs();
+		//this.updateRIs();
 	},
 	enumerable: true
 });
@@ -99,7 +99,7 @@ Object.defineProperty( MeshRenderer.prototype, 'lod_mesh', {
 	get: function() { return this._lod_mesh; },
 	set: function(v) { 
 		this._lod_mesh = v;
-		this.updateRIs();
+		//this.updateRIs();
 	},
 	enumerable: true
 });
@@ -162,14 +162,14 @@ MeshRenderer.prototype.onRemovedFromScene = function( scene )
 
 MeshRenderer.prototype.onAddedToNode = function( node )
 {
-	LEvent.bind( node, "materialChanged", this.updateRIs, this );
+	//LEvent.bind( node, "materialChanged", this.updateRIs, this );
 	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
 	this._RI.node = node;
 }
 
 MeshRenderer.prototype.onRemovedFromNode = function( node )
 {
-	LEvent.unbind( node, "materialChanged", this.updateRIs, this );
+	//LEvent.unbind( node, "materialChanged", this.updateRIs, this );
 	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this );
 }
 
@@ -302,78 +302,6 @@ MeshRenderer.prototype.checkRenderInstances = function()
 	}
 }
 
-//called everytime something affecting this RIs configuration changes
-MeshRenderer.prototype.updateRIs = function()
-{
-	return;
-
-	var node = this._root;
-	if(!node)
-		return;
-
-	var RI = this._RI;
-	var is_static = this._root.flags && this._root.flags.is_static;
-	var transform = this._root.transform;
-
-	//optimize: TODO
-	//if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
-	//	return instances.push( RI );
-
-	//assigns matrix, layers
-	RI.fromNode( this._root );
-
-	//material (after flags because it modifies the flags)
-	var material = null;
-	if(this.material)
-		material = LS.ResourcesManager.getResource( this.material );
-	else
-		material = this._root.getMaterial();
-	RI.setMaterial( material );
-
-	//buffers from mesh and bounding
-	var mesh = LS.ResourcesManager.getMesh( this._mesh );
-	if( mesh )
-	{
-		RI.setMesh( mesh, this.primitive );
-		if(this._submesh_id != -1 && this._submesh_id != null && mesh.info && mesh.info.groups)
-		{
-			var group = mesh.info.groups[this._submesh_id];
-			if(group)
-				RI.setRange( group.start, group.length );
-		}
-		else
-			RI.setRange(0,-1);
-	}
-	else
-	{
-		RI.setMesh( null );
-		RI.setRange(0,-1);
-		if(this._once_binding_index != null)
-			this._once_binding_index = LS.ResourcesManager.onceLoaded( this._mesh, this.updateRIs.bind(this ) );
-	}
-
-	//used for raycasting
-	/*
-	if(this.lod_mesh)
-	{
-		if( this.lod_mesh.constructor === String )
-			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
-		else
-			RI.collision_mesh = this.lod_mesh;
-		//RI.setLODMesh( RI.collision_mesh );
-	}
-	else
-	*/
-		RI.collision_mesh = mesh;
-
-	//mark it as ready once no more changes should be applied
-	if( is_static && LS.allow_static && !this.isLoading() )
-	{
-		this._must_update_static = false;
-		this._transform_version = transform ? transform._version : 0;
-	}
-}
-
 //*
 //MeshRenderer.prototype.getRenderInstance = function(options)
 MeshRenderer.prototype.onCollectInstances = function(e, instances)
@@ -454,6 +382,79 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 
 	instances.push( RI );
 }
+
+/*
+//called everytime something affecting this RIs configuration changes
+MeshRenderer.prototype.updateRIs = function()
+{
+	return;
+
+	var node = this._root;
+	if(!node)
+		return;
+
+	var RI = this._RI;
+	var is_static = this._root.flags && this._root.flags.is_static;
+	var transform = this._root.transform;
+
+	//optimize: TODO
+	//if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
+	//	return instances.push( RI );
+
+	//assigns matrix, layers
+	RI.fromNode( this._root );
+
+	//material (after flags because it modifies the flags)
+	var material = null;
+	if(this.material)
+		material = LS.ResourcesManager.getResource( this.material );
+	else
+		material = this._root.getMaterial();
+	RI.setMaterial( material );
+
+	//buffers from mesh and bounding
+	var mesh = LS.ResourcesManager.getMesh( this._mesh );
+	if( mesh )
+	{
+		RI.setMesh( mesh, this.primitive );
+		if(this._submesh_id != -1 && this._submesh_id != null && mesh.info && mesh.info.groups)
+		{
+			var group = mesh.info.groups[this._submesh_id];
+			if(group)
+				RI.setRange( group.start, group.length );
+		}
+		else
+			RI.setRange(0,-1);
+	}
+	else
+	{
+		RI.setMesh( null );
+		RI.setRange(0,-1);
+		if(this._once_binding_index != null)
+			this._once_binding_index = LS.ResourcesManager.onceLoaded( this._mesh, this.updateRIs.bind(this ) );
+	}
+
+	//used for raycasting
+	if(this.lod_mesh)
+	{
+		if( this.lod_mesh.constructor === String )
+			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
+		else
+			RI.collision_mesh = this.lod_mesh;
+		//RI.setLODMesh( RI.collision_mesh );
+	}
+	else
+		RI.collision_mesh = mesh;
+
+	//mark it as ready once no more changes should be applied
+	if( is_static && LS.allow_static && !this.isLoading() )
+	{
+		this._must_update_static = false;
+		this._transform_version = transform ? transform._version : 0;
+	}
+}
+*/
+
 
 //not fully tested
 MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)

@@ -123,6 +123,9 @@ var LS = {
 	*/
 	registerComponent: function( component, old_classname ) { 
 
+		//to know from what file does it come from
+		//console.log( document.currentScript.src );
+
 		//allows to register several at the same time
 		var name = LS.getClassName( component );
 
@@ -282,20 +285,37 @@ var LS = {
 		this.ResourceClasses[ class_name ] = resourceClass;
 		this.Classes[ class_name ] = resourceClass;
 		resourceClass.is_resource = true;
-		if( resourceClass.EXTENSION ) //used in GRAPH.json
-			this.ResourceClasses_by_extension[ resourceClass.EXTENSION.toLowerCase() ] = resourceClass;
-		if( resourceClass.FORMAT )
+
+		if( !resourceClass.FORMAT )
+			resourceClass.FORMAT = {};
+
+		resourceClass.FORMAT.resource = class_name;
+		resourceClass.FORMAT.resourceClass = resourceClass;
+
+		if( resourceClass.EXTENSION )
+			resourceClass.FORMAT.extension = resourceClass.EXTENSION.toLowerCase();
+
+		var extension = resourceClass.FORMAT.extension;
+		if(!extension && resourceClass != LS.Resource )
+			console.warn("Resource without extension info? " + class_name );
+		else
 		{
-			if( resourceClass.FORMAT.extension )
+			this.ResourceClasses_by_extension[ extension ] = resourceClass;
+			resourceClass.EXTENSION = extension;
+		}
+
+		if( LS.Formats && extension )
+		{
+			var format_info = LS.Formats.supported[ extension ];
+			if( !format_info )
+				LS.Formats.supported[ extension ] = format_info = resourceClass.FORMAT;
+			else
 			{
-				this.ResourceClasses_by_extension[ resourceClass.FORMAT.extension.toLowerCase() ] = resourceClass;
-				resourceClass.EXTENSION = resourceClass.FORMAT.extension;
+				if(!format_info.resourceClass)
+					format_info.resourceClass = resourceClass;
+				//else if(format_info.resourceClass != resourceClass) //animations and prefab use the same file extension
+				//	console.warn("format has resourceClass that do not match this resource: ", LS.getClassName(format_info.resourceClass), LS.getClassName(resourceClass) );
 			}
-			resourceClass.FORMAT.resource_ctor = resourceClass;
-			resourceClass.FORMAT.resource = LS.getClassName( resourceClass );
-			
-			if(LS.Formats)
-				LS.Formats.supported[ resourceClass.FORMAT.extension.toLowerCase() ] = resourceClass.FORMAT;
 		}
 
 		//some validation here? maybe...
@@ -694,6 +714,17 @@ var LS = {
 		LS._pending_encoded_objects = null;
 	},
 
+	switchGlobalScene: function( scene )
+	{
+		if(scene === LS.GlobalScene)
+			return;
+		if( scene === null || scene.constructor !== LS.Scene )
+			throw("Not an scene");
+		var old_scene = LS.GlobalScene;
+		LEvent.trigger( LS, "global_scene_changed", scene );
+		LS.GlobalScene = scene;
+	},
+
 	/**
 	* Clears all the uids inside this object and children (it also works with serialized object)
 	* @method clearUIds
@@ -918,11 +949,19 @@ var LS = {
 	},
 
 	//we do it in a function to make it more standard and traceable
+	//used by the editor to show the error
 	dispatchCodeError: function( err, line, resource, extra )
 	{
 		var error_info = { error: err, line: line, resource: resource, extra: extra };
 		console.error(error_info);
 		LEvent.trigger( this, "code_error", error_info );
+	},
+
+	//used to tell the editor it must remove the error marker
+	dispatchNoErrors: function( resource, extra )
+	{
+		var info = { resource: resource, extra: extra };
+		LEvent.trigger( this, "code_no_errors", info );
 	},
 
 	convertToString: function( data )
@@ -1301,7 +1340,7 @@ LSQ.setFromInfo = function( info, value )
 	if( target.setPropertyValue  )
 		if( target.setPropertyValue( info.name, value ) === true )
 			return target;
-	if( target[ info.name ] === undefined )
+	if( target[ info.name ] === undefined && info.value === undefined )
 		return;
 	target[ info.name ] = value;	
 }

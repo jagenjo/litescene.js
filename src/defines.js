@@ -46,6 +46,7 @@ LS.RUNNING = 1; //LEGACY
 LS.ZEROS = vec3.create();
 LS.ZEROS4 = vec4.create();
 LS.ONES = vec3.fromValues(1,1,1);
+LS.ONES4 = vec4.fromValues(1,1,1,1);
 LS.TOP = vec3.fromValues(0,1,0);
 LS.BOTTOM = vec3.fromValues(0,-1,0);
 LS.RIGHT = vec3.fromValues(1,0,0);
@@ -112,6 +113,11 @@ LS.RESOURCE_TYPES[ LS.TYPES.ANIMATION ] = true;
 
 //Events
 var EVENT = LS.EVENT = {};
+//events are defined in the file that triggers them:
+//- renderer.js: render related events (RENDER_INSTANCES,etc)
+//- scene.js: scene related (INIT,START,UPDATE)
+//- input.js: player related (MOUSEDOWN,KEYDOWN)
+
 
 /**
 * A Ray that contains an origin and a direction (it uses the Ray class from litegl, so to check documentation go to litegl doc

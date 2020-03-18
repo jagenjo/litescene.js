@@ -87,18 +87,18 @@ CameraController["@mouse_wheel_action"] = { type:"enum", values: CameraControlle
 
 CameraController.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene, "start",this.onStart,this);
-	LEvent.bind( scene, "finish",this.onFinish,this);
-	LEvent.bind( scene, "mousedown",this.onMouse,this);
-	LEvent.bind( scene, "mousemove",this.onMouse,this);
-	LEvent.bind( scene, "mousewheel",this.onMouse,this);
-	LEvent.bind( scene, "touchstart",this.onTouch,this);
-	LEvent.bind( scene, "touchmove",this.onTouch,this);
-	LEvent.bind( scene, "touchend",this.onTouch,this);
-	LEvent.bind( scene, "keydown",this.onKey,this);
-	LEvent.bind( scene, "keyup",this.onKey,this);
-	LEvent.bind( scene, "update",this.onUpdate,this);
-	LEvent.bind( scene, "renderGUI",this.onRenderGUI,this);
+	LEvent.bind( scene, LS.EVENT.START,this.onStart,this);
+	LEvent.bind( scene, LS.EVENT.FINISH,this.onFinish,this);
+	LEvent.bind( scene, LS.EVENT.MOUSEDOWN,this.onMouse,this);
+	LEvent.bind( scene, LS.EVENT.MOUSEMOVE,this.onMouse,this);
+	LEvent.bind( scene, LS.EVENT.MOUSEWHEEL,this.onMouse,this);
+	LEvent.bind( scene, LS.EVENT.TOUCHSTART,this.onTouch,this);
+	LEvent.bind( scene, LS.EVENT.TOUCHMOVE,this.onTouch,this);
+	LEvent.bind( scene, LS.EVENT.TOUCHEND,this.onTouch,this);
+	LEvent.bind( scene, LS.EVENT.KEYDOWN,this.onKey,this);
+	LEvent.bind( scene, LS.EVENT.KEYUP,this.onKey,this);
+	LEvent.bind( scene, LS.EVENT.UPDATE,this.onUpdate,this);
+	LEvent.bind( scene, LS.EVENT.RENDERGUI,this.onRenderGUI,this);
 }
 
 CameraController.prototype.onRemovedFromScene = function( scene )

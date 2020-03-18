@@ -1,7 +1,7 @@
 ///@INFO: UNCOMMON,ANIMATION
 function AnimationCurve(o)
 {
-	this.samples = [];
+	this.points = []; //[time, y, left_point, right_point]
 
 	if(o)
 		this.configure(o);
@@ -9,13 +9,13 @@ function AnimationCurve(o)
 
 AnimationCurve.prototype.configure = function(o)
 {
-	this.samples = o.samples;
+	this.points = o.points;
 }
 
 AnimationCurve.prototype.serialize = function()
 {
 	return {
-		samples: this.samples
+		points: this.points
 	};
 }
 
@@ -36,7 +36,7 @@ AnimationCurve.prototype.getCurveValueAt = function( minx, maxx, defaulty, x )
 	if(x < minx || x > maxx)
 		return defaulty;
 
-	var values = this.samples;
+	var values = this.points;
 
 	var last = [ minx, defaulty ];
 	var f = 0;

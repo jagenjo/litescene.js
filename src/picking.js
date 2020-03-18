@@ -165,7 +165,7 @@ var Picking = {
 		if( pos ) //not tested yet
 		{
 			var ray = camera.getRay( pos[0], pos[1] );
-			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
+			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { add_instances_without_aabb: true } );
 			if( instances_collisions )
 			{
 				instances = Array( instances_collisions.length );
@@ -253,6 +253,7 @@ var Picking = {
 	{
 		//to visualize picking buffer
 		LS.Renderer.setRenderPass( v ? LS.PICKING_PASS : LS.COLOR_PASS );
+		LS.GlobalScene.requestFrame();
 	}
 };
 

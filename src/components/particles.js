@@ -501,6 +501,7 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		if(Math.abs(s * particle_size) < MIN_SIZE)
 			continue; //ignore almost transparent particles
 
+		//fill the extra2 with scale and particle index
 		if(points)
 		{
 			vertices.set(p._pos, i*3);
@@ -519,7 +520,7 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 			++i;
 			if(i*3 >= max_vertices)
 				break; //too many particles
-			continue;
+			continue; //continue to avoid computing the inflation of every particle
 		}
 
 		s *= particle_size;
@@ -609,7 +610,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	var camera = LS.Renderer._current_camera;
 
 	if(!this._material)
-		this._material = new LS.StandardMaterial({ shader_name:"lowglobal" });
+		this._material = new LS.StandardMaterial();
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture( "color", this.texture );
@@ -625,6 +626,19 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	var RI = this._render_instance;
 	if(!RI)
 		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+
+	if( this.point_particles )
+	{
+		//enable extra2
+		RI.addShaderBlock( LS.Shaders.extra2_block );
+		//enable point particles 
+		RI.addShaderBlock( pointparticles_block );
+	}
+	else
+	{
+		RI.removeShaderBlock( LS.Shaders.extra2_block );
+		RI.removeShaderBlock( pointparticles_block );
+	}
 
 	if(this.follow_emitter)
 		mat4.translate( RI.matrix, ParticleEmissor._identity, this._root.transform._position );
@@ -644,12 +658,12 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	{
 		RI.setMesh( this._mesh, gl.POINTS );
 		RI.uniforms.u_point_size = this.particle_size;
-		RI.setRange(0, this._visible_particles);
+		RI.setRange(0, this._visible_particles );
 	}
 	else
 	{
 		RI.setMesh( this._mesh, gl.TRIANGLES );
-		RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
+		RI.setRange(0, this._visible_particles * 6 ); //6 vertex per particle
 		delete RI.uniforms["u_point_size"];
 	}
 
@@ -663,6 +677,4 @@ LS.registerComponent(ParticleEmissor);
 
 
 
-//shader
-// - apply light per vertex before expanding
-// - inflate with camera vectors
+

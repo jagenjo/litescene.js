@@ -95,6 +95,9 @@ function Camera(o)
 
 Camera.icon = "mini-icon-camera.png";
 
+Camera.main = null; //to store the main camera of the scene
+Camera.current = null; //to store the current camera
+
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
@@ -571,11 +574,20 @@ Camera.prototype.onRemovedFromNode = function(node)
 
 Camera.prototype.onAddedToScene = function(scene)
 {
+	if(!LS.Camera.main)
+		LS.Camera.main = this;
 	LEvent.bind( scene, "collectCameras", this.onCollectCameras, this ); //here because we store them in node
 }
 
 Camera.prototype.onRemovedFromScene = function(scene)
 {
+	if(LS.Camera.main == this)
+	{
+		var cams = scene.root.findComponents("Camera");
+		if(cams && cams.length)
+			LS.Camera.main = cams[0];
+	}
+
 	LEvent.unbind( scene, "collectCameras", this.onCollectCameras, this );
 
 	if(this._frame) //free memory
@@ -640,6 +652,13 @@ Camera.prototype.lookAt = function( eye, center, up )
 {
 	if( this._root && this._root.transform )
 	{
+		//transform from global to local
+		if(this._root._parent && this._root._parent.transform )
+		{
+			eye = this._root._parent.transform.globalToLocal( eye, vec3.create() );
+			center = this._root._parent.transform.globalToLocal( center, vec3.create() );
+			up = this._root._parent.transform.globalVectorToLocal( up, vec3.create() );
+		}
 		this._root.transform.lookAt(eye,center,up);
 		this._eye.set(LS.ZEROS);
 		this._up.set([0,1,0]);

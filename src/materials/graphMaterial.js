@@ -1,3 +1,4 @@
+//allows to create shaders using the graph editor
 function GraphMaterial(o)
 {
 	ShaderMaterial.call(this,null); //do not pass the data object, it is called later
@@ -39,14 +40,22 @@ GraphMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance
 GraphMaterial.prototype.renderShadowInstance = ShaderMaterial.prototype.renderShadowInstance;
 GraphMaterial.prototype.renderPickingInstance = ShaderMaterial.prototype.renderPickingInstance;
 
+GraphMaterial.valid_properties = ["float","vec2","vec3","vec4","color","texture"];
+
+GraphMaterial.description = "This material allows to design the shader using the build-in visual graph designer, this helps prototyping materials very fast.";
+
 Object.defineProperty( GraphMaterial.prototype, "filename", {
 	enumerable: false,
 	get: function() {
 		return this._filename;
 	},
 	set: function(v) {
-		if(this._filename == v)
+		if( this._filename == v )
+		{
+			if( (v && this._graphcode) || (!v && !this._graphcode) )
 			return;
+		}
+
 		if(v) //to avoid double slashes
 			v = LS.ResourcesManager.cleanFullpath( v );
 		this._filename = v;
@@ -92,9 +101,8 @@ GraphMaterial.prototype.getShaderCode = function( instance, render_settings, pas
 {
 	if(!this._graphcode || !this._graphcode.getShaderCode)
 		return null;
-	return this._graphcode.getShaderCode();
+	return this._graphcode.getShaderCode(null, GraphMaterial.code_template );
 }
-
 
 /**
 * Collects all the resources needed by this material (textures)
@@ -104,6 +112,13 @@ GraphMaterial.prototype.getShaderCode = function( instance, render_settings, pas
 */
 GraphMaterial.prototype.getResources = function (res)
 {
+	for(var i = 0; i < this._properties.length; ++i)
+	{
+		var p = this._properties[i];
+		if(p.type == "texture" && p.value )
+			res[ p.value ] = GL.Texture;
+	}
+
 	if(!this._graphcode)
 		return res;
 
@@ -120,7 +135,7 @@ GraphMaterial.prototype.serialize = function() {
 		uid: this.uid,
 		material_class: LS.getObjectClassName(this),
 		filename: this.filename,
-		properties: null //TO DO
+		properties: LS.cloneObject( this._properties )
 	}
 	return o;
 }
@@ -128,6 +143,15 @@ GraphMaterial.prototype.serialize = function() {
 
 GraphMaterial.prototype.configure = function(o) { 
 	LS.cloneObject(o, this);
+	if(o.properties)
+	{
+		this._properties = LS.cloneObject( o.properties );
+		for(var i = 0; i < this._properties.length; ++i)
+		{
+			var p = this._properties[i];
+			this._properties_by_name[ p.name ] = p;
+		}
+	}
 	this.processGraph();
 }
 
@@ -151,7 +175,7 @@ GraphMaterial.prototype.processGraph = function( skip_events, on_complete )
 			if( res && res.type == GraphCode.SHADER_GRAPH )
 				that._graphcode = res;
 			else
-				console.error("Shader Graph not found or now a Shader Graph");
+				console.error("Shader Graph not found or not a Shader Graph");
 			if(on_complete)
 				on_complete(that);
 		});
@@ -159,6 +183,54 @@ GraphMaterial.prototype.processGraph = function( skip_events, on_complete )
 	}
 }
 
+GraphMaterial.prototype.updatePropertiesFromGraph = function()
+{
+	var new_properties = [];
+	var new_properties_by_name = {};
+
+	var graphcode = this._graphcode;
+	if(!graphcode)
+	{
+		this._properties = new_properties;
+		this._properties_by_name = new_properties_by_name;
+		return;
+	}
+
+	//search for uniforms
+	for(var i = 0; i < graphcode.properties.length; ++i)
+	{
+		var prop = graphcode.properties[i];
+
+		var old_p = this._properties_by_name[ prop.name ];
+		var value = old_p && old_p.type == prop.type ? old_p.value : LS.cloneObject( prop.value );
+
+		var p = { name: prop.name, type: prop.type, widget: prop.widget || null, value: value };
+		new_properties.push( p );
+		new_properties_by_name[ prop.name ] = p;
+	}
+
+	this._properties = new_properties;
+	this._properties_by_name = new_properties_by_name;
+}
+
+GraphMaterial.prototype.fillUniforms = function()
+{
+	var samp_index = 0;
+	for(var i in this._properties )
+	{
+		var p = this._properties[i];
+
+		if(p.type == "texture")
+		{
+			var index = samp_index++;
+			this._samplers[ index ] = p.value || ":white";
+			this._uniforms[ "u_" + p.name ] = index;
+		}
+		else
+			this._uniforms[ "u_" + p.name ] = p.value;
+
+	}
+}
 
 /**
 * gets all the properties and its types
@@ -167,20 +239,16 @@ GraphMaterial.prototype.processGraph = function( skip_events, on_complete )
 */
 GraphMaterial.prototype.getProperties = function()
 {
-	var o = {
-		color:"vec3",
-		opacity:"number",
-		shader_name: "string",
-		blend_mode: "number",
-		code: "string"
-	};
+	var graph = this.graph;
+	if(!graph)
+		return null;
 
-	//from this material
-	for(var i in this.properties)
+	var o = {};
+	for(var i = 0; i < this._properties.length; ++i)
 	{
-		var prop = this.properties[i];
-		o[prop.name] = prop.type;
-	}	
+		var p = this._properties[i];
+		o[ p.name ] = p.type;
+	}
 
 	return o;
 }
@@ -197,9 +265,9 @@ GraphMaterial.prototype.onResourceRenamed = function (old_name, new_name, resour
 	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
 
 	//specific
-	for(var i in this.properties)
+	for(var i in this._properties)
 	{
-		var prop = this.properties[i];
+		var prop = this._properties[i];
 		if( prop.value == old_name)
 			prop.value = new_name;
 	}
@@ -219,9 +287,9 @@ GraphMaterial.prototype.getProperty = function(name)
 	if( name.substr(0,4) == "tex_")
 		return this.textures[ name.substr(4) ];
 
-	for(var i in this.properties)
+	for(var i in this._properties)
 	{
-		var prop = this.properties[i];
+		var prop = this._properties[i];
 		if(prop.name == name)
 			return prop.value;
 	}	
@@ -240,9 +308,9 @@ GraphMaterial.prototype.setProperty = function(name, value)
 	if( Material.prototype.setProperty.call(this,name,value) )
 		return true;
 
-	for(var i in this.properties)
+	for(var i in this._properties)
 	{
-		var prop = this.properties[i];
+		var prop = this._properties[i];
 		if(prop.name != name)
 			continue;
 		prop.value = value;
@@ -257,9 +325,9 @@ GraphMaterial.prototype.getTextureChannels = function()
 {
 	var channels = [];
 
-	for(var i in this.properties)
+	for(var i in this._properties)
 	{
-		var prop = this.properties[i];
+		var prop = this._properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap")
 			continue;
 		channels.push(prop.name);
@@ -276,9 +344,9 @@ GraphMaterial.prototype.getTextureChannels = function()
 */
 GraphMaterial.prototype.setTexture = function(texture, channel, uvs) {
 
-	for(var i in this.properties)
+	for(var i in this._properties)
 	{
-		var prop = this.properties[i];
+		var prop = this._properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap")
 			continue;
 		if(channel && prop.name != channel) //assign to the channel or if there is no channel just to the first one
@@ -299,3 +367,205 @@ GraphMaterial.prototype.setTexture = function(texture, channel, uvs) {
 LS.registerMaterialClass( GraphMaterial );
 LS.GraphMaterial = GraphMaterial;
 
+GraphMaterial.default_graph = {"last_node_id":2,"last_link_id":1,"nodes":[{"id":2,"type":"shader/phong","pos":[328,242],"size":[140,186],"flags":{},"order":0,"mode":0,"inputs":[{"name":"albedo","type":"vec3","link":null},{"name":"ambient","type":"vec3","link":null},{"name":"emission","type":"vec3","link":null},{"name":"normal","type":"vec3","link":null},{"name":"specular","type":"float","link":null},{"name":"gloss","type":"float","link":null},{"name":"reflectivity","type":"float","link":null},{"name":"alpha","type":"float","link":null},{"name":"extra","type":"vec4","link":null}],"outputs":[{"name":"out","type":"vec4","links":[1]}],"properties":{}},{"id":1,"type":"shader/fs_output","pos":[651,241],"size":[140,66],"flags":{},"order":1,"mode":0,"inputs":[{"name":"","type":"T,float,vec2,vec3,vec4","link":1}],"properties":{}}],"links":[[1,2,0,1,0,"T,float,vec2,vec3,vec4"]],"groups":[],"config":{},"version":0.4}
+
+GraphMaterial.code_template = "\n\
+\n\
+\\default.vs\n\
+\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+#pragma shaderblock \"vertex_color\"\n\
+#pragma shaderblock \"coord1\"\n\
+#ifdef BLOCK_COORD1\n\
+	attribute vec2 a_coord1;\n\
+	varying vec2 v_uvs1;\n\
+#endif\n\
+#ifdef BLOCK_VERTEX_COLOR\n\
+	attribute vec4 a_color;\n\
+	varying vec4 v_vertex_color;\n\
+#endif\n\
+#pragma shaderblock \"instancing\"\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
+\n\
+//matrices\n\
+#ifdef BLOCK_INSTANCING\n\
+	attribute mat4 u_model;\n\
+	varying mat4 v_model;\n\
+	//varying float v_instance_id;\n\
+#else\n\
+	uniform mat4 u_model;\n\
+#endif\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+{{vs_out}}\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_local_pos = a_vertex;\n\
+	v_local_normal = a_normal;\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+	#ifdef BLOCK_COORD1\n\
+		v_uvs1 = a_coord1;\n\
+	#endif\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+		v_vertex_color = a_color;\n\
+	#endif\n\
+  \n\
+  //deforms\n\
+  {{vs_local}}\n\
+  applyMorphing( vertex4, v_normal );\n\
+  applySkinning( vertex4, v_normal );\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+  \n\
+  \n\
+	//normal\n\
+	#ifdef BLOCK_INSTANCING\n\
+		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
+		//v_instance_id = gl_InstanceID;\n\
+	#else\n\
+		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#endif\n\
+	{{vs_global}}\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+}\n\
+\n\
+\\color.fs\n\
+\n\
+#ifdef DRAW_BUFFERS\n\
+	#extension GL_EXT_draw_buffers : require \n\
+#endif\n\
+precision mediump float;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
+varying vec2 v_uvs;\n\
+#pragma shaderblock \"vertex_color\"\n\
+#pragma shaderblock \"coord1\"\n\
+#ifdef BLOCK_COORD1\n\
+	varying vec2 v_uvs1;\n\
+#endif\n\
+#ifdef BLOCK_VERTEX_COLOR\n\
+	varying vec4 v_vertex_color;\n\
+#endif\n\
+#pragma shaderblock \"instancing\"\n\
+\n\
+//globals\n\
+uniform vec3 u_camera_eye;\n\
+uniform vec4 u_clipping_plane;\n\
+uniform float u_time;\n\
+uniform vec4 u_background_color;\n\
+uniform vec4 u_material_color;\n\
+#ifdef BLOCK_INSTANCING\n\
+	mat4 u_model;\n\
+	varying mat4 v_model;\n\
+	//varying v_instance_id;\n\
+#else\n\
+	uniform mat4 u_model;\n\
+	//float v_instance_id;\n\
+#endif\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+#pragma snippet \"input\"\n\
+\n\
+#pragma snippet \"testClippingPlane\"\n\
+\n\
+{{fs_out}}\n\
+\n\
+void main() {\n\
+	Input IN = getInput();\n\
+	if(testClippingPlane(u_clipping_plane,IN.worldPos) < 0.0)\n\
+		discard;\n\
+	\n\
+	#ifdef BLOCK_INSTANCING\n\
+		u_model = v_model;\n\
+	#else\n\
+		//v_instance_id = 0.0;\n\
+	#endif\n\
+	IN.vertex = v_local_pos;\n\
+	IN.normal = v_local_normal;\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+		IN.color = v_vertex_color;\n\
+	#endif\n\
+	#ifdef BLOCK_COORD1\n\
+		IN.uv1 = v_uvs1;\n\
+	#endif\n\
+	vec4 _final_color = vec4(1.0);\n\
+	vec4 _final_color1 = vec4(0.0);\n\
+{{fs_code}}\n\
+	\n\
+	#ifdef DRAW_BUFFERS\n\
+	  gl_FragData[0] = _final_color;\n\
+	  #ifdef BLOCK_FIRSTPASS\n\
+		  #ifdef BLOCK_NORMALBUFFER\n\
+			  gl_FragData[1] = vec4( o.Normal * 0.5 + vec3(0.5), 1.0 );\n\
+		  #else\n\
+			  gl_FragData[1] = _final_color1;\n\
+		  #endif\n\
+	  #else\n\
+		  gl_FragData[1] = vec4(0.0);\n\
+	 #endif\n\
+	#else\n\
+	  gl_FragColor = _final_color;\n\
+	#endif\n\
+}\n\
+\n\
+\\shadow.fs\n\
+\n\
+precision mediump float;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
+\n\
+//globals\n\
+uniform vec3 u_camera_eye;\n\
+uniform vec4 u_clipping_plane;\n\
+uniform vec4 u_material_color;\n\
+\n\
+uniform mat3 u_texture_matrix;\n\
+\n\
+#pragma snippet \"input\"\n\
+#pragma snippet \"surface\"\n\
+#pragma snippet \"perturbNormal\"\n\
+#define SHADOWMAP\n\
+\n\
+{{fs_out}}\n\
+\n\
+void main() {\n\
+	Input IN = getInput();\n\
+	IN.vertex = v_local_pos;\n\
+	IN.normal = v_local_normal;\n\
+	gl_FragColor = vec4(u_material_color,1.0);\n\
+}\n\
+";

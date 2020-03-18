@@ -29,24 +29,6 @@ if(typeof(LiteGraph) != "undefined")
 		return "LINK_" + link.origin_id + "_" + link.origin_slot;
 	}
 
-	var getInputLinkCode = LiteGraph.geInputLinkCode = function geInputLinkCode( node, slot, section, context )
-	{
-		var info = node.getInputInfo( num );	
-		if(!info)
-			return null;
-		if(info.link == -1)
-			return null;
-		var link = node.graph.links[ info.link ];
-		if(!link)
-			return null;
-		var connected_node = node.getInputNode(num);
-		if(!connected_node)
-			return null;
-
-		connected_node.getShaderCode( section );
-
-	}
-
 	var getOutputLinkID = LiteGraph.getOutputLinkID = function getOutputLinkID( node, num, force )
 	{
 		var info = node.getOutputInfo( num );	
@@ -113,88 +95,32 @@ if(typeof(LiteGraph) != "undefined")
 		color4: "vec4"
 	};
 
-	function ShaderContext()
-	{
-		this.vs_uniforms = {};
-		this.vs_out = "";
-		this.vs_local = "";
-		this.vs_global = "";
-		this.fs_uniforms = {};
-		this.fs_snippets = {}; //to request once snippets from LS.Shaders.snippets
-		this.fs_functions = {}; //to add once functions code
-		this.fs_out = "";
-		this.fs_code = "";
-	}
-
-	//parameter has priority
-	ShaderContext.prototype.merge = function(context)
-	{
-		for(var i in context.vs_uniforms)
-			this.vs_uniforms[i] = context.vs_uniforms[i];
-		for(var i in context.fs_uniforms)
-			this.fs_uniforms[i] = context.fs_uniforms[i];
-		for(var i in context.fs_snippets)
-			this.fs_snippets[i] = context.fs_snippets[i];
-		for(var i in context.fs_functions)
-			this.fs_functions[i] = context.fs_functions[i];
-		this.vs_out = context.vs_out + this.vs_out;
-		this.vs_local = context.vs_local + this.vs_local;
-		this.vs_global = context.vs_global + this.vs_global;
-		this.fs_out = context.fs_out + this.fs_out;
-		this.fs_code = context.fs_code + this.fs_code;
-	}
-
-	function ShaderPart()
-	{
-		this.uniforms = {};
-		this.snippets = {};
-		this.functions = {};
-		this.out = "";
-		this.code = "";
-	}
-
-	//******************************************************
 
 	//fragment shader output
-	function LGraphShaderOutput()
+	function LGraphShaderFSOutput()
 	{
-		this.addInput("position","vec4");
-		this.addInput("point_size","float");
-		this.addInput("color","T,float,vec2,vec3,vec4");
-		this.addInput("color1","T,float,vec2,vec3,vec4");
+		this.addInput("","T,float,vec2,vec3,vec4");
+		this.addInput("","T,float,vec2,vec3,vec4");
+		this.addWidget("button","Config", null, this.onConfig.bind(this) );
 	}
 
-	LGraphShaderOutput.title = "Output";
-	LGraphShaderOutput.title_color = "#345";
+	LGraphShaderFSOutput.title = "FragOutput";
+	LGraphShaderFSOutput.title_color = "#345";
+	LGraphShaderFSOutput.output = "fragment";
 
-	LGraphShaderOutput.prototype.drawBackground = function(ctx)
-	{
-		ctx.fillStyle = "#121";
-		ctx.fillRect(0,0,size[0], 2*LiteGraph.NODE_SLOT_HEIGHT );
-	}
-
-	LGraphShaderOutput.prototype.onConfig = function()
+	LGraphShaderFSOutput.prototype.onConfig = function()
 	{
 		
 	}
 
-	LGraphShaderOutput.prototype.onGetShaderCode = function( template )
+	LGraphShaderFSOutput.prototype.onGetCode = function( lang, context )
 	{
-		var context = new ShaderContext();
-
+		if( lang != "glsl" )
+			return;
 		var link = getInputLinkID(this,0);
 		if(!link) //not connected
-		{
-			var code = GL.Shader.replaceCodeUsingContext( template, context );
-			return code;
-		}
+			return;
 
-		processInputLinkContext(this,0,"VS",context);
-		var vs_code = getInputLinkCode(this,1,"VS",context);
-		var fs_code = getInputLinkCode(this,2,"FS",context);
-		var fs_code = getInputLinkCode(this,3,"FS",context);
-
-		/*
 		var type = this.getInputDataType(0);
 		if(type == "vec4")
 			context.fs_code += "	_final_color = " + link + ";\n";
@@ -222,10 +148,9 @@ if(typeof(LiteGraph) != "undefined")
 			else
 				console.warn( "FSOutput type not valid", type );
 		}
-		*/
 	}
 
-	LiteGraph.registerShaderNode( "output", LGraphShaderOutput );
+	LiteGraph.registerShaderNode( "fs_output", LGraphShaderFSOutput );
 
 	function LGraphShaderConstant()
 	{
@@ -294,8 +219,10 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
-	LGraphShaderConstant.prototype.onGetShaderContext = function( section )
+	LGraphShaderConstant.prototype.onGetCode = function( lang, context )
 	{
+		if( lang != "glsl" )
+			return;
 		var value = valueToGLSL( this.properties.value, this.properties.type );
 		var link_name = getOutputLinkID(this,0);
 		if(!link_name) //not connected
@@ -1489,7 +1416,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.addInput("in","vec3"); //optional
 		this.addOutput("out","vec3");
 		this.properties = {
-			world_space: true
+			world_space: true,
 		};
 		this.addWidget("toggle","world space",true,"world_space");
 	}

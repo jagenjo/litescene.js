@@ -77,6 +77,7 @@ SceneInclude.prototype.onAddedToScene = function(scene)
 	LEvent.bind( scene, "collectData", this.onCollectData, this );
 	LEvent.bind( scene, "start", this.onStart, this );
 	LEvent.bind( scene, "update", this.onUpdate, this );
+	LEvent.bind( scene, "fillSceneUniforms", this.fillSceneUniforms, this);
 
 	for(var i in SceneInclude.propagable_events)
 		LEvent.bind( scene, SceneInclude.propagable_events[i], this.onEvent, this );
@@ -92,11 +93,18 @@ SceneInclude.prototype.onRemovedFromScene = function(scene)
 	LEvent.unbind( scene, "collectData", this.onCollectData, this );
 	LEvent.unbind( scene, "start", this.onStart, this );
 	LEvent.unbind( scene, "update", this.onUpdate, this );
+	LEvent.unbind( scene, "fillSceneUniforms", this.fillSceneUniforms, this);
 
 	//unbind all
 	var events = SceneInclude.propagable_events.concat( SceneInclude.fx_propagable_events );
 	for(var i in events)
 		LEvent.unbind( scene, events[i], this.onEvent, this );
+}
+
+//redirect
+SceneInclude.prototype.fillSceneUniforms = function(e)
+{
+	LEvent.trigger( this._scene, "fillSceneUniforms" );
 }
 
 //we need special functions for this events because they need function calls, not events
@@ -210,11 +218,14 @@ SceneInclude.prototype.unload = function()
 
 SceneInclude.prototype.reloadScene = function()
 {
+	var that = this;
 	this._scene_is_ready = false;
+	var scene = LS.GlobalScene;
+	var inner_scene = this._scene;
 
 	SceneInclude.recursive_level += 1;
 	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
-		this._scene.loadFromResources( this._scene_path, inner.bind(this) );
+		this._scene.loadFromResources( this._scene_path, inner.bind(this),null,null,inner_resloaded );
 	SceneInclude.recursive_level -= 1;
 
 	function inner()
@@ -223,6 +234,17 @@ SceneInclude.prototype.reloadScene = function()
 		this._scene_is_ready = true;
 		if(this._root.scene._state == LS.PLAYING )
 			this._scene.start();
+	}
+
+	function inner_resloaded()
+	{
+		LS.Renderer.regenerateShadowmaps();
+		for(var i = 0; i < inner_scene._reflection_probes.length; ++i)
+		{
+			if(scene._reflection_probes.indexOf(inner_scene._reflection_probes[i]) == -1)
+				scene._reflection_probes.push( inner_scene._reflection_probes[i] );
+		}
+		LS.Components.ReflectionProbe.updateAll()
 	}
 }
 

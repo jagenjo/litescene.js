@@ -25,6 +25,9 @@
 ../src/compositePattern.js
 ../src/baseComponent.js
 
+../src/scene.js
+../src/sceneNode.js
+
 ../src/resources/resource.js
 ../src/resources/animation.js
 ../src/resources/skeletalAnimation.js
@@ -33,6 +36,7 @@
 ../src/resources/shaderCode.js
 ../src/resources/graphCode.js
 
+../src/graph/core.js
 ../src/graph/scene.js
 ../src/graph/components.js
 ../src/graph/logic.js
@@ -112,9 +116,6 @@
 ../src/components/canvas3d.js
 ../src/components/videoPlayer.js
 ../src/components/interactiveController.js
-
-../src/scene.js
-../src/sceneNode.js
 
 ../src/render/basePipeline.js
 

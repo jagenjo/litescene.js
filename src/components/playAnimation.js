@@ -249,13 +249,18 @@ PlayAnimation.prototype.onUpdateAnimation = function(dt)
 	else if(time < start_time)
 		time = start_time;
 
+	//apply animation
 	this.applyAnimation( take, time, this._last_time );
+
+	LEvent.trigger( this._root, "after_animation" ); //to modify skeleton after applying an animation
+	if(this.onAfterAnimation)
+		this.onAfterAnimation(take, time);
 
 	this._last_time = time; //TODO, add support for pingpong events in tracks
 	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
 
 	var scene = this._root.scene;
-	if(scene)
+	if(scene) //anims always force a new frame
 		scene.requestFrame();
 }
 
@@ -331,8 +336,9 @@ PlayAnimation.prototype.getAnimation = function( name )
 {
 	name = name === undefined ? this.animation : name;
 
+	var scene = this._root && this._root.scene ? this._root.scene : LS.GlobalScene;
 	if(!name || name[0] == "@") 
-		return this._root.scene.animation;
+		return scene.animation;
 	var anim = LS.ResourcesManager.getResource( name );
 	if( anim && anim.constructor === LS.Animation )
 		return anim;

@@ -358,15 +358,15 @@ Canvas3D.prototype.projectMouse = function()
 
 	//hacks to work with the LS.GUI...
 	//*
-	this._local_mouse.mousex = this._mouse[0];
-	this._local_mouse.mousey = this._mouse[1];
+	this._local_mouse.mousex = this._local_mouse.x = this._mouse[0];
+	this._local_mouse.mousey = this._local_mouse.y = this._mouse[1];
 	this._prev_mouse = LS.Input.Mouse;
 	LS.Input.Mouse = this._local_mouse;
 
 	if( LS.Input.current_click )
 	{
-		this._local_mouse_click.mousex = this._mouse[0];
-		this._local_mouse_click.mousey = this._mouse[1];
+		this._local_mouse_click.mousex = this._local_mouse.x = this._mouse[0];
+		this._local_mouse_click.mousey = this._local_mouse.y = this._mouse[1];
 		this._prev_click_mouse = LS.Input.current_click;
 		LS.Input.current_click = this._local_mouse_click;
 	}

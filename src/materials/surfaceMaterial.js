@@ -41,7 +41,7 @@ function SurfaceMaterial( o )
 	this.computeCode();
 }
 
-
+SurfaceMaterial.description = "This material allows to control the surface properties by coding your own shader in GLSL.\nYou dont have to worry about the complexities of the render engine and light equation, just the surface properties for every pixel.";
 SurfaceMaterial.prototype.prepare = StandardMaterial.prototype.prepare;
 
 SurfaceMaterial.icon = "mini-icon-material.png";
@@ -425,6 +425,7 @@ uniform float u_time;\n\
 uniform vec4 u_viewport;\n\
 uniform float u_point_size;\n\
 \n\
+#pragma snippet \"input\"\n\
 #pragma shaderblock \"light\"\n\
 #pragma shaderblock \"morphing\"\n\
 #pragma shaderblock \"skinning\"\n\
@@ -488,6 +489,7 @@ uniform float u_time;\n\
 uniform vec4 u_background_color;\n\
 uniform vec4 u_material_color;\n\
 \n\
+#pragma snippet \"input\"\n\
 #pragma shaderblock \"light\"\n\
 #pragma shaderblock \"applyReflection\"\n\
 \n\
@@ -550,6 +552,7 @@ uniform float u_time;\n\
 uniform vec4 u_viewport;\n\
 uniform float u_point_size;\n\
 \n\
+#pragma snippet \"input\"\n\
 #pragma shaderblock \"light\"\n\
 #pragma shaderblock \"morphing\"\n\
 #pragma shaderblock \"skinning\"\n\

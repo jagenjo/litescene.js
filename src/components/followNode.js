@@ -8,7 +8,9 @@
 
 function FollowNode(o)
 {
-	this.node_uid = "";
+	this.enabled = true;
+	this.node_id = "";
+	this.align = false;
 	this.fixed_y = false;
 	this.follow_camera = false;
 	if(o)
@@ -16,6 +18,8 @@ function FollowNode(o)
 }
 
 FollowNode.icon = "mini-icon-follow.png";
+
+FollowNode["@node_id"] = { type: LS.TYPES.SCENENODE_ID };
 
 FollowNode.prototype.onAddedToScene = function(scene)
 {
@@ -29,7 +33,7 @@ FollowNode.prototype.onRemovedFromScene = function(scene)
 
 FollowNode.prototype.updatePosition = function(e,info)
 {
-	if(!this._root)
+	if(!this._root || !this._root.transform || !this.enabled)
 		return;
 
 	var pos = null;
@@ -44,16 +48,16 @@ FollowNode.prototype.updatePosition = function(e,info)
 	}
 	else
 	{
-		var target_node = scene.getNode( this.node_uid );
+		var target_node = scene.getNode( this.node_id );
 		if(!target_node || !target_node.transform)
 			return;
 		pos = target_node.transform.getGlobalPosition();
+		if(this.align)
+			this._root.transform.rotation = target_node.transform.getGlobalRotation();
 	}
 
 	if(this.fixed_y)
 		pos[1] = this._root.transform._position[1];
-	if(!this._root.transform)
-		return;
 
 	this._root.transform.position = pos;
 }

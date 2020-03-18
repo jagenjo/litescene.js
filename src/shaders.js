@@ -379,6 +379,13 @@ LS.GLSLCode = GLSLCode;
 
 GLSLCode.pragma_methods = {};
 
+GLSLCode.types_conversor = {
+	"number":"float",
+	"texture":"sampler2D",
+	"textureCube":"samplerCube"
+};
+
+
 //block types
 GLSLCode.CODE = 1;
 GLSLCode.PRAGMA = 2;
@@ -737,6 +744,8 @@ GLSLCode.breakLines = function(lines)
 // shaders
 
 LS.Shaders.registerSnippet("input","\n\
+			#ifndef SNIPPET_INPUT\n\
+			#define SNIPPET_INPUT\n\
 			//used to store topology input information\n\
 			struct Input {\n\
 				vec4 color;\n\
@@ -746,6 +755,7 @@ LS.Shaders.registerSnippet("input","\n\
 				vec2 uv1;\n\
 				\n\
 				vec3 camPos;\n\
+				float camDist;\n\
 				vec3 viewDir;\n\
 				vec3 worldPos;\n\
 				vec3 worldNormal;\n\
@@ -762,13 +772,16 @@ LS.Shaders.registerSnippet("input","\n\
 				IN.uv1 = IN.uv;\n\
 				\n\
 				IN.camPos = u_camera_eye;\n\
-				IN.viewDir = normalize(u_camera_eye - v_pos);\n\
+				IN.viewDir = u_camera_eye - v_pos;\n\
+				IN.camDist = length(IN.viewDir);\n\
+				IN.viewDir /= IN.camDist;\n\
 				IN.worldPos = v_pos;\n\
 				IN.worldNormal = normalize(v_normal);\n\
 				//IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all\n\
 				IN.screenPos = vec4( (gl_FragCoord.xy / gl_FragCoord.w) * 0.5 + vec2(0.5), gl_FragCoord.zw );  //sometimes we need also z and w, thats why we pass all\n\
 				return IN;\n\
 			}\n\
+			#endif\n\
 	");
 
 LS.Shaders.registerSnippet("structs","\n\
@@ -782,6 +795,7 @@ LS.Shaders.registerSnippet("structs","\n\
 				\n\
 				vec3 camPos;\n\
 				vec3 viewDir;\n\
+				float camDist;\n\
 				vec3 worldPos;\n\
 				vec3 worldNormal;\n\
 				vec4 screenPos;\n\
@@ -962,6 +976,22 @@ LS.Shaders.registerSnippet("computePointSize","\n\
 			}\n\
 	");
 
+LS.Shaders.registerSnippet("vec3ToCubemap2D","\n\
+	vec2 vec3ToCubemap2D( vec3 v )\n\
+	{\n\
+		vec3 abs_ = abs(v);\n\
+		float max_ = max(max(abs_.x, abs_.y), abs_.z); // Get the largest component\n\
+		vec3 weights = step(max_, abs_); // 1.0 for the largest component, 0.0 for the others\n\
+		float sign_ = dot(weights, sign(v)) * 0.5 + 0.5; // 0 or 1\n\
+		float sc = dot(weights, mix(vec3(v.z, v.x, -v.x), vec3(-v.z, v.x, v.x), sign_));\n\
+	    float tc = dot(weights, mix(vec3(-v.y, -v.z, -v.y), vec3(-v.y, v.z, -v.y), sign_));\n\
+	    vec2 uv = (vec2(sc, tc) / max_) * 0.5 + 0.5;\n\
+		// Offset into the right region of the texture\n\
+		float offsetY = dot(weights, vec3(1.0, 3.0, 5.0)) - sign_;\n\
+		uv.y = (uv.y + offsetY) / 6.0;\n\
+		return uv;\n\
+	}\n\
+");
 
 //base blocks that behave more like booleans 
 
@@ -983,8 +1013,97 @@ vertex_color_block.register();
 var coord1_block = LS.Shaders.coord1_block = new LS.ShaderBlock("coord1");
 coord1_block.register();
 
+//used when a mesh contains extra buffers
+var extra2_block = LS.Shaders.extra2_block = new LS.ShaderBlock("extra2");
+extra2_block.bindEvent("vs_attributes", "attribute vec2 a_extra2;\n");
+extra2_block.register();
+
+//used when a mesh contains extra buffers
+var extra3_block = LS.Shaders.extra3_block = new LS.ShaderBlock("extra3");
+extra3_block.bindEvent("vs_attributes", "attribute vec3 a_extra3;\n");
+extra3_block.register();
+
+//used when a mesh contains extra buffers
+var extra4_block = LS.Shaders.extra4_block = new LS.ShaderBlock("extra4");
+extra4_block.bindEvent("vs_attributes", "attribute vec4 a_extra4;\n");
+extra4_block.register();
+
 //used to render normalinfo to buffer
 var normalbuffer_block = LS.Shaders.normalbuffer_block = new LS.ShaderBlock("normalBuffer");
 normalbuffer_block.addCode( GL.FRAGMENT_SHADER, "", "" );
 normalbuffer_block.register();
 
+//used when a mesh contains extra buffers
+var instancing_block = LS.Shaders.instancing_block = new LS.ShaderBlock("instancing");
+instancing_block.register();
+
+//@point size with perspective
+var pointparticles_block = new LS.ShaderBlock("pointparticles");
+pointparticles_block.bindEvent("vs_final", "\n\
+	gl_PointSize = u_point_size * u_viewport.w * u_camera_perspective.z / gl_Position.w;\n\
+	#ifdef EXTRA2_BLOCK\n\
+		gl_PointSize *= a_extra2.x;\n\
+	#endif\n\
+");
+pointparticles_block.register();
+
+
+LS.Shaders.registerSnippet("snoise","\n\
+//	Simplex 3D Noise \n\
+//	by Ian McEwan, Ashima Arts\n\
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}\n\
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}\n\
+float snoise(vec3 v){ \n\
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;\n\
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);\n\
+// First corner\n\
+  vec3 i  = floor(v + dot(v, C.yyy) );\n\
+  vec3 x0 =   v - i + dot(i, C.xxx) ;\n\
+// Other corners\n\
+  vec3 g = step(x0.yzx, x0.xyz);\n\
+  vec3 l = 1.0 - g;\n\
+  vec3 i1 = min( g.xyz, l.zxy );\n\
+  vec3 i2 = max( g.xyz, l.zxy );\n\
+  //  x0 = x0 - 0. + 0.0 * C \n\
+  vec3 x1 = x0 - i1 + 1.0 * C.xxx;\n\
+  vec3 x2 = x0 - i2 + 2.0 * C.xxx;\n\
+  vec3 x3 = x0 - 1. + 3.0 * C.xxx;\n\
+// Permutations\n\
+  i = mod(i, 289.0 ); \n\
+  vec4 p = permute( permute( permute( \n\
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))\n\
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) \n\
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));\n\
+// Gradients\n\
+// ( N*N points uniformly over a square, mapped onto an octahedron.)\n\
+  float n_ = 1.0/7.0; // N=7\n\
+  vec3  ns = n_ * D.wyz - D.xzx;\n\
+  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)\n\
+  vec4 x_ = floor(j * ns.z);\n\
+  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)\n\
+  vec4 x = x_ *ns.x + ns.yyyy;\n\
+  vec4 y = y_ *ns.x + ns.yyyy;\n\
+  vec4 h = 1.0 - abs(x) - abs(y);\n\
+  vec4 b0 = vec4( x.xy, y.xy );\n\
+  vec4 b1 = vec4( x.zw, y.zw );\n\
+  vec4 s0 = floor(b0)*2.0 + 1.0;\n\
+  vec4 s1 = floor(b1)*2.0 + 1.0;\n\
+  vec4 sh = -step(h, vec4(0.0));\n\
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;\n\
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;\n\
+  vec3 p0 = vec3(a0.xy,h.x);\n\
+  vec3 p1 = vec3(a0.zw,h.y);\n\
+  vec3 p2 = vec3(a1.xy,h.z);\n\
+  vec3 p3 = vec3(a1.zw,h.w);\n\
+//Normalise gradients\n\
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n\
+  p0 *= norm.x;\n\
+  p1 *= norm.y;\n\
+  p2 *= norm.z;\n\
+  p3 *= norm.w;\n\
+// Mix final noise value\n\
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);\n\
+  m = m * m;\n\
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), \n\
+                                dot(p2,x2), dot(p3,x3) ) );\n\
+}");

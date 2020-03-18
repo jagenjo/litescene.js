@@ -2,7 +2,7 @@
 (function(){
 
 //Cannon.js physics in LiteScene
-LS.Network.requestScript("http://schteppe.github.io/cannon.js/build/cannon.js", function(){
+LS.Network.requestScript("https://schteppe.github.io/cannon.js/build/cannon.js", function(){
 	fixCANNON(); //could be useful to change things in cannon
 });
 

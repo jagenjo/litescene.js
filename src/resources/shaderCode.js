@@ -83,6 +83,12 @@ ShaderCode.prototype.processCode = function()
 	var num_subfiles = 0;
 	var init_code = null; 
 
+	//add default codes
+	if(!subfiles["default.vs"])
+		subfiles["default.vs"] = ShaderCode.default_vs;
+	if(!subfiles["default.fs"])
+		subfiles["default.fs"] = ShaderCode.default_fs;
+
 	for(var i in subfiles)
 	{
 		var subfile_name = i;
@@ -122,8 +128,6 @@ ShaderCode.prototype.processCode = function()
 		}
 
 		var name = LS.ResourcesManager.removeExtension( subfile_name );
-		if(name == "default")
-			name = "color"; //LEGACY fix
 		var extension = LS.ResourcesManager.getExtension( subfile_name );
 
 		if(extension == "vs" || extension == "fs")
@@ -200,6 +204,9 @@ ShaderCode.prototype.getData = function()
 	return this._code;
 }
 
+ShaderCode.prototype.fromData = ShaderCode.prototype.setData;
+ShaderCode.prototype.toData = ShaderCode.prototype.getData;
+
 ShaderCode.prototype.getDataToStore = function()
 {
 	return this._code;
@@ -223,9 +230,10 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 			return shader;
 	}
 
-	//search for the code
+	//search for the code 'color', or 'shadow'
 	var code = this._code_parts[ render_mode ];
-	if(!code)
+	var default_code = this._code_parts.default;
+	if(!code && !default_code)
 		return null;
 
 	var context = {}; //used to store metaprogramming defined vars in the shader
@@ -249,17 +257,21 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	var vs_code = null;
 	if(render_mode == "fx")
 		vs_code = GL.Shader.SCREEN_VERTEX_SHADER;
-	else if( !code.vs )
-		return null;
-	else //vs is a GLSLCode 
+	else if( code && code.vs )
 		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags, context );
+	else if( default_code && default_code.vs )
+		vs_code = default_code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags, context );
+	else 
+		return null;
 
 	//fragment shader code
-	if( !code.fs )
-		return;
-
-	//fs is a GLSLCode 
-	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
+	var fs_code = null;
+	if( code && code.fs )
+		fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
+	else if( default_code && default_code.fs )
+		fs_code = default_code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
+	else 
+		return null;
 
 	//no code or code includes something missing
 	if(!vs_code || !fs_code) 
@@ -323,13 +335,17 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 		console.groupEnd();
 	}
 
+	var shader = null;
+
 	if(!LS.catch_exceptions)
-		return new GL.Shader( vs_code, fs_code );
+	{
+		shader = new GL.Shader( vs_code, fs_code );
+	}
 	else
 	{
 		try
 		{
-			return new GL.Shader( vs_code, fs_code );
+			shader = new GL.Shader( vs_code, fs_code );
 		}
 		catch(err)
 		{
@@ -349,7 +365,14 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 			LS.dispatchCodeError( err, code_line, this, "shader" );
 		}
 	}
-	return null;
+
+	if(shader)
+	{
+		if( LS.debug )
+			console.log(" + shader compiled: ", this.fullpath || this.filename );
+		LS.dispatchNoErrors( this, "shader" );
+	}
+	return shader;
 }
 
 ShaderCode.prototype.clearCache =  function()
@@ -418,10 +441,7 @@ ShaderCode.removeComments = function( code )
 
 ShaderCode.replaceCode = function( code, context )
 {
-	return code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
-		v = v.replace( /[\{\}]/g, "" );
-		return context[v] || "";
-	});
+	return GL.Shader.replaceCodeUsingContext( code, context );
 }
 
 //WIP: parses ShaderLab (unity) syntax
@@ -515,52 +535,100 @@ ShaderCode.parseShaderLab = function( code )
 	return root;
 }
 
-ShaderCode.flat_code = "\\color.vs\n\
-	precision mediump float;\n\
-	attribute vec3 a_vertex;\n\
-	uniform mat4 u_model;\n\
-	uniform mat4 u_viewprojection;\n\
-	void main() {\n\
-		vec4 vertex4 = vec4(a_vertex,1.0);\n\
-		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
-	}\n\
-\\color.fs\n\
-	precision mediump float;\n\
-	uniform vec4 u_material_color;\n\
-	void main() {\n\
-		gl_FragColor = u_material_color;\n\
-	}\n\
-\\picking.vs\n\
-	precision mediump float;\n\
-	attribute vec3 a_vertex;\n\
-	uniform mat4 u_model;\n\
-	uniform mat4 u_viewprojection;\n\
-	void main() {\n\
-		vec4 vertex4 = vec4(a_vertex,1.0);\n\
-		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
-	}\n\
-\\picking.fs\n\
-	precision mediump float;\n\
-	uniform vec4 u_material_color;\n\
-	void main() {\n\
-		gl_FragColor = u_material_color;\n\
-	}\n\
-\\shadow.vs\n\
-	precision mediump float;\n\
-	attribute vec3 a_vertex;\n\
-	uniform mat4 u_model;\n\
-	uniform mat4 u_viewprojection;\n\
-	void main() {\n\
-		vec4 vertex4 = vec4(a_vertex,1.0);\n\
-		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
-	}\n\
-\\shadow.fs\n\
+ShaderCode.getDefaultCode = function( instance,  render_settings, pass )
+{
+	if( ShaderCode.default_code_instance )
+		return ShaderCode.default_code_instance;
+
+	var shader_code = ShaderCode.default_code_instance = new LS.ShaderCode();
+	shader_code.code = ShaderCode.flat_code;
+	return shader_code;
+}
+
+//default vertex shader code
+ShaderCode.default_vs = "\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+#pragma shaderblock \"vertex_color\"\n\
+#pragma shaderblock \"coord1\"\n\
+#ifdef BLOCK_COORD1\n\
+	attribute vec2 a_coord1;\n\
+	varying vec2 v_uvs1;\n\
+#endif\n\
+#ifdef BLOCK_VERTEX_COLOR\n\
+	attribute vec4 a_color;\n\
+	varying vec4 v_vertex_color;\n\
+#endif\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+varying vec3 v_local_pos;\n\
+varying vec3 v_local_normal;\n\
+varying vec4 v_screenpos;\n\
+\n\
+//matrices\n\
+uniform mat4 u_model;\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_local_pos = a_vertex;\n\
+	v_local_normal = a_normal;\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+	#ifdef BLOCK_COORD1\n\
+		v_uvs1 = a_coord1;\n\
+	#endif\n\
+	#ifdef BLOCK_VERTEX_COLOR\n\
+		v_vertex_color = a_color;\n\
+	#endif\n\
+  \n\
+  //deforms\n\
+  applyMorphing( vertex4, v_normal );\n\
+  applySkinning( vertex4, v_normal );\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+  \n\
+  \n\
+	//normal\n\
+	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+	v_screenpos = gl_Position;\n\
+}\n\
+"
+
+//default fragment shader code
+ShaderCode.default_fs = "\n\
 	precision mediump float;\n\
 	uniform vec4 u_material_color;\n\
 	void main() {\n\
 		gl_FragColor = u_material_color;\n\
 	}\n\
 ";
+
+ShaderCode.flat_code = "\n\
+\\color.fs\n\
+"+ ShaderCode.default_fs +"\n\
+";
+
 
 LS.ShaderCode = ShaderCode;
 LS.registerResourceClass( ShaderCode );

@@ -933,9 +933,9 @@ var Draw = {
 	},
 
 	/**
-	* Renders an image
+	* Renders an image in 2D (billboarded)
 	* @method renderImage
-	* @param {vec3} position
+	* @param {vec3} position that will be projected
 	* @param {Image|Texture|String} image from an URL, or a texture
 	* @param {number} size [optional=10]
 	* @param {boolean} fixed_size [optional=false] (camera distance do not affect size)
@@ -949,7 +949,10 @@ var Draw = {
 
 		if(typeof(image) == "string")
 		{
-			texture = this.images[image];
+			if(window.LS)
+				texture = LS.ResourcesManager.textures[image];
+			if(!texture)
+				texture = this.images[image];
 			if(texture == null)
 			{
 				Draw.images[image] = 1; //loading

@@ -9,6 +9,11 @@ var GL = global.GL = {};
 
 if(typeof(glMatrix) == "undefined")
 	throw("litegl.js requires gl-matrix to work. It must be included before litegl.");
+else
+{
+	if(!global.vec2)
+		throw("litegl.js does not support gl-matrix 3.0, download 2.8 https://github.com/toji/gl-matrix/releases/tag/v2.8.1");
+}
 
 //polyfill
 global.requestAnimationFrame = global.requestAnimationFrame || global.mozRequestAnimationFrame || global.webkitRequestAnimationFrame || function(callback) { setTimeout(callback, 1000 / 60); };
@@ -18,9 +23,15 @@ GL.blockable_keys = {"Up":true,"Down":true,"Left":true,"Right":true};
 GL.reverse = null;
 
 //some consts
-GL.LEFT_MOUSE_BUTTON = 1;
-GL.MIDDLE_MOUSE_BUTTON = 2;
-GL.RIGHT_MOUSE_BUTTON = 3;
+//https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
+GL.LEFT_MOUSE_BUTTON = 0;
+GL.MIDDLE_MOUSE_BUTTON = 1;
+GL.RIGHT_MOUSE_BUTTON = 2;
+
+GL.LEFT_MOUSE_BUTTON_MASK = 1;
+GL.RIGHT_MOUSE_BUTTON_MASK = 2;
+GL.MIDDLE_MOUSE_BUTTON_MASK = 4;
+
 GL.last_context_id = 0;
 
 
@@ -225,6 +236,42 @@ global.nearestPowerOfTwo = GL.nearestPowerOfTwo = function nearestPowerOfTwo(v)
 	return Math.pow(2, Math.round( Math.log( v ) / Math.log(2) ) )
 }
 
+
+/**
+* converts from polar to cartesian
+* @method polarToCartesian
+* @param {vec3} out
+* @param {number} azimuth orientation from 0 to 2PI
+* @param {number} inclianation from -PI to PI
+* @param {number} radius
+* @return {vec3} returns out
+*/
+global.polarToCartesian = function( out, azimuth, inclination, radius )
+{
+	out = out || vec3.create();
+	out[0] = radius * Math.sin(inclination) * Math.cos(azimuth);
+	out[1] = radius * Math.cos(inclination);
+	out[2] = radius * Math.sin(inclination) * Math.sin(azimuth);
+	return out;
+}
+
+/**
+* converts from cartesian to polar
+* @method cartesianToPolar
+* @param {vec3} out
+* @param {number} x
+* @param {number} y
+* @param {number} z
+* @return {vec3} returns [azimuth,inclination,radius]
+*/
+global.cartesianToPolar = function( out, x,y,z )
+{
+	out = out || vec3.create();
+	out[2] = Math.sqrt(x*x+y*y+z*z);
+	out[0] = Math.atan2(x,z);
+	out[1] = Math.acos(z/out[2]);
+	return out;
+}
 
 //Global Scope
 //better array conversion to string for serializing
@@ -1579,6 +1626,16 @@ vec3.angle = function( a, b )
 	return Math.acos( vec3.dot(a,b) );
 }
 
+vec3.signedAngle = function(from, to, axis)
+{
+	var unsignedAngle = vec3.angle( from, to );
+	var cross_x = from[1] * to[2] - from[2] * to[1];
+	var cross_y = from[2] * to[0] - from[0] * to[2];
+	var cross_z = from[0] * to[1] - from[1] * to[0];
+	var sign = Math.sign(axis[0] * cross_x + axis[1] * cross_y + axis[2] * cross_z);
+	return unsignedAngle * sign;
+}
+
 vec3.random = function(vec, scale)
 {
 	scale = scale || 1.0;
@@ -1825,6 +1882,71 @@ quat.fromAxisAngle = function(axis, rad)
     out[3] = Math.cos(rad);
     return out;
 }
+
+//from https://answers.unity.com/questions/467614/what-is-the-source-code-of-quaternionlookrotation.html
+quat.lookRotation = (function(){
+	var vector = vec3.create();
+	var vector2 = vec3.create();
+	var vector3 = vec3.create();
+
+	return function( q, front, up )
+	{
+		vec3.normalize(vector,front);
+		vec3.cross( vector2, up, vector );
+		vec3.normalize(vector2,vector2);
+		vec3.cross( vector3, vector, vector2 );
+
+		var m00 = vector2[0];
+		var m01 = vector2[1];
+		var m02 = vector2[2];
+		var m10 = vector3[0];
+		var m11 = vector3[1];
+		var m12 = vector3[2];
+		var m20 = vector[0];
+		var m21 = vector[1];
+		var m22 = vector[2];
+
+		var num8 = (m00 + m11) + m22;
+
+		 if (num8 > 0)
+		 {
+			 var num = Math.sqrt(num8 + 1);
+			 q[3] = num * 0.5;
+			 num = 0.5 / num;
+			 q[0] = (m12 - m21) * num;
+			 q[1] = (m20 - m02) * num;
+			 q[2] = (m01 - m10) * num;
+			 return q;
+		 }
+		 if ((m00 >= m11) && (m00 >= m22))
+		 {
+			 var num7 = Math.sqrt(((1 + m00) - m11) - m22);
+			 var num4 = 0.5 / num7;
+			 q[0] = 0.5 * num7;
+			 q[1] = (m01 + m10) * num4;
+			 q[2] = (m02 + m20) * num4;
+			 q[3] = (m12 - m21) * num4;
+			 return q;
+		 }
+		 if (m11 > m22)
+		 {
+			 var num6 = Math.sqrt(((1 + m11) - m00) - m22);
+			 var num3 = 0.5 / num6;
+			 q[0] = (m10+ m01) * num3;
+			 q[1] = 0.5 * num6;
+			 q[2] = (m21 + m12) * num3;
+			 q[3] = (m20 - m02) * num3;
+			 return q; 
+		 }
+		 var num5 = Math.sqrt(((1 + m22) - m00) - m11);
+		 var num2 = 0.5 / num5;
+		 q[0] = (m20 + m02) * num2;
+		 q[1] = (m21 + m12) * num2;
+		 q[2] = 0.5 * num5;
+		 q[3] = (m01 - m10) * num2;
+		 return q;
+	};
+})();
 
 /*
 quat.toEuler = function(out, quat) {
@@ -2081,10 +2203,6 @@ quat.lookAt = (function(){
 		return out;
 	}
 })();
-
-
-
-
 /**
 * @namespace GL
 */
@@ -2472,7 +2590,11 @@ Mesh.prototype.addBuffer = function(name, buffer)
 		this.indexBuffers[name] = buffer;
 
 	if(!buffer.attribute)
-		buffer.attribute = GL.Mesh.common_buffers[name].attribute;
+	{
+		var info = GL.Mesh.common_buffers[name];
+		if(info)
+			buffer.attribute = info.attribute;
+	}
 }
 
 
@@ -5826,6 +5948,8 @@ Texture.drawToColorAndDepth = function( color_texture, depth_texture, callback )
 Texture.prototype.copyTo = function( target_texture, shader, uniforms ) {
 	var that = this;
 	var gl = this.gl;
+	if(!target_texture)
+		throw("target_texture required");
 
 	//save state
 	var previous_fbo = gl.getParameter( gl.FRAMEBUFFER_BINDING );
@@ -5849,10 +5973,22 @@ Texture.prototype.copyTo = function( target_texture, shader, uniforms ) {
 	gl.viewport(0,0,target_texture.width, target_texture.height);
 	if(this.texture_type == gl.TEXTURE_2D)
 	{
+		//regular color texture
 		if(this.format !== gl.DEPTH_COMPONENT && this.format !== gl.DEPTH_STENCIL )
 		{
-			gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target_texture.handler, 0);
-			this.toViewport( shader );
+			/* doesnt work
+			if( this.width == target_texture.width && this.height == target_texture.height && this.format == target_texture.format)
+			{
+				gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.handler, 0);
+				gl.bindTexture( target_texture.texture_type, target_texture.handler );
+				gl.copyTexImage2D( target_texture.texture_type, 0, this.format, 0, 0, target_texture.width, target_texture.height, 0);
+			}
+			else
+			*/
+			{
+				gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target_texture.handler, 0);
+				this.toViewport( shader );
+			}
 		}
 		else //copying a depth texture is harder
 		{
@@ -7200,7 +7336,6 @@ Texture.nextPOT = function( size )
 {
 	return Math.pow( 2, Math.ceil( Math.log(size) / Math.log(2) ) );
 }
-
 /** 
 * FBO for FrameBufferObjects, FBOs are used to store the render inside one or several textures 
 * Supports multibuffer and depthbuffer texture, useful for deferred rendering
@@ -7237,6 +7372,7 @@ function FBO( textures, depth_texture, stencil, gl )
 	//save state
 	this._old_fbo_handler = null;
 	this._old_viewport = new Float32Array(4);
+	this.order = null;
 }
 
 GL.FBO = FBO;
@@ -7481,7 +7617,7 @@ FBO.prototype.update = function( skip_disable )
 }
 
 /**
-* Enables this FBO (from now on all the render will be stored in the textures attached to this FBO
+* Enables this FBO (from now on all the render will be stored in the textures attached to this FBO)
 * It stores the previous viewport to restore it afterwards, and changes it to full FBO size
 * @method bind
 * @param {boolean} keep_old keeps the previous FBO is one was attached to restore it afterwards
@@ -7507,6 +7643,7 @@ FBO.prototype.bind = function( keep_old )
 		this.depth_texture._in_current_fbo = true;
 
 	gl.viewport( 0,0, this.width, this.height );
+	FBO.current = this;
 }
 
 /**
@@ -7525,6 +7662,7 @@ FBO.prototype.unbind = function()
 		this.color_textures[i]._in_current_fbo = false;
 	if(this.depth_texture)
 		this.depth_texture._in_current_fbo = false;
+	FBO.current = null;
 }
 
 //binds another FBO without switch back to previous (faster)
@@ -7547,6 +7685,8 @@ FBO.prototype.switchTo = function( next_fbo )
 		next_fbo.color_textures[i]._in_current_fbo = true;
 	if(next_fbo.depth_texture)
 		next_fbo.depth_texture._in_current_fbo = true;
+
+	FBO.current = next_fbo;
 }
 
 FBO.prototype.delete = function()
@@ -7577,6 +7717,50 @@ FBO.testSupport = function( type, format ) {
 	return true;
 }
 
+FBO.prototype.toSingle = function()
+{
+	if( this.color_textures.length < 2 )
+		return; //nothing to do
+	var ext = gl.extensions.WEBGL_draw_buffers;
+	if( ext )
+		ext.drawBuffersWEBGL( [ this.order[0] ] );
+	else
+		gl.drawBuffers( [ this.order[0] ] );
+}
+
+FBO.prototype.toMulti = function()
+{
+	if( this.color_textures.length < 2 )
+		return; //nothing to do
+	var ext = gl.extensions.WEBGL_draw_buffers;
+	if( ext )
+		ext.drawBuffersWEBGL( this.order );
+	else
+		gl.drawBuffers( this.order );
+}
+
+//clears only the secondary buffers (not the main one)
+FBO.prototype.clearSecondary = function( color )
+{
+	if(!this.order || this.order.length < 2)
+		return;
+
+	var ext = gl.extensions.WEBGL_draw_buffers;
+	var new_order = [gl.NONE];
+	for(var i = 1; i < this.order.length; ++i)
+		new_order.push(this.order[i]);
+	if(ext)
+		ext.drawBuffersWEBGL( new_order );
+	else
+		gl.drawBuffers( new_order );
+	gl.clearColor( color[0],color[1],color[2],color[3] );
+	gl.clear( gl.COLOR_BUFFER_BIT );
+
+	if(ext)
+		ext.drawBuffersWEBGL( this.order );
+	else
+		gl.drawBuffers( this.order );
+}
 
 
 /**
@@ -8229,7 +8413,14 @@ Shader.prototype.drawInstanced = function( mesh, primitive, indices, instanced_u
 		length = buffer.buffer.length / buffer.buffer.spacing;
 	}
 
-	var indexBuffer = indices ? mesh.getIndexBuffer( indices ) : null;
+	var indexBuffer = null;
+	if( indices )
+	{
+		if( indices.constructor === String) 
+			indexBuffer = mesh.getIndexBuffer( indices );
+		else if( indices.constructor === GL.Buffer )
+			indexBuffer = indices;
+	}
 
 	//range rendering
 	var offset = 0; //in bytes
@@ -8668,6 +8859,20 @@ Shader.createFX = function(code, uniforms, shader)
 		return new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, GL.Shader.SCREEN_FRAGMENT_FX, macros );
 	shader.updateShader( GL.Shader.SCREEN_VERTEX_SHADER, GL.Shader.SCREEN_FRAGMENT_FX, macros );
 	return shader;
+}
+
+/**
+* Given a shader code with some vars inside (like {{varname}}) and an object with the variable values, it will replace them.
+* @method Shader.replaceCodeUsingContext
+* @param {string} code string containg code and vars in {{varname}} format
+* @param {object} context object containing all var values
+*/
+Shader.replaceCodeUsingContext = function( code_template, context )
+{
+	return code_template.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
+		v = v.replace( /[\{\}]/g, "" );
+		return context[v] || "";
+	});
 }
 
 Shader.removeComments = function(code, one_line)
@@ -9362,13 +9567,25 @@ GL.create = function(options) {
 		*/
 		isButtonPressed: function(num)
 		{
-			return this.buttons & (1<<num);
+			if(num == GL.LEFT_MOUSE_BUTTON)
+				return this.buttons & GL.LEFT_MOUSE_BUTTON_MASK;
+			if(num == GL.MIDDLE_MOUSE_BUTTON)
+				return this.buttons & GL.MIDDLE_MOUSE_BUTTON_MASK;
+			if(num == GL.RIGHT_MOUSE_BUTTON)
+				return this.buttons & GL.RIGHT_MOUSE_BUTTON_MASK;
 		},
 
 		wasButtonPressed: function(num)
 		{
-			return (this.buttons & (1<<num)) && !(this.last_buttons & (1<<num));
-		},
+			var mask = 0;
+			if(num == GL.LEFT_MOUSE_BUTTON)
+				mask = GL.LEFT_MOUSE_BUTTON_MASK;
+			else if(num == GL.MIDDLE_MOUSE_BUTTON)
+				mask = GL.MIDDLE_MOUSE_BUTTON_MASK;
+			else if(num == GL.RIGHT_MOUSE_BUTTON)
+				mask = GL.RIGHT_MOUSE_BUTTON_MASK;
+			return (this.buttons & mask) && !(this.last_buttons & mask);
+		}
 	};
 
 	/**
@@ -9419,9 +9636,10 @@ GL.create = function(options) {
 		mouse.canvasy = e.canvasy;
 		mouse.clientx = e.mousex;
 		mouse.clienty = e.mousey;
-		mouse.left_button = !!(mouse.buttons & (1<<GL.LEFT_MOUSE_BUTTON));
-		mouse.middle_button = !!(mouse.buttons & (1<<GL.MIDDLE_MOUSE_BUTTON));
-		mouse.right_button = !!(mouse.buttons & (1<<GL.RIGHT_MOUSE_BUTTON));
+		mouse.buttons = e.buttons;
+		mouse.left_button = !!(mouse.buttons & GL.LEFT_MOUSE_BUTTON_MASK);
+		mouse.middle_button = !!(mouse.buttons & GL.MIDDLE_MOUSE_BUTTON_MASK);
+		mouse.right_button = !!(mouse.buttons & GL.RIGHT_MOUSE_BUTTON_MASK);
 
 		if(e.eventType == "mousedown")
 		{
@@ -10055,15 +10273,15 @@ GL.augmentEvent = function(e, root_element)
 	if(e.type == "mousedown")
 	{
 		this.dragging = true;
-		gl.mouse.buttons |= (1 << e.which); //enable
+		//gl.mouse.buttons |= (1 << e.which); //enable
 	}
 	else if (e.type == "mousemove")
 	{
 	}
 	else if (e.type == "mouseup")
 	{
-		gl.mouse.buttons = gl.mouse.buttons & ~(1 << e.which);
-		if(gl.mouse.buttons == 0)
+		//gl.mouse.buttons = gl.mouse.buttons & ~(1 << e.which);
+		if(e.buttons == 0)
 			this.dragging = false;
 	}
 
@@ -10083,10 +10301,14 @@ GL.augmentEvent = function(e, root_element)
 
 	//insert info in event
 	e.dragging = this.dragging;
-	e.buttons_mask = gl.mouse.buttons;
-	e.leftButton = !!(gl.mouse.buttons & (1<<GL.LEFT_MOUSE_BUTTON));
-	e.middleButton = !!(gl.mouse.buttons & (1<<GL.MIDDLE_MOUSE_BUTTON));
-	e.rightButton = !!(gl.mouse.buttons & (1<<GL.RIGHT_MOUSE_BUTTON));
+	e.leftButton = !!(gl.mouse.buttons & GL.LEFT_MOUSE_BUTTON_MASK);
+	e.middleButton = !!(gl.mouse.buttons & GL.MIDDLE_MOUSE_BUTTON_MASK);
+	e.rightButton = !!(gl.mouse.buttons & GL.RIGHT_MOUSE_BUTTON_MASK);
+	//shitty non-coherent API, e.buttons use 1:left,2:right,4:middle) but e.button uses (0:left,1:middle,2:right)
+	e.buttons_mask = 0;
+	if( e.leftButton ) e.buttons_mask = 1;
+	if( e.middleButton ) e.buttons_mask |= 2;
+	if( e.rightButton ) e.buttons_mask |= 4;
 	e.isButtonPressed = function(num) { return this.buttons_mask & (1<<num); }
 }
 
@@ -11410,9 +11632,12 @@ global.BBox = GL.BBox = {
 		bb[3] = halfsize[0];
 		bb[4] = halfsize[1];
 		bb[5] = halfsize[2];
-
-		vec3.sub(bb.subarray(6,9), bb.subarray(0,3), bb.subarray(3,6) );
-		vec3.add(bb.subarray(9,12), bb.subarray(0,3), bb.subarray(3,6) );
+		bb[6] = bb[0] - bb[3];
+		bb[7] = bb[1] - bb[4];
+		bb[8] = bb[2] - bb[5];
+		bb[9] = bb[0] + bb[3];
+		bb[10] = bb[1] + bb[4];
+		bb[11] = bb[2] + bb[5];
 		if(radius)
 			bb[12] = radius;
 		else
@@ -11525,6 +11750,25 @@ global.BBox = GL.BBox = {
 		return out;
 	},
 
+	clampPoint: function(out, box, point)
+	{
+		out[0] = Math.clamp( point[0], box[0] - box[3], box[0] + box[3]);
+		out[1] = Math.clamp( point[1], box[1] - box[4], box[1] + box[4]);
+		out[2] = Math.clamp( point[2], box[2] - box[5], box[2] + box[5]);
+	},
+
+	isPointInside: function( bbox, point )
+	{
+		if( (bbox[0] - bbox[3]) > point[0] ||
+			(bbox[1] - bbox[4]) > point[1] ||
+			(bbox[2] - bbox[5]) > point[2] ||
+			(bbox[0] + bbox[3]) < point[0] ||
+			(bbox[1] + bbox[4]) < point[1] ||
+			(bbox[2] + bbox[5]) < point[2] )
+			return false;
+		return true;
+	},
+
 	getCenter: function(bb) { return bb.subarray(0,3); },
 	getHalfsize: function(bb) { return bb.subarray(3,6); },
 	getMin: function(bb) { return bb.subarray(6,9); },
@@ -11584,6 +11828,11 @@ Octree.MAX_NODE_TRIANGLES_RATIO = 0.1;
 Octree.MAX_OCTREE_DEPTH = 8;
 Octree.OCTREE_MARGIN_RATIO = 0.01;
 Octree.OCTREE_MIN_MARGIN = 0.1;
+
+//mode
+Octree.NEAREST = 0; //returns the nearest collision
+Octree.FIRST = 1; //returns the first collision
+Octree.ALL = 2;  //returns the all collisions
 
 var octree_tested_boxes = 0;
 var octree_tested_triangles = 0;
@@ -11781,6 +12030,8 @@ Octree.prototype.trim = function(node)
 * @param {vec3} direction ray direction position
 * @param {number} dist_min
 * @param {number} dist_max
+* @param {number} test_backfaces if rays colliding with the back face must be considered a valid collision
+* @param {number} mode which mode to use (Octree.NEAREST: nearest collision to origin, Octree.FIRST: first collision detected (fastest), Octree.ALL: all collision (slowest)
 * @return {HitTest} object containing pos and normal
 */
 Octree.prototype.testRay = (function(){ 
@@ -11789,10 +12040,11 @@ Octree.prototype.testRay = (function(){
 	var min_temp = vec3.create();
 	var max_temp = vec3.create();
 
-	return function(origin, direction, dist_min, dist_max, test_backfaces )
+	return function(origin, direction, dist_min, dist_max, test_backfaces, mode )
 	{
 		octree_tested_boxes = 0;
 		octree_tested_triangles = 0;
+		mode = mode || Octree.NEAREST;
 
 		if(!this.root)
 		{
@@ -11808,18 +12060,99 @@ Octree.prototype.testRay = (function(){
 		if(!test) //no collision with mesh bounding box
 			return null;
 
-		var test = Octree.testRayInNode( this.root, origin_temp, direction_temp, test_backfaces );
-		if(test != null)
-		{
-			var pos = vec3.scale( vec3.create(), direction, test.t );
-			vec3.add( pos, pos, origin );
-			test.pos = pos;
-			return test;
-		}
+		var test = Octree.testRayInNode( this.root, origin_temp, direction_temp, test_backfaces, mode );
+		if(test == null )
+			return null;
 
-		return null;
+		if(mode == Octree.ALL)
+			return test;
+
+		var pos = vec3.scale( vec3.create(), direction, test.t );
+		vec3.add( pos, pos, origin );
+		test.pos = pos;
+		return test;
 	}
 })();
+
+//tests collisions with a node of the octree and its children
+//WARNING: cannot use static here, it uses recursion
+Octree.testRayInNode = function( node, origin, direction, test_backfaces, mode )
+{
+	var test = null;
+	var prev_test = null;
+	octree_tested_boxes += 1;
+
+	//test faces
+	if(node.faces)
+		for(var i = 0, l = node.faces.length; i < l; ++i)
+		{
+			var face = node.faces[i];
+			octree_tested_triangles += 1;
+			test = Octree.hitTestTriangle( origin, direction, face.subarray(0,3) , face.subarray(3,6), face.subarray(6,9), test_backfaces );
+			if (test == null)
+				continue;
+			if(mode == Octree.FIRST)
+				return test;
+			if(mode == Octree.ALL)
+			{
+				if(!prev_test)
+					prev_test = [];
+				prev_test.push(test);
+			}
+			else { //find closer
+				test.face = face;
+				if(prev_test)
+					prev_test.mergeWith( test );
+				else
+					prev_test = test;
+			}
+		}
+
+	//WARNING: cannot use statics here, this function uses recursion
+	var child_min = vec3.create();
+	var child_max = vec3.create();
+
+	//test children nodes faces
+	var child;
+	if(node.c)
+		for(var i = 0; i < node.c.length; ++i)
+		{
+			child = node.c[i];
+			child_min.set( child.min );
+			child_max.set( child.max );
+
+			//test with node box
+			test = Octree.hitTestBox( origin, direction, child_min, child_max );
+			if( test == null )
+				continue;
+
+			//nodebox behind current collision, then ignore node
+			if(mode != Octree.ALL && prev_test && test.t > prev_test.t)
+				continue;
+
+			//test collision with node
+			test = Octree.testRayInNode( child, origin, direction, test_backfaces, mode );
+			if(test == null)
+				continue;
+			if(mode == Octree.FIRST)
+				return test;
+
+			if(mode == Octree.ALL)
+			{
+				if(!prev_test)
+					prev_test = [];
+				prev_test.push(test);
+			}
+			else {
+				if(prev_test)
+					prev_test.mergeWith( test );
+				else
+					prev_test = test;
+			}
+		}
+
+	return prev_test;
+}
 
 /**
 * test collision between sphere and the triangles in the octree (only test if there is any vertex inside the sphere)
@@ -11844,65 +12177,6 @@ Octree.prototype.testSphere = function( origin, radius )
 		return false; //out of the box
 
 	return Octree.testSphereInNode( this.root, origin, rr );
-}
-
-//WARNING: cannot use static here, it uses recursion
-Octree.testRayInNode = function( node, origin, direction, test_backfaces )
-{
-	var test = null;
-	var prev_test = null;
-	octree_tested_boxes += 1;
-
-	//test faces
-	if(node.faces)
-		for(var i = 0, l = node.faces.length; i < l; ++i)
-		{
-			var face = node.faces[i];
-			octree_tested_triangles += 1;
-			test = Octree.hitTestTriangle( origin, direction, face.subarray(0,3) , face.subarray(3,6), face.subarray(6,9), test_backfaces );
-			if (test==null)
-				continue;
-			test.face = face;
-			if(prev_test)
-				prev_test.mergeWith( test );
-			else
-				prev_test = test;
-		}
-
-	//WARNING: cannot use statics here, this function uses recursion
-	var child_min = vec3.create();
-	var child_max = vec3.create();
-
-	//test children nodes faces
-	var child;
-	if(node.c)
-		for(var i = 0; i < node.c.length; ++i)
-		{
-			child = node.c[i];
-			child_min.set( child.min );
-			child_max.set( child.max );
-
-			//test with node box
-			test = Octree.hitTestBox( origin, direction, child_min, child_max );
-			if( test == null )
-				continue;
-
-			//nodebox behind current collision, then ignore node
-			if(prev_test && test.t > prev_test.t)
-				continue;
-
-			//test collision with node
-			test = Octree.testRayInNode( child, origin, direction, test_backfaces );
-			if(test == null)
-				continue;
-
-			if(prev_test)
-				prev_test.mergeWith( test );
-			else
-				prev_test = test;
-		}
-
-	return prev_test;
 }
 
 //WARNING: cannot use static here, it uses recursion

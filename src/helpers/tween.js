@@ -42,6 +42,7 @@ LS.Tween = {
 
 	current_easings: [],
 	_alife: [], //temporal array
+	_temp: [], //another temporal
 
 	reset: function()
 	{
@@ -61,7 +62,7 @@ LS.Tween = {
 		if( !object )
 			throw("ease object cannot be null");
 		if( target === undefined )
-			throw("target vaue must be defined");
+			throw("target value must be defined");
 		if(object[property] === undefined)
 			throw("property not found in object, must be initialized to a value");
 
@@ -178,6 +179,8 @@ LS.Tween = {
 			return;
 
 		var easings = this.current_easings;
+		this.current_easings = this._temp; //empty it to control incomming tweens during this update
+		this.current_easings.length = 0;
 		var alive = this._alife;
 		alive.length = easings.length;
 		var pos = 0;
@@ -232,6 +235,10 @@ LS.Tween = {
 		}
 
 		alive.length = pos; //trim
+
+		//add incomming tweens
+		for(var i = 0; i < this.current_easings.length; ++i)
+			alive.push( this.current_easings[i] );
 
 		this.current_easings = alive;
 		this._alife = easings;
