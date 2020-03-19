@@ -224,6 +224,33 @@ Although you are free to register the components in some global container when t
 //from inside the script you want to make accesible to other scripts
 LS.Globals.my_special_script_context = this;
 ```
+### Executing from graph events
+
+If you want to execute parts of your script from the graph, you must declare which actions can be executed from your script using the ```getActions``` method, and define the ```onAction``` that will be called for any action triggered in this script.
+
+To add this to the graph, you must drag the script to the graph and add the event input from the node contextual menu.
+
+```js
+this.getActions = function()
+{
+  return { executeme: "foo" }; 
+}
+
+this.onAction = function(a)
+{
+	console.log("action triggered:",a);
+}
+```
+
+It is also possible to define Events that could be triggered from this node:
+
+```js
+this.getEvents = function()
+{
+  return [ "onFinished" ]; 
+}
+```
+
 
 ### Script considerations ###
 
