@@ -236,7 +236,7 @@ this.getActions = function()
 
 this.onAction = function(action)
 {
-	console.log("action triggered:",a);
+	console.log("action triggered:",action);
 	switch(action)
 	{
 		case "play": //... dostuff;
