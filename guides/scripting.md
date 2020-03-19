@@ -226,21 +226,22 @@ LS.Globals.my_special_script_context = this;
 ```
 ### Executing from graph events
 
-If you want to execute parts of your script from the graph, you must declare which actions can be executed from your script using the ```getActions``` method, and define the ```onAction``` that will be called for any action triggered in this script.
-
-To add this to the graph, you must drag the script to the graph and add the event input from the node contextual menu.
+If you want to execute parts of your script from the graph, you must declare which actions can be executed from your script using the ```getActions``` method, which must return an array containing the name of the actions available. You msut also define the ```onAction``` method in your script, this will be called when an action is triggered from the graph, the first parameter is the action.
 
 ```js
 this.getActions = function()
 {
-  return { executeme: "foo" }; 
+  return ["play"]; 
 }
 
-this.onAction = function(a)
+this.onAction = function(action)
 {
 	console.log("action triggered:",a);
 }
 ```
+
+Now to add this event to the graph, you must drag the script to the graph (the icon of the script) and add the event input from the node contextual menu for Inputs.
+
 
 ### Script considerations ###
 
