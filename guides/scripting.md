@@ -242,16 +242,6 @@ this.onAction = function(a)
 }
 ```
 
-It is also possible to define Events that could be triggered from this node:
-
-```js
-this.getEvents = function()
-{
-  return [ "onFinished" ]; 
-}
-```
-
-
 ### Script considerations ###
 
 When coding scripts for LiteScene there are several things you must take into account:
