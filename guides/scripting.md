@@ -237,6 +237,11 @@ this.getActions = function()
 this.onAction = function(action)
 {
 	console.log("action triggered:",a);
+	switch(action)
+	{
+		case "play": //... dostuff;
+			break;
+	}
 }
 ```
 
