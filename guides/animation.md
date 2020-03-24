@@ -73,7 +73,9 @@ This component also triggers events when the animation starts or ends.
 
 Also to avoid sudden changes when switching from one animation to another, it allows to blend the outter animation with the incomming one.
 
-## applyTracks
+## From code 
+
+If you want to apply an animation from code (from a script or your own component) instead of using the ```PlayAnimation`` , you can do it very easily.
 
 The ```LS.Animation.Take``` contains a method called ```applyTracks```. This method is in charge of sample the value from every track and apply it to every property referenced in their locators. It receives several parameters:
 
