@@ -2,7 +2,7 @@
 
 When working with LiteScene you will need to retrieve many resources to use during the render or to control the behaviour of the application.
 
-Resources are instances that contain relevant information for the system, and that **could be shared among different elements** of the engine. 
+Resources are instances that contain relevant information for the system, and that **could be shared among different elements** of the engine. If something contains data relative to one specific node visualization/behaviour, then that shouldnt be a resource, because that cannot be shared.
 
 All resources are stored in a global container (```LS.ResourcesManager.resources```) so they can be retrieved easily by any element of the engine.
 
