@@ -91,10 +91,10 @@ ComponentContainer.prototype.configureComponents = function( info )
 	//this is to avoid problems with components that check if the node has other components and if not they create it
 	for(var i = 0, l = to_configure.length; i < l; i+=2)
 	{
+		var comp = to_configure[i];
+		var data = to_configure[i+1];
 		if(LS.catch_exceptions)
 		{
-			var comp = to_configure[i];
-			var data = to_configure[i+1];
 			try
 			{
 				comp.configure( data );
