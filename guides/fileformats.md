@@ -92,3 +92,29 @@ LS.Formats.addSupportedFormat( "srt", {
 });
 ```
 
+## Adding a new format for an existing resource
+
+Sometimes you want to parse a file to create a resource of a class that it is already defined in the engine (for instance for a textura).
+
+In that case you only need to define the parser.
+
+```js
+var parserTGA = { 
+	extension: 'tga',
+	type: 'image',
+	dataType:"arraybuffer",
+	format: 'binary',
+
+	parse: function(data, options)
+	{
+  //parse data and build a texture
+  //return texture
+	}
+};
+
+LS.Formats.addSupportedFormat( "tga", parserTGA );   
+```
+
+
+
+
