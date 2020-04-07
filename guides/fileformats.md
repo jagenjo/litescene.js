@@ -94,9 +94,9 @@ LS.Formats.addSupportedFormat( "srt", {
 
 ## Adding a new format for an existing resource
 
-Sometimes you want to parse a file to create a resource of a class that it is already defined in the engine (for instance for a textura).
+Sometimes you want to parse a file to create a resource of a class that it is already defined in the engine (for instance for a Texture).
 
-In that case you only need to define the parser.
+In that case you only need to define the parser amd register it so the system knows how to fetch the file and when:
 
 ```js
 var parserTGA = { 
