@@ -72,6 +72,7 @@ Here is a list of steps you need to do to add a new file format support:
   * **type**: which type of resource ("image","scene",mesh"), otherwise is assumed "data"
   * **resource**: the classname to instantiate for this resource (p.e. Mesh, Texture, ...)
   * **dataType**: which dataType send with the request when requesting to server ("text","arraybuffer")
+  * **skip_conversion**: if true this resource will keep its format when saved (otherwise is converted to default format for that resource type)
   * **parse**: a callback in charge of converting the data in something suitable by the system. If null then the data will be as it is received.
 - Registering it to LS.Formats with ```LS.Formats.addSupportedFormat( "extension", MyFormatInfo );```
 - If you want a preprocessor you need to call to ```LS.ResourcesManager.registerResourcePreProcessor(extension, callback)```
@@ -104,6 +105,7 @@ var parserTGA = {
 	type: 'image',
 	dataType:"arraybuffer",
 	format: 'binary',
+	skip_conversion: true, //if it shouldnt be converted to default extension
 
 	parse: function(data, options)
 	{
