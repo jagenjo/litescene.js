@@ -4,6 +4,7 @@ var parserTGA = {
 	type: 'image',
 	dataType:"arraybuffer",
 	format: 'binary',
+	skip_conversion: true,
 
 	parse: function(data, options)
 	{

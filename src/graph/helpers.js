@@ -449,10 +449,7 @@ if(typeof(LiteGraph) != "undefined")
 		this._area = vec4.create();
 		this._values = this.properties.values.split(";");
 		var that = this;
-		this.widget = this.addWidget("text","Options",this.properties.values,function(v){
-			that.properties.values = v;
-			that.onPropertyChanged("values",v);
-		});
+		this.widget = this.addWidget("text","Options",this.properties.values,"values");
 		this.size = [240,70];
 	}
 
@@ -463,10 +460,7 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphGUIMultipleChoice.prototype.onPropertyChanged = function(name,value)
 	{
 		if(name == "values")
-		{
 			this._values = value.split(";");
-			this.widget.value = value;
-		}
 	}
 
 	LGraphGUIMultipleChoice.prototype.onAction = function(name, param)
@@ -1092,7 +1086,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.addOutput("out","object");
 		this.points = [];	//2D points, name of point ("happy","sad") and weights ("mouth_left":0.4, "mouth_right":0.3)
 		this.current_weights = {}; //object that tells the current state of weights, like "mouth_left":0.3, ...
-		this.properties = { enabled: true };
+		this.properties = { enabled: true, dimensions: 1 };
 		var node = this;
 		this.combo = this.addWidget("combo","Point", "", function(v){
 			node._selected_point = node.findPoint(v);
@@ -1105,6 +1099,28 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LGraphRemapWeights.title = "Remap Weights";
+
+	LGraphRemapWeights.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name != "dimensions" || this.properties.dimensions == value)
+			return;
+		this.properties.dimensions = value || 1;
+		var dim = this.properties.dimensions;
+		for(var i in this.current_weights)
+		{
+			if( this.current_weights[i] == null )
+			{
+				this.current_weights[i] = dim == 1 ? 0 : new Array(dim).fill(0);
+				continue;
+			}
+
+			if( this.current_weights[i].constructor === Number && dim == 1)
+				continue;
+
+			if( this.current_weights[i].length != dim )
+				this.current_weights[i] = new Array(dim).fill(0);
+		}
+	}
 
 	LGraphRemapWeights.prototype.onExecute = function()
 	{
@@ -1129,8 +1145,17 @@ if(typeof(LiteGraph) != "undefined")
 			}
 		}
 
+		//clear
+		var dimensions = this.properties.dimensions || 1;
 		for(var i in this.current_weights)
-			this.current_weights[i] = 0;
+		{
+			if( dimensions == 1 )
+				this.current_weights[i] = 0;
+			else if( !this.current_weights[i] || this.current_weights[i].length != dimensions )
+				this.current_weights[i] = new Array(dimensions).fill(0);
+			else
+				this.current_weights[i].fill(0);
+		}
 
 		var points_has_changed = false;
 		if( point_weights )
@@ -1143,11 +1168,19 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			}
 			var w = point_weights[i]; //input
-			//for(var j = 0, l = point.weights.length; j < lw && j < l; ++j)
 			for(var j in point.weights)
 			{
-				var v = (point.weights[j] || 0) * w;
-				this.current_weights[j] += v;
+				if(dimensions == 1)
+				{
+					var v = (point.weights[j] || 0) * w;
+					this.current_weights[j] += v;
+				}
+				else
+					for(var k = 0; k < dimensions; ++k)
+					{
+						var v = point.weights[j][k] * w;
+						this.current_weights[j][k] += v;
+					}
 			}
 		}
 
@@ -1221,11 +1254,12 @@ if(typeof(LiteGraph) != "undefined")
 			this.graph.runStep(1,false, this.order );
 
 		var name_weights = this.getInputDataByName("name_weights");
+		var dimensions = this.properties.dimensions || 1;
 		
 		if(name_weights)
 		{
 			for(var j in name_weights)
-				this.current_weights[j] = name_weights[j];
+				this.current_weights[j] = dimensions == 1 ? name_weights[j] : name_weights[j].concat();
 		}
 		else //get from output
 		{
@@ -1246,7 +1280,7 @@ if(typeof(LiteGraph) != "undefined")
 				var compo_weights = component.name_weights;
 				var compo_weights = component.name_weights;
 				for(var j in compo_weights)
-					this.current_weights[j] = compo_weights[j];
+					this.current_weights[j] = dimensions == 1 ? compo_weights[j] : name_weights[j].concat();
 			}
 		}
 
@@ -1256,7 +1290,7 @@ if(typeof(LiteGraph) != "undefined")
 			return;
 		this._selected_point.weights = {};
 		for(var i in this.current_weights)
-			this._selected_point.weights[i] = this.current_weights[i];
+			this._selected_point.weights[i] = dimensions == 1 ? this.current_weights[i] : this.current_weights[i].concat();
 	}
 
 	LGraphRemapWeights.prototype.findPoint = function( name )
@@ -1269,8 +1303,10 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphRemapWeights.prototype.assignCurrentWeightsToPoint = function( point )
 	{
+		var dimensions = this.properties.dimensions || 1;
 		for(var i in this.current_weights)
-			point.weights[i] = this.current_weights[i];
+			if( dimensions == 1 )
+				point.weights[i] = dimensions == 1 ? this.current_weights[i] : this.current_weights[i].concat();
 	}
 
 	LGraphRemapWeights.prototype.onSerialize = function(o)
@@ -1280,22 +1316,38 @@ if(typeof(LiteGraph) != "undefined")
 		o.enabled = this.enabled;
 	}
 
+	LGraphRemapWeights.prototype.removeWeight = function( name )
+	{
+		for(var i = 0; i < this.points.length; ++i)
+			delete this.points[i].weights[name];
+		delete this.current_weights[name];
+	}
+
 	LGraphRemapWeights.prototype.onConfigure = function(o)
 	{
 		if(o.enabled !== undefined)
 			this.properties.enabled = o.enabled;
 		if( o.current_weights )
 			this.current_weights = o.current_weights;
+		this.properties.dimensions = o.properties.dimensions || 1;
 		if(o.points)
 		{
 			this.points = o.points;
+			var dimensions = o.properties.dimensions;
 
-			//legacy
+			//error checking from legacy
 			for(var i = 0;i < this.points.length; ++i)
 			{
 				var p = this.points[i];
 				if(p.weights && p.weights.constructor !== Object)
 					p.weights = {};
+				for(var j in p.weights)
+				{
+					if( p.weights[j].constructor == Number && dimensions != 1)
+						p.weights[j] = 0;
+					else if (p.weights[j].constructor !== Array && dimensions > 1)
+						p.weights[j] = new Array(dimensions).fill(0);
+				}
 			}
 
 			//widget
@@ -1351,15 +1403,37 @@ if(typeof(LiteGraph) != "undefined")
 		inspector.addSeparator();
 		inspector.addTitle("Weights");
 
-		for(var i in this.current_weights)
+		var dimensions = this.properties.dimensions || 1;
+		var type = null;
+		switch(dimensions)
 		{
-			inspector.addNumber( i, this.current_weights[i], { name_width: "80%", index: i, callback: function(v){
-				node.current_weights[ this.options.index ] = v;
-			}});
+			case 2: type = "vec2"; break;
+			case 3: type = "vec3"; break;
+			case 4: type = "vec4"; break;
+			default: type = "number"; break;
 		}
 
+		inspector.widgets_per_row = 2;
+		if(type)
+		for(var i in this.current_weights)
+		{
+			var name = i;
+			inspector.add( type, name, this.current_weights[ name ], { width: "calc(100% - 40px)", name_width: "80%", index: name, callback: function(v){
+				node.current_weights[ name ] = v;
+			}});
+			inspector.addButton( null, InterfaceModule.icons.trash, { width: 30, index: name, callback: function(v){
+				var name = this.options.index;
+				LiteGUI.confirm("Are you sure? It will be removed from all points", function(v){
+					if(v)
+						node.removeWeight( name );
+					inspector.refresh();
+				});
+			}});
+		}
+		inspector.widgets_per_row = 1;
+
 		inspector.addStringButton("Add Weight","", { button: "+", callback_button: function(v){
-			node.current_weights[v] = 0;
+			node.current_weights[v] = dimensions == 1 ? 1 : new Array(dimensions).fill(0);
 			inspector.refresh();
 		}});
 
@@ -1368,8 +1442,16 @@ if(typeof(LiteGraph) != "undefined")
 
     LGraphRemapWeights.prototype.onGetOutputs = function() {
         var r = [["selected","string"]];
+		var type = null;
+		switch(this.properties.dimensions)
+		{
+			case 2: type = "vec2"; break;
+			case 3: type = "vec3"; break;
+			case 4: type = "vec4"; break;
+			default: type = "number"; break;
+		}
 		for(var i in this.current_weights)
-			r.push([i,"number"]);
+			r.push([i,type]);
 		return r;
     };
 
@@ -1503,7 +1585,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		var enabled = this.getInputData(0);
 		var ray = this.getInputData(1);
-		if(enabled === false || !ray || ray.constructor != LS.Ray )
+		if(enabled === false || enabled === 0 || enabled === null || !ray || ray.constructor != LS.Ray )
 			return;
 		var options = this.options;
 		options.max_dist = this.properties.max_dist;

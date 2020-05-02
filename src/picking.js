@@ -18,7 +18,7 @@ var Picking = {
 	_picking_depth: 0,
 	_picking_next_color_id: 0,
 	_picking_render_settings: new RenderSettings(),
-
+	_picking_position: vec3.create(), //last picking position in world coordinates
 	_use_scissor_test: true,
 
 	/**
@@ -72,7 +72,6 @@ var Picking = {
 
 		//render all Render Instances
 		this.getPickingColorFromBuffer( scene, camera, x, y, layers );
-
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 
@@ -132,6 +131,12 @@ var Picking = {
 
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, this._picking_color );
 
+			var depth = (this._picking_color[3] / 255);
+			var linear_depth = camera.near * (depth + 1.0) / (camera.far + camera.near - depth * (camera.far - camera.near));
+			this._last_depth = linear_depth * (camera.far - camera.near) + camera.near;
+			this._picking_position = camera.unproject([x,y,depth],null,this._picking_position);
+			//console.log(this._picking_color,this._last_depth);
+
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
 
@@ -140,7 +145,6 @@ var Picking = {
 		LS.Renderer._current_target = null; //??? deprecated
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
-		//trace(" END Rendering: ", this._picking_color );
 		return this._picking_color;
 	},
 

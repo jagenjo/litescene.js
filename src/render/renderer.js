@@ -61,6 +61,7 @@ var Renderer = {
 	_current_camera: null,
 	_current_target: null, //texture where the image is being rendered
 	_current_pass: COLOR_PASS, //object containing info about the pass
+	_current_layers_filter: 0xFFFF,// do a & with this to know if it must be rendered
 	_global_textures: {}, //used to speed up fetching global textures
 	_global_shader_blocks: [], //used to add extra shaderblocks to all objects in the scene (it gets reseted every frame)
 	_global_shader_blocks_flags: 0, 
@@ -528,6 +529,7 @@ var Renderer = {
 		//set as the current camera
 		this._current_camera = camera;
 		LS.Camera.current = camera;
+		this._current_layers_filter = render_settings ? camera.layers & render_settings.layers : camera.layers;
 
 		//Draw allows to render debug info easily
 		if(LS.Draw)
@@ -606,6 +608,27 @@ var Renderer = {
 		gl.disable( gl.STENCIL_TEST );
 	},
 
+	//creates the separate render queues for every block of instances
+	createRenderQueues: function()
+	{
+		this._queues.length = 0;
+
+		this._renderqueue_background = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.BACKGROUND, LS.RenderQueue.NO_SORT, { name: "BACKGROUND" } ));
+		this._renderqueue_geometry = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.GEOMETRY, LS.RenderQueue.SORT_NEAR_TO_FAR, { name: "GEOMETRY" } ));
+		this._renderqueue_transparent = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.TRANSPARENT, LS.RenderQueue.SORT_FAR_TO_NEAR, { name: "TRANSPARENT" } ));
+		this._renderqueue_readback = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.READBACK_COLOR, LS.RenderQueue.SORT_FAR_TO_NEAR , { must_clone_buffers: true, name: "READBACK" }));
+		this._renderqueue_overlay = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.SORT_BY_PRIORITY, { name: "OVERLAY" }));
+	},
+
+	addRenderQueue: function( queue )
+	{
+		var index = Math.floor(queue.value * 0.1);
+		if( this._queues[ index ] )
+			console.warn("Overwritting render queue:", queue.name );
+		this._queues[ index ] = queue;
+		return queue;
+	},
+
 	//clears render queues and inserts objects according to their settings
 	updateRenderQueues: function( camera, instances )
 	{
@@ -648,6 +671,7 @@ var Renderer = {
 	{
 		var queues = this._queues;
 		var queue = null;
+		var queue_index = -1;
 
 		if( instance.material.queue == RenderQueue.AUTO || instance.material.queue == null ) 
 		{
@@ -659,12 +683,16 @@ var Renderer = {
 		else
 		{
 			//queue index use the tens digit
-			var queue_index = Math.floor( instance.material.queue * 0.1 );
+			queue_index = Math.floor( instance.material.queue * 0.1 );
 			queue = queues[ queue_index ];
 		}
 
-		if( !queue )
-			queue = this._renderqueue_geometry;
+		if( !queue ) //create new queue
+		{
+			queue = new LS.RenderQueue( queue_index * 10 + 5, LS.RenderQueue.NO_SORT );
+			queues[ queue_index ] = queue;
+		}
+
 		if(queue)
 			queue.add( instance );
 		return queue;
@@ -724,7 +752,7 @@ var Renderer = {
 		var camera_index_flag = camera._rendering_index != -1 ? (1<<(camera._rendering_index)) : 0;
 		var apply_frustum_culling = render_settings.frustum_culling;
 		var frustum_planes = camera.updateFrustumPlanes();
-		var layers_filter = camera.layers & render_settings.layers;
+		var layers_filter = this._current_layers_filter = camera.layers & render_settings.layers;
 
 		LEvent.trigger( scene, EVENT.BEFORE_RENDER_INSTANCES, render_settings );
 		//scene.triggerInNodes( EVENT.BEFORE_RENDER_INSTANCES, render_settings );
@@ -803,7 +831,7 @@ var Renderer = {
 		for(var j = 0; j < this._queues.length; ++j)
 		{
 			var queue = this._queues[j];
-			if(!queue || !queue.instances.length) //empty
+			if(!queue || !queue.instances.length || !queue.enabled) //empty
 				continue;
 
 			//used to change RenderFrameContext stuff (cloning textures for refraction, etc)
@@ -1391,21 +1419,6 @@ var Renderer = {
 				return camera;
 		}
 		return null;
-	},
-
-	createRenderQueues: function()
-	{
-		this._queues.length = 0;
-
-		this._queues.push( new LS.RenderQueue( LS.RenderQueue.BACKGROUND, LS.RenderQueue.NO_SORT ) );
-
-		this._renderqueue_geometry = new LS.RenderQueue( LS.RenderQueue.GEOMETRY, LS.RenderQueue.SORT_NEAR_TO_FAR )
-		this._queues.push( this._renderqueue_geometry );
-		this._renderqueue_transparent = new LS.RenderQueue( LS.RenderQueue.TRANSPARENT, LS.RenderQueue.SORT_FAR_TO_NEAR );
-		this._queues.push( this._renderqueue_transparent );
-
-		this._queues.push( new LS.RenderQueue( LS.RenderQueue.READBACK_COLOR, LS.RenderQueue.SORT_FAR_TO_NEAR , { must_clone_buffers: true }));
-		this._queues.push( new LS.RenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.SORT_BY_PRIORITY ) );
 	},
 
 	setRenderPass: function( pass )

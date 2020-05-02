@@ -2592,7 +2592,10 @@ var Network = {
 			var script = document.createElement('script');
 			script.num = i;
 			script.type = 'text/javascript';
-			script.src = url[i] + "?" + LS.RM.getNoCache(true);
+			var full_url = url[i].trim();
+			if(full_url.substr(0,5) != "blob:")
+				full_url += "?" + LS.RM.getNoCache(true);
+			script.src = full_url;
 			script.async = false;
 			//if( script.src.substr(0,5) == "blob:") //local scripts could contain utf-8
 				script.charset = "UTF-8";
@@ -4313,7 +4316,7 @@ var ResourcesManager = {
 	resource_once_callbacks: {}, //callback called once
 
 	virtual_file_systems: {}, //protocols associated to urls  "VFS":"../"
-	skip_proxy_extensions: ["mp3","wav","ogg"], //this file formats should not be passed through the proxy
+	skip_proxy_extensions: ["mp3","wav","ogg","mp4","webm"], //this file formats should not be passed through the proxy
 	force_nocache_extensions: ["js","glsl","json"], //this file formats should be reloaded without using the cache
 	nocache_files: {}, //this is used by the editor to avoid using cached version of recently loaded files
 
@@ -4655,7 +4658,9 @@ var ResourcesManager = {
 				case 'https':
 					var full_url = url;
 					var extension = this.getExtension( url ).toLowerCase();
-					if(this.proxy && this.skip_proxy_extensions.indexOf( extension ) == -1 && (!options || (options && !options.ignore_proxy)) ) //proxy external files
+					var host = url.substr(0,url.indexOf("/",protocol.length + 3));
+					host = host.substr(protocol.length+3);
+					if(this.proxy && host != location.host && this.skip_proxy_extensions.indexOf( extension ) == -1 && (!options || (options && !options.ignore_proxy)) ) //proxy external files
 						return this.proxy + url; //this.proxy + url.substr(pos+3); //"://"
 					return full_url;
 					break;
@@ -5784,10 +5789,13 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 				texture._original_data = data;
 		}
 
-		if( !LS.ResourcesManager.keep_urls )
-			URL.revokeObjectURL( objectURL ); //free memory
-		else
-			texture._local_url = objectURL; //used in strange situations
+		if( objectURL )
+		{
+			if( !LS.ResourcesManager.keep_urls )
+				URL.revokeObjectURL( objectURL ); //free memory
+			else
+				texture._local_url = objectURL; //used in strange situations
+		}
 
 		if(callback)
 			callback(filename,texture,options);
@@ -8631,7 +8639,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		if( environment_texture )
 		{
-			var tex = LS.ResourcesManager.textures[ environment_texture ];
+			var tex = environment_texture.constructor === String ? LS.ResourcesManager.textures[ environment_texture ] : environment_texture;
 			if( tex && tex.texture_type == GL.TEXTURE_2D )
 			{
 				if( tex._is_planar )
@@ -8820,6 +8828,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 
 	//global stuff
 	this._render_state.enable( render_settings );
+	gl.disable( gl.BLEND ); //picking shouldnt use blending or colors will be wrong
 	LS.Renderer.bindSamplers( this._samplers );
 	LS.Renderer.bindSamplers( instance.samplers );
 
@@ -10194,9 +10203,15 @@ void main() {\n\
 }\n\
 \\picking.fs\n\
 	precision mediump float;\n\
+	varying vec4 v_screenpos;\n\
+	uniform vec2 u_camera_planes;\n\
 	uniform vec4 u_material_color;\n\
 	void main() {\n\
-		gl_FragColor = u_material_color;\n\
+		float n = u_camera_planes.x;\n\
+		float f = u_camera_planes.y;\n\
+		float z = v_screenpos.z / v_screenpos.w * 0.5 + 0.5;\n\
+		//float linear = n * (z + 1.0) / (f + n - z * (f - n));\n\
+		gl_FragColor = vec4( u_material_color.xyz, gl_FragCoord.z );\n\
 	}\n\
 ";
 
@@ -11498,10 +11513,10 @@ ComponentContainer.prototype.configureComponents = function( info )
 	//this is to avoid problems with components that check if the node has other components and if not they create it
 	for(var i = 0, l = to_configure.length; i < l; i+=2)
 	{
+		var comp = to_configure[i];
+		var data = to_configure[i+1];
 		if(LS.catch_exceptions)
 		{
-			var comp = to_configure[i];
-			var data = to_configure[i+1];
 			try
 			{
 				comp.configure( data );
@@ -13125,8 +13140,8 @@ function Scene()
 	//work in progress, not finished yet. This will contain all the objects in cells
 	this._spatial_container = new LS.SpatialContainer();
 
-	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
-	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
+	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene) they do not have access to the data in the scene
+	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app. they have access to the scene data
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
 
 	//track with global animations of the scene
@@ -13700,6 +13715,9 @@ Scene.getScriptsList = function( scene, allow_local, full_paths )
 			scripts.push( script_url );
 		}
 	}
+
+	scripts = scripts.map(function(a){ return a.trim(); }); //careful with spaces
+
 	return scripts;
 }
 
@@ -13748,6 +13766,7 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 				continue;
 			}
 
+			//we use blobs because we have the data locally but we need to load it from an url (the script loader works like that)
 			var blob = new Blob([res.data],{encoding:"UTF-8", type: 'text/plain;charset=UTF-8'});
 			var objectURL = URL.createObjectURL( blob );
 			final_scripts.push( objectURL );
@@ -14291,7 +14310,23 @@ Scene.prototype.setPropertyValueFromPath = function( path, value, root_node, off
 	}
 
 	//get node
-	var node = root_node ? root_node.findNode( path[offset] ) : this.getNode( path[offset] );
+	var node = null;
+	if( root_node )
+	{
+		var name = path[offset];
+		if( name.indexOf("|") != -1)
+		{
+			var tokens = name.split("|");
+			var node = root_node;
+			for(var i = 0; i < tokens.length && node; ++i)
+				node = node.getChildByName( tokens[i] );
+		}
+		else
+			node = root_node.findNode( path[offset] );
+	}
+	else
+		node = this.getNode( path[offset] );
+
 	if(!node)
 		return null;
 
@@ -17035,6 +17070,11 @@ function Take(o)
 	if(o)
 		this.configure(o);
 
+}
+
+Take.prototype.clear = function()
+{
+	this.tracks = [];
 }
 
 Take.prototype.configure = function( o )
@@ -22622,7 +22662,7 @@ LGraphVolumetricLight.prototype.onExecute = function()
 
 	var shadowmap = null;
 	if(light && light._shadowmap)
-		shadowmap = light._shadowmap.texture;
+		shadowmap = light._shadowmap._texture;
 
 	if(this.properties.precision === LGraphTexture.PASS_THROUGH || this.properties.enabled === false || !depth || !camera || !light || !shadowmap )
 	{
@@ -22854,6 +22894,118 @@ if( LiteGraph.Nodes.LGraphTextureCanvas2D )
 
 	LiteGraph.registerNodeType("texture/canvas2DfromScript", LGraphTextureCanvas2DFromScript);
 }
+
+function LGraphReprojectDepth()
+{
+	this.addInput("color","Texture");
+	this.addInput("depth","Texture");
+	this.addInput("camera","Camera,Component");
+	this.properties = { enabled: true, pointSize: 1, offset: 0, triangles: false, filter: true, layers:0xFF };
+
+	this._view_matrix = mat4.create();
+	this._projection_matrix = mat4.create();
+	this._viewprojection_matrix = mat4.create();
+
+	this._uniforms = { 
+		u_depth_ivp: mat4.create(),
+		u_point_size: 1,
+		u_depth_offset: 0,
+		u_ires: vec2.create(),
+		u_color_texture:0,
+		u_depth_texture:1,
+		u_vp: this._viewprojection_matrix
+	};
+}
+
+LGraphReprojectDepth.widgets_info = {
+	"layers": {widget:"layers"}
+};
+
+LGraphReprojectDepth.title = "Reproj.Depth";
+LGraphReprojectDepth.desc = "Reproject Depth";
+
+LGraphReprojectDepth.prototype.onExecute = function()
+{
+	var color = this.getInputData(0);
+	var depth = this.getInputData(1);
+	var camera = this.getInputData(2);
+
+	if( !depth || !camera || camera.constructor !== LS.Camera )
+		return;
+
+	color = color || GL.Texture.getWhiteTexture();
+
+	if(!LiteGraph.LGraphRender.onRequestCameraMatrices)
+	{
+		console.warn("cannot render geometry, LiteGraph.onRequestCameraMatrices is null, remember to fill this with a callback(view_matrix, projection_matrix,viewprojection_matrix) to use 3D rendering from the graph");
+		return;
+	}
+
+	LiteGraph.LGraphRender.onRequestCameraMatrices( this._view_matrix, this._projection_matrix,this._viewprojection_matrix );
+	//var current_camera = LS.Renderer.getCurrentCamera();
+	if(!(LS.Renderer._current_layers_filter & this.properties.layers ))
+		return;
+
+	var enabled = this.properties.enabled;
+	var mesh = this._mesh;
+	if(!mesh)
+		mesh = this._mesh = GL.Mesh.plane({detailX: depth.width, detailY: depth.height});
+	var shader = null;
+	if(!LGraphReprojectDepth._shader)
+		LGraphReprojectDepth._shader = new GL.Shader( LGraphReprojectDepth.vertex_shader, LGraphReprojectDepth.pixel_shader );
+	shader = LGraphReprojectDepth._shader;
+	var uniforms = this._uniforms;
+	uniforms.u_point_size = this.properties.pointSize;
+	uniforms.u_depth_offset = this.properties.offset;
+	uniforms.u_ires.set([1/depth.width,1/depth.height]);
+	mat4.invert( uniforms.u_depth_ivp, camera._viewprojection_matrix );
+	gl.enable( gl.DEPTH_TEST );
+	gl.disable( gl.BLEND );
+	color.bind(0);
+	gl.texParameteri( color.texture_type, gl.TEXTURE_MAG_FILTER, this.properties.filter ? gl.LINEAR : gl.NEAREST );
+	depth.bind(1);
+	gl.texParameteri( depth.texture_type, gl.TEXTURE_MAG_FILTER, this.properties.filter ? gl.LINEAR : gl.NEAREST );
+	shader.uniforms( uniforms ).draw( mesh, this.properties.triangles ? gl.TRIANGLES : gl.POINTS );
+}
+
+
+LGraphReprojectDepth.vertex_shader = "\n\
+	\n\
+	attribute vec3 a_vertex;\n\
+	attribute vec2 a_coord;\n\
+	uniform sampler2D u_color_texture;\n\
+	uniform sampler2D u_depth_texture;\n\
+	uniform mat4 u_depth_ivp;\n\
+	uniform mat4 u_vp;\n\
+	uniform vec2 u_ires;\n\
+	uniform float u_depth_offset;\n\
+	uniform float u_point_size;\n\
+	varying vec4 color;\n\
+	\n\
+	void main() {\n\
+		color = texture2D( u_color_texture, a_coord );\n\
+		float depth = texture2D( u_depth_texture, a_coord ).x * 2.0 - 1.0;\n\
+		vec4 pos2d = vec4( (a_coord)*2.0-vec2(1.0),depth + u_depth_offset,1.0);\n\
+		vec4 pos3d = u_depth_ivp * pos2d;\n\
+		//pos3d.xyz = pos3d.xyz / pos3d.w;\n\
+		gl_Position = u_vp * pos3d;\n\
+		gl_PointSize = u_point_size;\n\
+	}\n\
+";
+
+LGraphReprojectDepth.pixel_shader = "\n\
+precision mediump float;\n\
+varying vec4 color;\n\
+void main()\n\
+{\n\
+	gl_FragColor = color;\n\
+}\n\
+";
+
+LiteGraph.registerNodeType("texture/reproj.depth", LGraphReprojectDepth );
+
+
+//*********************
 
 function LGraphSSAO()
 {
@@ -23657,10 +23809,7 @@ if(typeof(LiteGraph) != "undefined")
 		this._area = vec4.create();
 		this._values = this.properties.values.split(";");
 		var that = this;
-		this.widget = this.addWidget("text","Options",this.properties.values,function(v){
-			that.properties.values = v;
-			that.onPropertyChanged("values",v);
-		});
+		this.widget = this.addWidget("text","Options",this.properties.values,"values");
 		this.size = [240,70];
 	}
 
@@ -23671,10 +23820,7 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphGUIMultipleChoice.prototype.onPropertyChanged = function(name,value)
 	{
 		if(name == "values")
-		{
 			this._values = value.split(";");
-			this.widget.value = value;
-		}
 	}
 
 	LGraphGUIMultipleChoice.prototype.onAction = function(name, param)
@@ -24300,7 +24446,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.addOutput("out","object");
 		this.points = [];	//2D points, name of point ("happy","sad") and weights ("mouth_left":0.4, "mouth_right":0.3)
 		this.current_weights = {}; //object that tells the current state of weights, like "mouth_left":0.3, ...
-		this.properties = { enabled: true };
+		this.properties = { enabled: true, dimensions: 1 };
 		var node = this;
 		this.combo = this.addWidget("combo","Point", "", function(v){
 			node._selected_point = node.findPoint(v);
@@ -24313,6 +24459,28 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LGraphRemapWeights.title = "Remap Weights";
+
+	LGraphRemapWeights.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name != "dimensions" || this.properties.dimensions == value)
+			return;
+		this.properties.dimensions = value || 1;
+		var dim = this.properties.dimensions;
+		for(var i in this.current_weights)
+		{
+			if( this.current_weights[i] == null )
+			{
+				this.current_weights[i] = dim == 1 ? 0 : new Array(dim).fill(0);
+				continue;
+			}
+
+			if( this.current_weights[i].constructor === Number && dim == 1)
+				continue;
+
+			if( this.current_weights[i].length != dim )
+				this.current_weights[i] = new Array(dim).fill(0);
+		}
+	}
 
 	LGraphRemapWeights.prototype.onExecute = function()
 	{
@@ -24337,8 +24505,17 @@ if(typeof(LiteGraph) != "undefined")
 			}
 		}
 
+		//clear
+		var dimensions = this.properties.dimensions || 1;
 		for(var i in this.current_weights)
-			this.current_weights[i] = 0;
+		{
+			if( dimensions == 1 )
+				this.current_weights[i] = 0;
+			else if( !this.current_weights[i] || this.current_weights[i].length != dimensions )
+				this.current_weights[i] = new Array(dimensions).fill(0);
+			else
+				this.current_weights[i].fill(0);
+		}
 
 		var points_has_changed = false;
 		if( point_weights )
@@ -24351,11 +24528,19 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			}
 			var w = point_weights[i]; //input
-			//for(var j = 0, l = point.weights.length; j < lw && j < l; ++j)
 			for(var j in point.weights)
 			{
-				var v = (point.weights[j] || 0) * w;
-				this.current_weights[j] += v;
+				if(dimensions == 1)
+				{
+					var v = (point.weights[j] || 0) * w;
+					this.current_weights[j] += v;
+				}
+				else
+					for(var k = 0; k < dimensions; ++k)
+					{
+						var v = point.weights[j][k] * w;
+						this.current_weights[j][k] += v;
+					}
 			}
 		}
 
@@ -24429,11 +24614,12 @@ if(typeof(LiteGraph) != "undefined")
 			this.graph.runStep(1,false, this.order );
 
 		var name_weights = this.getInputDataByName("name_weights");
+		var dimensions = this.properties.dimensions || 1;
 		
 		if(name_weights)
 		{
 			for(var j in name_weights)
-				this.current_weights[j] = name_weights[j];
+				this.current_weights[j] = dimensions == 1 ? name_weights[j] : name_weights[j].concat();
 		}
 		else //get from output
 		{
@@ -24454,7 +24640,7 @@ if(typeof(LiteGraph) != "undefined")
 				var compo_weights = component.name_weights;
 				var compo_weights = component.name_weights;
 				for(var j in compo_weights)
-					this.current_weights[j] = compo_weights[j];
+					this.current_weights[j] = dimensions == 1 ? compo_weights[j] : name_weights[j].concat();
 			}
 		}
 
@@ -24464,7 +24650,7 @@ if(typeof(LiteGraph) != "undefined")
 			return;
 		this._selected_point.weights = {};
 		for(var i in this.current_weights)
-			this._selected_point.weights[i] = this.current_weights[i];
+			this._selected_point.weights[i] = dimensions == 1 ? this.current_weights[i] : this.current_weights[i].concat();
 	}
 
 	LGraphRemapWeights.prototype.findPoint = function( name )
@@ -24477,8 +24663,10 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphRemapWeights.prototype.assignCurrentWeightsToPoint = function( point )
 	{
+		var dimensions = this.properties.dimensions || 1;
 		for(var i in this.current_weights)
-			point.weights[i] = this.current_weights[i];
+			if( dimensions == 1 )
+				point.weights[i] = dimensions == 1 ? this.current_weights[i] : this.current_weights[i].concat();
 	}
 
 	LGraphRemapWeights.prototype.onSerialize = function(o)
@@ -24488,22 +24676,38 @@ if(typeof(LiteGraph) != "undefined")
 		o.enabled = this.enabled;
 	}
 
+	LGraphRemapWeights.prototype.removeWeight = function( name )
+	{
+		for(var i = 0; i < this.points.length; ++i)
+			delete this.points[i].weights[name];
+		delete this.current_weights[name];
+	}
+
 	LGraphRemapWeights.prototype.onConfigure = function(o)
 	{
 		if(o.enabled !== undefined)
 			this.properties.enabled = o.enabled;
 		if( o.current_weights )
 			this.current_weights = o.current_weights;
+		this.properties.dimensions = o.properties.dimensions || 1;
 		if(o.points)
 		{
 			this.points = o.points;
+			var dimensions = o.properties.dimensions;
 
-			//legacy
+			//error checking from legacy
 			for(var i = 0;i < this.points.length; ++i)
 			{
 				var p = this.points[i];
 				if(p.weights && p.weights.constructor !== Object)
 					p.weights = {};
+				for(var j in p.weights)
+				{
+					if( p.weights[j].constructor == Number && dimensions != 1)
+						p.weights[j] = 0;
+					else if (p.weights[j].constructor !== Array && dimensions > 1)
+						p.weights[j] = new Array(dimensions).fill(0);
+				}
 			}
 
 			//widget
@@ -24559,15 +24763,37 @@ if(typeof(LiteGraph) != "undefined")
 		inspector.addSeparator();
 		inspector.addTitle("Weights");
 
-		for(var i in this.current_weights)
+		var dimensions = this.properties.dimensions || 1;
+		var type = null;
+		switch(dimensions)
 		{
-			inspector.addNumber( i, this.current_weights[i], { name_width: "80%", index: i, callback: function(v){
-				node.current_weights[ this.options.index ] = v;
-			}});
+			case 2: type = "vec2"; break;
+			case 3: type = "vec3"; break;
+			case 4: type = "vec4"; break;
+			default: type = "number"; break;
 		}
 
+		inspector.widgets_per_row = 2;
+		if(type)
+		for(var i in this.current_weights)
+		{
+			var name = i;
+			inspector.add( type, name, this.current_weights[ name ], { width: "calc(100% - 40px)", name_width: "80%", index: name, callback: function(v){
+				node.current_weights[ name ] = v;
+			}});
+			inspector.addButton( null, InterfaceModule.icons.trash, { width: 30, index: name, callback: function(v){
+				var name = this.options.index;
+				LiteGUI.confirm("Are you sure? It will be removed from all points", function(v){
+					if(v)
+						node.removeWeight( name );
+					inspector.refresh();
+				});
+			}});
+		}
+		inspector.widgets_per_row = 1;
+
 		inspector.addStringButton("Add Weight","", { button: "+", callback_button: function(v){
-			node.current_weights[v] = 0;
+			node.current_weights[v] = dimensions == 1 ? 1 : new Array(dimensions).fill(0);
 			inspector.refresh();
 		}});
 
@@ -24576,8 +24802,16 @@ if(typeof(LiteGraph) != "undefined")
 
     LGraphRemapWeights.prototype.onGetOutputs = function() {
         var r = [["selected","string"]];
+		var type = null;
+		switch(this.properties.dimensions)
+		{
+			case 2: type = "vec2"; break;
+			case 3: type = "vec3"; break;
+			case 4: type = "vec4"; break;
+			default: type = "number"; break;
+		}
 		for(var i in this.current_weights)
-			r.push([i,"number"]);
+			r.push([i,type]);
 		return r;
     };
 
@@ -24711,7 +24945,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		var enabled = this.getInputData(0);
 		var ray = this.getInputData(1);
-		if(enabled === false || !ray || ray.constructor != LS.Ray )
+		if(enabled === false || enabled === 0 || enabled === null || !ray || ray.constructor != LS.Ray )
 			return;
 		var options = this.options;
 		options.max_dist = this.properties.max_dist;
@@ -28394,7 +28628,7 @@ function RenderSettings( o )
 	this.render_gui = true; //render gui
 	this.render_helpers = true; //render helpers (for the editor)
 
-	this.layers = 0xFF; //this is masked with the camera layers when rendering
+	this.layers = 0xFFFF; //this is masked with the camera layers when rendering
 
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 	this.frustum_culling = true; //test bounding box by frustum to determine visibility
@@ -29596,6 +29830,7 @@ function RenderFrameContext( o )
 	this._depth_texture = null;
 	this._textures = []; //all color textures (the first will be _color_texture)
 	this._cloned_textures = null; //in case we set the clone_after_unbind to true
+	this._cloned_depth_texture = null;
 
 	this._version = 1; //to detect changes
 	this._minFilter = gl.NEAREST;
@@ -29860,6 +30095,10 @@ RenderFrameContext.prototype.cloneBuffers = function()
 			this._cloned_depth_texture = new GL.Texture( depth.width, depth.height, depth.getProperties() );
 
 		depth.copyTo( this._cloned_depth_texture );
+		if(!this._cloned_depth_texture.near_far_planes)
+			this._cloned_depth_texture.near_far_planes = vec2.create();
+		this._cloned_depth_texture.near_far_planes.set( depth.near_far_planes );
+
 		LS.ResourcesManager.textures[":depth_buffer" ] = this._cloned_depth_texture;
 	}
 
@@ -29913,9 +30152,24 @@ RenderFrameContext.prototype.disable = function()
 		if(this._depth_texture)
 		{
 			var name = this.name + "_depth";
-			this._depth_texture.filename = name;
-			LS.ResourcesManager.textures[ name ] = this._depth_texture;
-			//LS.ResourcesManager.textures[ ":depth" ] = this._depth_texture;
+			var depth_texture = this._depth_texture;
+			if( this.clone_after_unbind )
+			{
+				if( !this._cloned_depth_texture || 
+					this._cloned_depth_texture.width !== depth_texture.width || 
+					this._cloned_depth_texture.height !== depth_texture.height ||
+					this._cloned_depth_texture.type !== depth_texture.type )
+					this._cloned_depth_texture = depth_texture.clone();
+				else
+					depth_texture.copyTo( this._cloned_depth_texture );
+				if(!this._cloned_depth_texture.near_far_planes)
+					this._cloned_depth_texture.near_far_planes = vec2.create();
+				this._cloned_depth_texture.near_far_planes.set( depth_texture.near_far_planes );
+				depth_texture = this._cloned_depth_texture;
+			}
+
+			depth_texture.filename = name;
+			LS.ResourcesManager.textures[ name ] = depth_texture;
 		}
 	}
 
@@ -30027,13 +30281,13 @@ LS.RenderFrameContext = RenderFrameContext;
 //It works similar to the one in Unity
 function RenderQueue( value, sort_mode, options )
 {
+	this.enabled = true;
+
 	//container for all instances that belong to this render queue
 	this.instances = [];
 
 	this.value = value || 0;
 	this.sort_mode = sort_mode || LS.RenderQueue.NO_SORT;
-	this.range_start = 0;
-	this.range_end = 9;
 	this.must_clone_buffers = false; //used for readback rendering like refracion
 	//this.visible_in_pass = null;
 
@@ -30100,14 +30354,13 @@ RenderQueue.prototype.finish = function( pass )
 		this.onFinish( pass, render_settings );
 }
 
-
 //we use 5 so from 0 to 9 is one queue, from 10 to 19 another one, etc
 RenderQueue.AUTO =			-1;
-RenderQueue.BACKGROUND =	5;
-RenderQueue.GEOMETRY =		15;
-RenderQueue.TRANSPARENT =	25;
-RenderQueue.READBACK_COLOR = 35;
-RenderQueue.OVERLAY =		45;
+RenderQueue.BACKGROUND =	5; //0..9
+RenderQueue.GEOMETRY =		35; //30..39
+RenderQueue.TRANSPARENT =	75; //70..79
+RenderQueue.READBACK_COLOR = 95;//90..99
+RenderQueue.OVERLAY =		115; //100..119
 
 RenderQueue.NO_SORT = 0;
 RenderQueue.SORT_NEAR_TO_FAR = 1;
@@ -30185,6 +30438,7 @@ var Renderer = {
 	_current_camera: null,
 	_current_target: null, //texture where the image is being rendered
 	_current_pass: COLOR_PASS, //object containing info about the pass
+	_current_layers_filter: 0xFFFF,// do a & with this to know if it must be rendered
 	_global_textures: {}, //used to speed up fetching global textures
 	_global_shader_blocks: [], //used to add extra shaderblocks to all objects in the scene (it gets reseted every frame)
 	_global_shader_blocks_flags: 0, 
@@ -30652,6 +30906,7 @@ var Renderer = {
 		//set as the current camera
 		this._current_camera = camera;
 		LS.Camera.current = camera;
+		this._current_layers_filter = render_settings ? camera.layers & render_settings.layers : camera.layers;
 
 		//Draw allows to render debug info easily
 		if(LS.Draw)
@@ -30730,6 +30985,27 @@ var Renderer = {
 		gl.disable( gl.STENCIL_TEST );
 	},
 
+	//creates the separate render queues for every block of instances
+	createRenderQueues: function()
+	{
+		this._queues.length = 0;
+
+		this._renderqueue_background = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.BACKGROUND, LS.RenderQueue.NO_SORT, { name: "BACKGROUND" } ));
+		this._renderqueue_geometry = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.GEOMETRY, LS.RenderQueue.SORT_NEAR_TO_FAR, { name: "GEOMETRY" } ));
+		this._renderqueue_transparent = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.TRANSPARENT, LS.RenderQueue.SORT_FAR_TO_NEAR, { name: "TRANSPARENT" } ));
+		this._renderqueue_readback = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.READBACK_COLOR, LS.RenderQueue.SORT_FAR_TO_NEAR , { must_clone_buffers: true, name: "READBACK" }));
+		this._renderqueue_overlay = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.SORT_BY_PRIORITY, { name: "OVERLAY" }));
+	},
+
+	addRenderQueue: function( queue )
+	{
+		var index = Math.floor(queue.value * 0.1);
+		if( this._queues[ index ] )
+			console.warn("Overwritting render queue:", queue.name );
+		this._queues[ index ] = queue;
+		return queue;
+	},
+
 	//clears render queues and inserts objects according to their settings
 	updateRenderQueues: function( camera, instances )
 	{
@@ -30772,6 +31048,7 @@ var Renderer = {
 	{
 		var queues = this._queues;
 		var queue = null;
+		var queue_index = -1;
 
 		if( instance.material.queue == RenderQueue.AUTO || instance.material.queue == null ) 
 		{
@@ -30783,12 +31060,16 @@ var Renderer = {
 		else
 		{
 			//queue index use the tens digit
-			var queue_index = Math.floor( instance.material.queue * 0.1 );
+			queue_index = Math.floor( instance.material.queue * 0.1 );
 			queue = queues[ queue_index ];
 		}
 
-		if( !queue )
-			queue = this._renderqueue_geometry;
+		if( !queue ) //create new queue
+		{
+			queue = new LS.RenderQueue( queue_index * 10 + 5, LS.RenderQueue.NO_SORT );
+			queues[ queue_index ] = queue;
+		}
+
 		if(queue)
 			queue.add( instance );
 		return queue;
@@ -30848,7 +31129,7 @@ var Renderer = {
 		var camera_index_flag = camera._rendering_index != -1 ? (1<<(camera._rendering_index)) : 0;
 		var apply_frustum_culling = render_settings.frustum_culling;
 		var frustum_planes = camera.updateFrustumPlanes();
-		var layers_filter = camera.layers & render_settings.layers;
+		var layers_filter = this._current_layers_filter = camera.layers & render_settings.layers;
 
 		LEvent.trigger( scene, EVENT.BEFORE_RENDER_INSTANCES, render_settings );
 		//scene.triggerInNodes( EVENT.BEFORE_RENDER_INSTANCES, render_settings );
@@ -30927,7 +31208,7 @@ var Renderer = {
 		for(var j = 0; j < this._queues.length; ++j)
 		{
 			var queue = this._queues[j];
-			if(!queue || !queue.instances.length) //empty
+			if(!queue || !queue.instances.length || !queue.enabled) //empty
 				continue;
 
 			//used to change RenderFrameContext stuff (cloning textures for refraction, etc)
@@ -31515,21 +31796,6 @@ var Renderer = {
 				return camera;
 		}
 		return null;
-	},
-
-	createRenderQueues: function()
-	{
-		this._queues.length = 0;
-
-		this._queues.push( new LS.RenderQueue( LS.RenderQueue.BACKGROUND, LS.RenderQueue.NO_SORT ) );
-
-		this._renderqueue_geometry = new LS.RenderQueue( LS.RenderQueue.GEOMETRY, LS.RenderQueue.SORT_NEAR_TO_FAR )
-		this._queues.push( this._renderqueue_geometry );
-		this._renderqueue_transparent = new LS.RenderQueue( LS.RenderQueue.TRANSPARENT, LS.RenderQueue.SORT_FAR_TO_NEAR );
-		this._queues.push( this._renderqueue_transparent );
-
-		this._queues.push( new LS.RenderQueue( LS.RenderQueue.READBACK_COLOR, LS.RenderQueue.SORT_FAR_TO_NEAR , { must_clone_buffers: true }));
-		this._queues.push( new LS.RenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.SORT_BY_PRIORITY ) );
 	},
 
 	setRenderPass: function( pass )
@@ -33885,26 +34151,94 @@ LS.Deformer = Deformer;
 // Shadows are complex because there are too many combinations: SPOT/DIRECT,OMNI or DEPTH_COMPONENT,RGBA or HARD,SOFT,VARIANCE
 // This class encapsulates the shadowmap generation, and also how how it is read from the shader (using a ShaderBlock)
 
+/**
+* Shadowmap contains all the info necessary to generate the shadowmap
+* @class Shadowmap
+* @constructor
+* @param {Object} object to configure from
+*/
 function Shadowmap( light )
 {
-	this.light = light;
+	//maybe useful
+	//this.enabled = true;
 
-	this.resolution = 512;
+	/**
+	* Shadowmap resolution, if let to 0 it will use the system default
+	* @property resolution
+	* @type {Number}
+	* @default 0
+	*/
+	this.resolution = 0;
+
+	/**
+	* The offset applied to every depth before comparing it to avoid shadow acne
+	* @property bias
+	* @type {Number}
+	* @default 0.0
+	*/
 	this.bias = 0;
+
+	/**
+	* Which format to use to store the shadowmaps
+	* @property format
+	* @type {Number}
+	* @default GL.DEPTH_COMPONENT
+	*/
 	this.format = GL.DEPTH_COMPONENT;
+
+	/**
+	* Layers mask, this layers define which objects affect the shadow map (cast shadows)
+	* @property layers
+	* @type {Number}
+	* @default true
+	*/
 	this.layers = 0xFF; //visible layers
-	this.texture = null;
-	this.fbo = null;
-	this.shadow_params = vec4.create(); //1.0 / this.texture.width, this.shadow_bias, this.near, closest_far
-	this.reverse_faces = false; //improves quality in some cases
+
+	/**
+	* If true objects inside the shadowmap will be rendered with the back faces only
+	* @property reverse_faces
+	* @type {Boolean}
+	* @default false
+	*/
+	this.reverse_faces = true; //improves quality in some cases
+
+
+	this.shadow_mode = 1; //0:hard, 1:bilinear, ...
+
+	this.linear_filter = true;
+
+	/**
+	* The shadowmap texture, could be stored as color or depth depending on the settings
+	* @property texture
+	* @type {GL.Texture}
+	* @default true
+	*/
+	this._texture = null;
+	this._light = light;
+	this._fbo = null;
+	this._shadow_params = vec4.create(); //1.0 / this._texture.width, this.shadow_bias, this.near, closest_far
+	this._shadow_extra_params = vec4.create(); //custom params in case the user wants to tweak the shadowmap with a cusstom shader
 }
 
+LS.Shadowmap = Shadowmap;
+
 Shadowmap.use_shadowmap_depth_texture = true;
+
+Shadowmap.prototype.getLocator = function()
+{
+	return this._light.getLocator() + "/" + "shadowmap";
+}
+
+Shadowmap.prototype.configure = function(v)
+{
+	for(var i in v)
+		this[i] = v[i];
+}
 
 //enable block
 Shadowmap.prototype.getReadShaderBlock = function()
 {
-	if( this.texture.format != GL.DEPTH_COMPONENT )
+	if( this._texture.format != GL.DEPTH_COMPONENT )
 		return Shadowmap.shader_block.flag_mask | Shadowmap.depth_in_color_block.flag_mask;
 	return Shadowmap.shader_block.flag_mask;
 }
@@ -33921,7 +34255,7 @@ Shadowmap.prototype.precomputeStaticShadowmap = function()
 
 Shadowmap.prototype.generate = function( instances, render_settings, precompute_static )
 {
-	var light = this.light;
+	var light = this._light;
 
 	var light_intensity = light.computeLightIntensity();
 	if( light_intensity < 0.0001 )
@@ -33937,10 +34271,11 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	var shadowmap_height = shadowmap_resolution;
 	if( light.type == LS.Light.OMNI)
 		shadowmap_height *= 6; //for every face
+	var magFilter = this.linear_filter ? gl.LINEAR : gl.NEAREST;
 
 	//var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
 	var tex_type = gl.TEXTURE_2D;
-	if(this.texture == null || this.texture.width != shadowmap_width || this.texture.height != shadowmap_height ||  this.texture.texture_type != tex_type )
+	if(this._texture == null || this._texture.width != shadowmap_width || this._texture.height != shadowmap_height ||  this._texture.texture_type != tex_type || this._texture.magFilter != magFilter )
 	{
 		var type = gl.UNSIGNED_BYTE;
 		var format = gl.RGBA;
@@ -33953,21 +34288,21 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 		}
 
 		//create texture to store the shadowmap
-		this.texture = new GL.Texture( shadowmap_width, shadowmap_height, { type: type, texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
+		this._texture = new GL.Texture( shadowmap_width, shadowmap_height, { type: type, texture_type: tex_type, format: format, magFilter: magFilter, minFilter: gl.NEAREST });
 
 		//if( this.precompute_static_shadowmap && (format != gl.DEPTH_COMPONENT || gl.extensions.EXT_frag_depth) )
 		//	this._static_shadowmap = new GL.Texture( shadowmap_width, shadowmap_height, { type: type, texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
 
 		//index, for debug
-		this.texture.filename = ":shadowmap_" + light.uid;
-		LS.ResourcesManager.textures[ this.texture.filename ] = this.texture; 
+		this._texture.filename = ":shadowmap_" + light.uid;
+		LS.ResourcesManager.textures[ this._texture.filename ] = this._texture; 
 
-		if( this.texture.texture_type == gl.TEXTURE_2D )
+		if( this._texture.texture_type == gl.TEXTURE_2D )
 		{
 			if(format == gl.RGBA)
-				this.fbo = new GL.FBO( [this.texture] );
+				this._fbo = new GL.FBO( [this._texture] );
 			else
-				this.fbo = new GL.FBO( null, this.texture );
+				this._fbo = new GL.FBO( null, this._texture );
 		}
 	}
 
@@ -33980,14 +34315,14 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 
 	//render the scene inside the texture
 	// Render the object viewed from the light using a shader that returns the fragment depth.
-	this.texture.unbind(); 
+	this._texture.unbind(); 
 
-	LS.Renderer._current_target = this.texture;
-	this.fbo.bind();
+	LS.Renderer._current_target = this._texture;
+	this._fbo.bind();
 
 	var sides = 1;
-	var viewport_width = this.texture.width;
-	var viewport_height = this.texture.height;
+	var viewport_width = this._texture.width;
+	var viewport_height = this._texture.height;
 	if( light.type == LS.Light.OMNI )
 	{
 		sides = 6;
@@ -33995,7 +34330,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	}
 
 	gl.clearColor(1, 1, 1, 1);
-	if( this.texture.type == gl.DEPTH_COMPONENT )
+	if( this._texture.type == gl.DEPTH_COMPONENT )
 		gl.colorMask(false,false,false,false);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -34003,8 +34338,10 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	{
 		var shadow_camera = light.getLightCamera(i);
 		shadow_camera.near;
-		this.shadow_params[2] = this.texture.near = shadow_camera.near;
-		this.shadow_params[3] = this.texture.far = shadow_camera.far;
+		if(!this._texture.near_far_planes)
+			this._texture.near_far_planes = vec2.create();
+		this._shadow_params[2] = this._texture.near_far_planes[0] = shadow_camera.near;
+		this._shadow_params[3] = this._texture.near_far_planes[1] = shadow_camera.far;
 		LS.Renderer.enableCamera( shadow_camera, render_settings, true );
 
 		var viewport_y = 0;
@@ -34021,7 +34358,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 		LS.Renderer._reverse_faces = false;
 	}
 
-	this.fbo.unbind();
+	this._fbo.unbind();
 	LS.Renderer._current_target = null;
 	gl.colorMask(true,true,true,true);
 
@@ -34030,33 +34367,42 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	LS.Renderer._current_light = null;
 	
 	if(this.onPostProcessShadowMap)
-		this.onPostProcessShadowMap( this.texture );
+		this.onPostProcessShadowMap( this._texture );
 }
 
 Shadowmap.prototype.prepare = function( uniforms, samplers )
 {
-	if(!this.texture)
+	if(!this._texture)
 	{
 		console.warn("shadowmap without texture?");
 		return;
 	}
 
-	var light = this.light;
+	var light = this._light;
 	var closest_far = light.computeFar();
-	uniforms.u_shadow_params = this.shadow_params;
-	this.shadow_params[0] = 1.0 / this.texture.width;
-	this.shadow_params[1] = this.bias;
+	uniforms.u_shadow_params = this._shadow_params;
+	this._shadow_params[0] = 1.0 / this._texture.width;
+	this._shadow_params[1] = this.bias;
+	this._shadow_extra_params[0] = this.shadow_mode;
+	uniforms.u_shadow_extra = this._shadow_extra_params;
 	//2 and 3 are set when rendering the shadowmap
 
 	uniforms.shadowmap = LS.Renderer.SHADOWMAP_TEXTURE_SLOT;
-	samplers[ LS.Renderer.SHADOWMAP_TEXTURE_SLOT ] = this.texture;
+
+	samplers[ LS.Renderer.SHADOWMAP_TEXTURE_SLOT ] = this._texture;
+}
+
+//called when we no longer need this shadowmap
+Shadowmap.prototype.release = function()
+{
+	this._texture = null;
 }
 
 Shadowmap.prototype.toViewport = function()
 {
-	if(!this.texture)
+	if(!this._texture)
 		return;
-	this.texture.toViewport(); //TODO: create shader to visualize correctly
+	this._texture.toViewport(); //TODO: create shader to visualize correctly
 }
 
 //*******************************
@@ -34085,7 +34431,8 @@ Shadowmap._enabled_fragment_code = "\n\
 	\n\
 	uniform sampler2D shadowmap;\n\
 	varying vec4 v_light_coord;\n\
-	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
+	uniform vec4 u_shadow_params; //[ 1.0/(texture_size), bias, near, far ]\n\
+	uniform vec4 u_shadow_extra; //[hard, ...]\n\
 	\n\
 	float UnpackDepth(vec4 depth)\n\
 	{\n\
@@ -34155,6 +34502,8 @@ Shadowmap._enabled_fragment_code = "\n\
 			//real_depth = linearDepthNormalized( real_depth, u_shadow_params.z, u_shadow_params.w );\n\
 		#endif\n\
 		vec2 topleft_uv = sample * texsize;\n\
+		if(u_shadow_extra.x == 0.0) //hard \n\
+			return pixelShadow( sample );\n\
 		vec2 offset_uv = fract( topleft_uv );\n\
 		offset_uv.x = expFunc(offset_uv.x);\n\
 		offset_uv.y = expFunc(offset_uv.y);\n\
@@ -34204,7 +34553,7 @@ var Picking = {
 	_picking_depth: 0,
 	_picking_next_color_id: 0,
 	_picking_render_settings: new RenderSettings(),
-
+	_picking_position: vec3.create(), //last picking position in world coordinates
 	_use_scissor_test: true,
 
 	/**
@@ -34258,7 +34607,6 @@ var Picking = {
 
 		//render all Render Instances
 		this.getPickingColorFromBuffer( scene, camera, x, y, layers );
-
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 
@@ -34318,6 +34666,12 @@ var Picking = {
 
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, this._picking_color );
 
+			var depth = (this._picking_color[3] / 255);
+			var linear_depth = camera.near * (depth + 1.0) / (camera.far + camera.near - depth * (camera.far - camera.near));
+			this._last_depth = linear_depth * (camera.far - camera.near) + camera.near;
+			this._picking_position = camera.unproject([x,y,depth],null,this._picking_position);
+			//console.log(this._picking_color,this._last_depth);
+
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
 
@@ -34326,7 +34680,6 @@ var Picking = {
 		LS.Renderer._current_target = null; //??? deprecated
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
-		//trace(" END Rendering: ", this._picking_color );
 		return this._picking_color;
 	},
 
@@ -36055,49 +36408,14 @@ Transform.prototype.orbit = (function() {
 * @param {boolean} in_world tells if the values are in world coordinates (otherwise asume its in local coordinates)
 */
 Transform.prototype.lookAt = (function() { 
-
-	//avoid garbage
-	var GM = mat4.create();
 	var temp = mat4.create();
-	var temp_pos = vec3.create();
-	var temp_target = vec3.create();
-	var temp_up = vec3.create();
-	
 	return function( pos, target, up, in_world )
 	{
-		up = up || LS.TOP;
-
-		//convert to local space
-		if(in_world && this._parent)
-		{
-			this._parent.getGlobalMatrix( GM );
-			var inv = mat4.invert(GM,GM);
-			if(!inv)
-				return;
-			mat4.multiplyVec3(temp_pos, inv, pos);
-			mat4.multiplyVec3(temp_target, inv, target);
-			mat4.rotateVec3(temp_up, inv, up );
-		}
-		else
-		{
-			temp_pos.set( pos );
-			temp_target.set( target );
-			temp_up.set( up );
-		}
-
-		mat4.lookAt(temp, temp_pos, temp_target, temp_up);
-		//mat4.invert(temp, temp);
-
-		quat.fromMat4( this._rotation, temp );
-		this._position.set( temp_pos );	
-		this._must_update = true;
-
-		/*
+		//compute matrix in world space
 		mat4.lookAt(temp, pos, target, up);
 		mat4.invert(temp, temp);
-		this.fromMatrix(temp);
-		this.updateGlobalMatrix();
-		*/
+		//pass it to fromMatrix
+		this.fromMatrix(temp, true);
 	}
 })();
 
@@ -37211,11 +37529,11 @@ Camera.prototype.lookAt = function( eye, center, up )
 	if( this._root && this._root.transform )
 	{
 		//transform from global to local
-		if(this._root._parent && this._root._parent.transform )
+		if(this._root._parentNode && this._root._parentNode.transform )
 		{
-			eye = this._root._parent.transform.globalToLocal( eye, vec3.create() );
-			center = this._root._parent.transform.globalToLocal( center, vec3.create() );
-			up = this._root._parent.transform.globalVectorToLocal( up, vec3.create() );
+			eye = this._root._parentNode.transform.globalToLocal( eye, vec3.create() );
+			center = this._root._parentNode.transform.globalToLocal( center, vec3.create() );
+			up = this._root._parentNode.transform.globalVectorToLocal( up, vec3.create() );
 		}
 		this._root.transform.lookAt(eye,center,up);
 		this._eye.set(LS.ZEROS);
@@ -37554,7 +37872,7 @@ Camera.prototype.getTop = function( out )
 	var right = vec3.cross( vec3.create(), this._up, front );
 	var top = vec3.cross( out, front, right );
 	vec3.normalize(top,top);
-	if(this._root && this._root.transform && this._root._parent)
+	if(this._root && this._root.transform && this._root._parentNode)
 		return mat4.rotateVec3( top, this._root.transform.getGlobalMatrixRef(), top );
 	return top;
 }
@@ -37571,7 +37889,7 @@ Camera.prototype.getRight = function( out )
 	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
 	var right = vec3.cross( out, this._up, front );
 	vec3.normalize(right,right);
-	if(this._root && this._root.transform && this._root._parent)
+	if(this._root && this._root.transform && this._root._parentNode)
 		return mat4.rotateVec3( right, this._root.transform.getGlobalMatrixRef(), right );
 	return right;
 }
@@ -37935,10 +38253,10 @@ Camera.prototype.projectNodeCenter = function( node, viewport, result, skip_reve
 /**
 * Converts a screen space 2D vector (with a Z value) to its 3D equivalent position
 * @method unproject
-* @param {vec3} vec 2D position we want to proyect to 3D
+* @param {vec3} vec [screenx,screeny,normalized z] position we want to get in 3D
 * @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
 * @param {vec3} result where to store the result, if omited it is created
-* @return {vec3} the coordinates in 2D
+* @return {vec3} the coordinates in 3D
 */
 Camera.prototype.unproject = function( vec, viewport, result )
 {
@@ -38207,7 +38525,7 @@ Camera.prototype.enableRenderFrameContext = function()
 {
 	if(!this._frame)
 		return;
-	this._frame.enable();
+	this._frame.enable(null,null,this);
 }
 
 Camera.prototype.disableRenderFrameContext = function()
@@ -38692,13 +39010,6 @@ function Light(o)
 	*/
 	this.illuminated_layers = 0xFF;
 
-	/**
-	* Layers mask, this layers define which objects affect the shadow map (cast shadows)
-	* @property shadows_layers
-	* @type {Number}
-	* @default true
-	*/
-	this.shadows_layers = 0xFF;
 
 	/**
 	* Near distance
@@ -38776,13 +39087,11 @@ function Light(o)
 	* @type {Boolean}
 	* @default false
 	*/
-	this.cast_shadows = false;
-	this.precompute_static_shadowmap = false;
-	this.shadow_bias = 0.05;
-	this.shadowmap_resolution = 0; //use automatic shadowmap size
+	this._cast_shadows = false;
 
 	//shadowmap class
-	this._shadowmap = null; //Shadowmap class
+	this._shadowmap = null; //Shadow class
+	this._precompute_shadowmaps_on_startup = false;
 	this._update_shadowmap_render_settings = null;
 
 	//used to force the computation of the light matrix for the shader (otherwise only if projective texture or shadows are enabled)
@@ -38814,7 +39123,6 @@ function Light(o)
 	//configure
 	if(o) 
 		this.configure(o);
-
 }
 
 Light.NO_ATTENUATION = 0;
@@ -38882,6 +39190,28 @@ Object.defineProperty( Light.prototype, 'spot_cone', {
 	enumerable: true
 });
 
+Object.defineProperty( Light.prototype, 'cast_shadows', {
+	get: function() { return this._cast_shadows; },
+	set: function(v) { 
+		this._cast_shadows = v;
+		if(!this._shadowmap && v)
+			this._shadowmap = new LS.Shadowmap(this);
+	},
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, 'shadows', {
+	get: function() { 
+		return this._shadowmap; 
+	},
+	set: function(v) {
+		if(!this._shadowmap)
+			this._shadowmap = new LS.Shadowmap(this);
+		this._shadowmap.configure(v);
+	},
+	enumerable: false
+});
+
 Light.OMNI = 1;
 Light.SPOT = 2;
 Light.DIRECTIONAL = 3;
@@ -38914,11 +39244,27 @@ Light.prototype.onRemovedFromScene = function(scene)
 	LS.ResourcesManager.unregisterResource( ":shadowmap_" + this.uid );
 }
 
+Light.prototype.onSerialize = function(v)
+{
+	if(this._shadowmap)
+		v.shadows = LS.cloneObject(this._shadowmap);
+}
+
+Light.prototype.onConfigure = function(v)
+{
+	if(v.shadows)
+	{
+		if(!this._shadowmap)
+			this._shadowmap = new LS.Shadowmap(this);
+		LS.cloneObject(v.shadows, this._shadowmap);
+	}
+}
+
 Light.prototype.onGenerateShadowmap = function(e)
 {
 	if( this._update_shadowmap_render_settings )
 	{
-		this.generateShadowmap( this._update_shadowmap_render_settings );
+		this.generateShadowmap( this._update_shadowmap_render_settings, this._precompute_shadowmaps_on_startup );
 		this._update_shadowmap_render_settings = null;
 	}
 }
@@ -39167,12 +39513,13 @@ Light.prototype.prepare = function( render_settings )
 	this._update_shadowmap_render_settings = null;
 
 	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture || this.cast_shadows || this.force_light_matrix)
+	if(this.projective_texture || this._cast_shadows || this.force_light_matrix)
 		this.updateLightCamera();
 
-	if( (!render_settings.shadows_enabled || !this.cast_shadows) && this._shadowmap)
+	if( (!render_settings.shadows_enabled || !this._cast_shadows) && this._shadowmap )
 	{
-		this._shadowmap = null;
+		//this._shadowmap = null; 
+		this._shadowmap.release();//I keep the shadowmap class but free the memory of the texture
 		delete LS.ResourcesManager.textures[":shadowmap_" + this.uid ];
 	}
 
@@ -39236,7 +39583,7 @@ Light.prototype.prepare = function( render_settings )
 	}
 
 	//generate shadowmaps
-	var must_update_shadowmap = (render_settings.update_shadowmaps || (!this._shadowmap && !LS.ResourcesManager.isLoading())) && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
+	var must_update_shadowmap = (render_settings.update_shadowmaps || (!this._shadowmap._texture && !LS.ResourcesManager.isLoading())) && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
 	if(must_update_shadowmap)
 	{
 		var is_inside_one_frustum = false;
@@ -39246,7 +39593,7 @@ Light.prototype.prepare = function( render_settings )
 	}
 
 	if( this._shadowmap && !this.cast_shadows )
-		this._shadowmap = null; //remove shadowmap
+		this._shadowmap.release();
 
 	//prepare shadowmap
 	if( this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_settings.shadows_disabled ) //render_settings.update_all_shadowmaps
@@ -39292,10 +39639,7 @@ Light.prototype.generateShadowmap = function ( render_settings, precompute_stati
 		return;
 
 	if(!this._shadowmap)
-		this._shadowmap = new Shadowmap( this );
-	this._shadowmap.bias = this.shadow_bias;
-	this._shadowmap.resolution = this.shadowmap_resolution;
-	this._shadowmap.layers = this.shadows_layers;
+		this._shadowmap = new Shadowmap( this ); //this should never happend (it is created in cast_shadows = true, by just in case
 	this._shadowmap.generate( null, render_settings, precompute_static );
 }
 
@@ -40039,7 +40383,11 @@ Object.defineProperty( MorphDeformer.prototype, "name_weights", {
 		{
 			var m = this.morph_targets[i];
 			if(v[m.mesh] !== undefined)
-				m.weight = Number(v[m.mesh]);
+			{
+				var weight = Number(v[m.mesh]);
+				if(!isNaN(weight))	
+					m.weight = weight;
+			}
 		}
 	},
 	get: function()
@@ -40292,8 +40640,8 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	//create the texture container where all will be merged
 	if(!this._morphtarget_vertices_texture || this._morphtarget_vertices_texture.height != base_vertices_buffer._texture.height )
 	{
-		this._morphtarget_vertices_texture = new GL.Texture( base_vertices_buffer._texture.width, base_vertices_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: true });
-		this._morphtarget_normals_texture = new GL.Texture( base_normals_buffer._texture.width, base_normals_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: true });
+		this._morphtarget_vertices_texture = new GL.Texture( base_vertices_buffer._texture.width, base_vertices_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: false });
+		this._morphtarget_normals_texture = new GL.Texture( base_normals_buffer._texture.width, base_normals_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: false });
 
 		//used in the shader
 		this._texture_size = vec4.fromValues( this._morphtarget_vertices_texture.width, this._morphtarget_vertices_texture.height, 
@@ -40595,7 +40943,7 @@ MorphDeformer.prototype.createGeometryTexture = function( data_buffer, texture )
 	var buffer_padded = new Float32Array( width * height * 3 );
 	buffer_padded.set( stream_data );
 	if(!texture || texture.width != width || texture.height != height )
-		texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer_padded, no_flip: true });
+		texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer_padded, no_flip: false });
 	else
 		texture.uploadData( buffer_padded );
 	return texture;
@@ -40670,9 +41018,38 @@ MorphDeformer.prototype.setMorphMesh = function(index, value)
 */
 MorphDeformer.prototype.setMorphWeight = function(index, value)
 {
-	if(index >= this.morph_targets.length)
+	if( index >= this.morph_targets.length || isNaN(value) )
 		return;
 	this.morph_targets[index].weight = value;
+}
+
+MorphDeformer.prototype.getPrettyName = function( info, locator, locator_path )
+{
+	//console.log(locator_path);
+	if(locator_path[ locator_path.length - 1 ] == "weight")
+	{
+		var names = this.morph_targets.map(function(a){return a.mesh;});
+		names = MorphDeformer.removeSharedString(names); //remove part
+		var index = this.morph_targets.indexOf( info.target );
+		if(index != -1)
+		{
+			var name = names[index].replace(/_/g," ");
+			return info.node.name + "::" + name;
+		}
+	}
+}
+
+MorphDeformer.removeSharedString = function(array)
+{
+	var n = computeSharedInitialString(array);
+	array = array.map(function(a){ 
+		a = a.substr(n);
+		var last = a.lastIndexOf(".");
+		if(last != -1)
+			return a.substr(0,last);
+		return a;
+	});
+	return array;
 }
 
 MorphDeformer.prototype.getPropertyInfoFromPath = function( path )
@@ -40697,6 +41074,7 @@ MorphDeformer.prototype.getPropertyInfoFromPath = function( path )
 
 	return {
 		node: this._root,
+		component: this,
 		target: this.morph_targets[num],
 		name: varname,
 		value: this.morph_targets[num][ varname ] !== undefined ? this.morph_targets[num][ varname ] : null,
@@ -40709,6 +41087,9 @@ MorphDeformer.prototype.setPropertyValueFromPath = function( path, value, offset
 	offset = offset || 0;
 
 	if( path.length < (offset+1) )
+		return;
+
+	if(isNaN(value))
 		return;
 
 	if( path[offset] != "morphs" )
@@ -40732,10 +41113,13 @@ MorphDeformer.prototype.setProperty = function(name, value)
 		name = name.substr(5);
 		var t = name.split("_");
 		var num = parseInt( t[0] );
-		if( num < this.morph_targets.length )
+		if( num >= 0 && num < this.morph_targets.length )
 		{
 			if( t[1] == "weight" )
-				this.morph_targets[ num ].weight = value;
+			{
+				if(!isNaN(value)) //this happened some times...
+					this.morph_targets[ num ].weight = value;
+			}
 			else if( t[1] == "mesh" )
 				this.morph_targets[ num ].mesh = value;
 		}
@@ -44179,6 +44563,7 @@ function Target(o)
 	this.cylindrical = false;
 	this.front = Target.NEGZ;
 	this.up = Target.POSY;
+	this.roll = 0;
 	this.use_iterative_method = false; //this method reuses previous orientation as a reinforcement to avoid weird cases but it gives an approxiate orientation
 	
 	this._global_position = vec3.create();
@@ -44291,6 +44676,9 @@ Target.prototype.updateOrientation = function()
 		case Target.NEGZ:
 		default:
 	}
+
+	if(this.roll)
+		quat.rotateZ( transform._rotation, transform._rotation, this.roll * DEG2RAD );
 
 	transform._on_change();
 }
@@ -47294,6 +47682,7 @@ function PlayAnimation(o)
 
 	this._animation = "";
 	this._take = "default";
+	this.autoload = true;
 
 	/**
 	* the root node locator where to apply the animation, is none is specified it is applied using the scene root node
@@ -47610,9 +47999,10 @@ PlayAnimation.prototype.onUpdateBlendAnimation = function( dt )
 * returns the current animation or an animation with a given name
 * @method getAnimation
 * @param {String} name [optional] the name of the animation, if omited then uses the animation set in the component
+* @param {Bool} force_load [optional] if true and the animation is not loaded, it will be loaded
 * @return {LS.Animation} the animation container
 */
-PlayAnimation.prototype.getAnimation = function( name )
+PlayAnimation.prototype.getAnimation = function( name, force_load )
 {
 	name = name === undefined ? this.animation : name;
 
@@ -47620,6 +48010,8 @@ PlayAnimation.prototype.getAnimation = function( name )
 	if(!name || name[0] == "@") 
 		return scene.animation;
 	var anim = LS.ResourcesManager.getResource( name );
+	if(!anim && force_load)
+		LS.ResourcesManager.load( name );
 	if( anim && anim.constructor === LS.Animation )
 		return anim;
 	return null;
@@ -47667,6 +48059,8 @@ PlayAnimation.prototype.play = function()
 		console.error("cannot play an animation if the component doesnt belong to a node in a scene");
 
 	this.playing = true;
+
+	this.getAnimation(null,this.autoload); //force load
 
 	this.current_time = 0;
 	if(this.range)
@@ -52468,6 +52862,8 @@ function VideoPlayer(o)
 		this.configure(o);
 }
 
+VideoPlayer.icon = "mini-icon-video.png";
+
 Object.defineProperty( VideoPlayer.prototype, "enabled", {
 	set: function(v){
 		this._enabled = v;
@@ -54344,7 +54740,7 @@ var parserOBJ = {
 					for(var i = 1; i < tokens.length; ++i)
 						polygon_indices.push( getIndex( tokens[i] ) );
 					group.indices.push( polygon_indices[0], polygon_indices[1], polygon_indices[2] );
-					//polygons are break intro triangles
+					//polygons are break intro triangles (assuming they are convex!)
 					for(var i = 2; i < polygon_indices.length-1; ++i)
 						group.indices.push( polygon_indices[0], polygon_indices[i], polygon_indices[i+1] );
 					break;
@@ -54755,6 +55151,7 @@ var parserTGA = {
 	type: 'image',
 	dataType:"arraybuffer",
 	format: 'binary',
+	skip_conversion: true,
 
 	parse: function(data, options)
 	{

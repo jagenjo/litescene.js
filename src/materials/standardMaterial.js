@@ -968,9 +968,15 @@ void main() {\n\
 }\n\
 \\picking.fs\n\
 	precision mediump float;\n\
+	varying vec4 v_screenpos;\n\
+	uniform vec2 u_camera_planes;\n\
 	uniform vec4 u_material_color;\n\
 	void main() {\n\
-		gl_FragColor = u_material_color;\n\
+		float n = u_camera_planes.x;\n\
+		float f = u_camera_planes.y;\n\
+		float z = v_screenpos.z / v_screenpos.w * 0.5 + 0.5;\n\
+		//float linear = n * (z + 1.0) / (f + n - z * (f - n));\n\
+		gl_FragColor = vec4( u_material_color.xyz, gl_FragCoord.z );\n\
 	}\n\
 ";
 

@@ -30,6 +30,7 @@ function RenderFrameContext( o )
 	this._depth_texture = null;
 	this._textures = []; //all color textures (the first will be _color_texture)
 	this._cloned_textures = null; //in case we set the clone_after_unbind to true
+	this._cloned_depth_texture = null;
 
 	this._version = 1; //to detect changes
 	this._minFilter = gl.NEAREST;
@@ -294,6 +295,10 @@ RenderFrameContext.prototype.cloneBuffers = function()
 			this._cloned_depth_texture = new GL.Texture( depth.width, depth.height, depth.getProperties() );
 
 		depth.copyTo( this._cloned_depth_texture );
+		if(!this._cloned_depth_texture.near_far_planes)
+			this._cloned_depth_texture.near_far_planes = vec2.create();
+		this._cloned_depth_texture.near_far_planes.set( depth.near_far_planes );
+
 		LS.ResourcesManager.textures[":depth_buffer" ] = this._cloned_depth_texture;
 	}
 
@@ -347,9 +352,24 @@ RenderFrameContext.prototype.disable = function()
 		if(this._depth_texture)
 		{
 			var name = this.name + "_depth";
-			this._depth_texture.filename = name;
-			LS.ResourcesManager.textures[ name ] = this._depth_texture;
-			//LS.ResourcesManager.textures[ ":depth" ] = this._depth_texture;
+			var depth_texture = this._depth_texture;
+			if( this.clone_after_unbind )
+			{
+				if( !this._cloned_depth_texture || 
+					this._cloned_depth_texture.width !== depth_texture.width || 
+					this._cloned_depth_texture.height !== depth_texture.height ||
+					this._cloned_depth_texture.type !== depth_texture.type )
+					this._cloned_depth_texture = depth_texture.clone();
+				else
+					depth_texture.copyTo( this._cloned_depth_texture );
+				if(!this._cloned_depth_texture.near_far_planes)
+					this._cloned_depth_texture.near_far_planes = vec2.create();
+				this._cloned_depth_texture.near_far_planes.set( depth_texture.near_far_planes );
+				depth_texture = this._cloned_depth_texture;
+			}
+
+			depth_texture.filename = name;
+			LS.ResourcesManager.textures[ name ] = depth_texture;
 		}
 	}
 

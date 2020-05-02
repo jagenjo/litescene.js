@@ -653,11 +653,11 @@ Camera.prototype.lookAt = function( eye, center, up )
 	if( this._root && this._root.transform )
 	{
 		//transform from global to local
-		if(this._root._parent && this._root._parent.transform )
+		if(this._root._parentNode && this._root._parentNode.transform )
 		{
-			eye = this._root._parent.transform.globalToLocal( eye, vec3.create() );
-			center = this._root._parent.transform.globalToLocal( center, vec3.create() );
-			up = this._root._parent.transform.globalVectorToLocal( up, vec3.create() );
+			eye = this._root._parentNode.transform.globalToLocal( eye, vec3.create() );
+			center = this._root._parentNode.transform.globalToLocal( center, vec3.create() );
+			up = this._root._parentNode.transform.globalVectorToLocal( up, vec3.create() );
 		}
 		this._root.transform.lookAt(eye,center,up);
 		this._eye.set(LS.ZEROS);
@@ -996,7 +996,7 @@ Camera.prototype.getTop = function( out )
 	var right = vec3.cross( vec3.create(), this._up, front );
 	var top = vec3.cross( out, front, right );
 	vec3.normalize(top,top);
-	if(this._root && this._root.transform && this._root._parent)
+	if(this._root && this._root.transform && this._root._parentNode)
 		return mat4.rotateVec3( top, this._root.transform.getGlobalMatrixRef(), top );
 	return top;
 }
@@ -1013,7 +1013,7 @@ Camera.prototype.getRight = function( out )
 	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
 	var right = vec3.cross( out, this._up, front );
 	vec3.normalize(right,right);
-	if(this._root && this._root.transform && this._root._parent)
+	if(this._root && this._root.transform && this._root._parentNode)
 		return mat4.rotateVec3( right, this._root.transform.getGlobalMatrixRef(), right );
 	return right;
 }
@@ -1377,10 +1377,10 @@ Camera.prototype.projectNodeCenter = function( node, viewport, result, skip_reve
 /**
 * Converts a screen space 2D vector (with a Z value) to its 3D equivalent position
 * @method unproject
-* @param {vec3} vec 2D position we want to proyect to 3D
+* @param {vec3} vec [screenx,screeny,normalized z] position we want to get in 3D
 * @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
 * @param {vec3} result where to store the result, if omited it is created
-* @return {vec3} the coordinates in 2D
+* @return {vec3} the coordinates in 3D
 */
 Camera.prototype.unproject = function( vec, viewport, result )
 {
@@ -1649,7 +1649,7 @@ Camera.prototype.enableRenderFrameContext = function()
 {
 	if(!this._frame)
 		return;
-	this._frame.enable();
+	this._frame.enable(null,null,this);
 }
 
 Camera.prototype.disableRenderFrameContext = function()

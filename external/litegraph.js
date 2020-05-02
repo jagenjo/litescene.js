@@ -134,8 +134,12 @@
                 }
             }
 
-			if( !Object.hasOwnProperty( base_class.prototype, "shape") )
+            var prev = this.registered_node_types[type];
+			if(prev)
+				console.log("replacing node type: " + type);
+			else
 			{
+				if( !Object.hasOwnProperty( base_class.prototype, "shape") )
 				Object.defineProperty(base_class.prototype, "shape", {
 					set: function(v) {
 						switch (v) {
@@ -161,13 +165,28 @@
 					get: function(v) {
 						return this._shape;
 					},
-					enumerable: true
+					enumerable: true,
+					configurable: true
 				});
-			}
 
-            var prev = this.registered_node_types[type];
-			if(prev)
-				console.log("replacing node type: " + type);
+				//warnings
+				if (base_class.prototype.onPropertyChange) {
+					console.warn(
+						"LiteGraph node class " +
+							type +
+							" has onPropertyChange method, it must be called onPropertyChanged with d at the end"
+					);
+				}
+
+				//used to know which nodes create when dragging files to the canvas
+				if (base_class.supported_extensions) {
+					for (var i in base_class.supported_extensions) {
+						var ext = base_class.supported_extensions[i];
+						if(ext && ext.constructor === String)
+							this.node_types_by_file_extension[ ext.toLowerCase() ] = base_class;
+					}
+				}
+			}
 
             this.registered_node_types[type] = base_class;
             if (base_class.constructor.name) {
@@ -178,24 +197,6 @@
             }
             if (prev && LiteGraph.onNodeTypeReplaced) {
                 LiteGraph.onNodeTypeReplaced(type, base_class, prev);
-            }
-
-            //warnings
-            if (base_class.prototype.onPropertyChange) {
-                console.warn(
-                    "LiteGraph node class " +
-                        type +
-                        " has onPropertyChange method, it must be called onPropertyChanged with d at the end"
-                );
-            }
-
-			//used to know which nodes create when dragging files to the canvas
-            if (base_class.supported_extensions) {
-                for (var i in base_class.supported_extensions) {
-					var ext = base_class.supported_extensions[i];
-					if(ext && ext.constructor === String)
-	                    this.node_types_by_file_extension[ ext.toLowerCase() ] = base_class;
-                }
             }
         },
 
@@ -393,7 +394,6 @@
          * @method getNodeTypesCategories
          * @return {Array} array with all the names of the categories
          */
-
         getNodeTypesCategories: function( filter ) {
             var categories = { "": 1 };
             for (var i in this.registered_node_types) {
@@ -473,6 +473,13 @@
             return target;
         },
 
+        /**
+         * Returns if the types of two slots are compatible (taking into account wildcards, etc)
+         * @method isValidConnection
+         * @param {String} type_a
+         * @param {String} type_b
+         * @return {Boolean} true if they can be connected
+         */
         isValidConnection: function(type_a, type_b) {
             if (
                 !type_a || //generic output
@@ -508,13 +515,85 @@
             return false;
         },
 
+        /**
+         * Register a string in the search box so when the user types it it will recommend this node
+         * @method registerSearchboxExtra
+         * @param {String} node_type the node recommended
+         * @param {String} description text to show next to it
+         * @param {Object} data it could contain info of how the node should be configured
+         * @return {Boolean} true if they can be connected
+         */
         registerSearchboxExtra: function(node_type, description, data) {
             this.searchbox_extras[description.toLowerCase()] = {
                 type: node_type,
                 desc: description,
                 data: data
             };
-        }
+        },
+
+        /**
+         * Wrapper to load files (from url using fetch or from file using FileReader)
+         * @method fetchFile
+         * @param {String|File|Blob} url the url of the file (or the file itself)
+         * @param {String} type an string to know how to fetch it: "text","arraybuffer","json","blob"
+         * @param {Function} on_complete callback(data)
+         * @param {Function} on_error in case of an error
+         * @return {FileReader|Promise} returns the object used to 
+         */
+		fetchFile: function( url, type, on_complete, on_error ) {
+			var that = this;
+			if(!url)
+				return null;
+
+			type = type || "text";
+			if( url.constructor === String )
+			{
+				if (url.substr(0, 4) == "http" && LiteGraph.proxy) {
+					url = LiteGraph.proxy + url.substr(url.indexOf(":") + 3);
+				}
+				return fetch(url)
+				.then(function(response) {
+					if(!response.ok)
+						 throw new Error("File not found"); //it will be catch below
+					if(type == "arraybuffer")
+						return response.arrayBuffer();
+					else if(type == "text" || type == "string")
+						return response.text();
+					else if(type == "json")
+						return response.json();
+					else if(type == "blob")
+						return response.blob();
+				})
+				.then(function(data) {
+					if(on_complete)
+						on_complete(data);
+				})
+				.catch(function(error) {
+					console.error("error fetching file:",url);
+					if(on_error)
+						on_error(error);
+				});
+			}
+			else if( url.constructor === File || url.constructor === Blob)
+			{
+				var reader = new FileReader();
+				reader.onload = function(e)
+				{
+					var v = e.target.result;
+					if( type == "json" )
+						v = JSON.parse(v);
+					if(on_complete)
+						on_complete(v);
+				}
+				if(type == "arraybuffer")
+					return reader.readAsArrayBuffer(url);
+				else if(type == "text" || type == "json")
+					return reader.readAsText(url);
+				else if(type == "blob")
+					return reader.readAsBinaryString(url);
+			}
+			return null;
+		}
     });
 
     //timer that works everywhere
@@ -4584,14 +4663,12 @@ LGraphNode.prototype.executeAction = function(action)
             return;
         }
 
-        /*
-	if(this.graph)
-		this.graph.canvas = null; //remove old graph link to the canvas
-	this.graph = graph;
-	if(this.graph)
-		this.graph.canvas = this;
-	*/
         graph.attachCanvas(this);
+
+		//remove the graph stack in case a subgraph was open
+		if (this._graph_stack)
+			this._graph_stack = null;
+
         this.setDirty(true, true);
     };
 
@@ -7309,6 +7386,7 @@ LGraphNode.prototype.executeAction = function(action)
 
 		if(text == null)
 			return;
+		text = text.substr(0,30); //avoid weird
 
 		ctx.font = "14px Courier New";
 		var info = ctx.measureText(text);
@@ -7539,7 +7617,7 @@ LGraphNode.prototype.executeAction = function(action)
             }
             if (!low_quality) {
                 ctx.font = this.title_text_font;
-                var title = node.getTitle();
+                var title = String(node.getTitle());
                 if (title) {
                     if (selected) {
                         ctx.fillStyle = "white";
@@ -7549,11 +7627,11 @@ LGraphNode.prototype.executeAction = function(action)
                             this.node_title_color;
                     }
                     if (node.flags.collapsed) {
-                        ctx.textAlign = "center";
+                        ctx.textAlign = "left";
                         var measure = ctx.measureText(title);
                         ctx.fillText(
-                            title,
-                            title_height + measure.width * 0.5,
+                            title.substr(0,20), //avoid urls too long
+                            title_height,// + measure.width * 0.5,
                             LiteGraph.NODE_TITLE_TEXT_Y - title_height
                         );
                         ctx.textAlign = "left";
@@ -8288,8 +8366,17 @@ LGraphNode.prototype.executeAction = function(action)
                                 y + H * 0.7
                             );
                         } else {
+							var v = w.value;
+							if( w.options.values )
+							{
+								var values = w.options.values;
+								if( values.constructor === Function )
+									values = values();
+								if(values && values.constructor !== Array)
+									v = values[ w.value ];
+							}
                             ctx.fillText(
-                                w.value,
+                                v,
                                 width - margin * 2 - 20,
                                 y + H * 0.7
                             );
@@ -8308,6 +8395,11 @@ LGraphNode.prototype.executeAction = function(action)
 	                    ctx.rect( margin, posY, width - margin * 2, H );
                     ctx.fill();
                     if (show_text) {
+						ctx.save();
+						ctx.beginPath();
+						ctx.rect(margin, posY, width - margin * 2, H);
+						ctx.clip();
+
 	                    ctx.stroke();
                         ctx.fillStyle = secondary_text_color;
                         if (w.name != null) {
@@ -8315,7 +8407,8 @@ LGraphNode.prototype.executeAction = function(action)
                         }
                         ctx.fillStyle = text_color;
                         ctx.textAlign = "right";
-                        ctx.fillText(w.value, width - margin * 2, y + H * 0.7);
+                        ctx.fillText(String(w.value).substr(0,30), width - margin * 2, y + H * 0.7); //30 chars max
+						ctx.restore();
                     }
                     break;
                 default:
@@ -8400,6 +8493,10 @@ LGraphNode.prototype.executeAction = function(action)
                             if (values && values.constructor === Function) {
                                 values = w.options.values(w, node);
                             }
+							var values_list = null;
+							
+							if( w.type != "number")
+								values_list = values.constructor === Array ? values : Object.keys(values);
 
                             var delta = x < 40 ? -1 : x > width - 40 ? 1 : 0;
                             if (w.type == "number") {
@@ -8410,21 +8507,25 @@ LGraphNode.prototype.executeAction = function(action)
                                 if ( w.options.max != null && w.value > w.options.max ) {
                                     w.value = w.options.max;
                                 }
-                            } else if (delta) { //used for combos 
-								var values_list = values.constructor === Array ? values : Object.keys(values);
-                                var index = values_list.indexOf(w.value) + delta;
-                                if (index >= values.length) {
-                                    index = 0;
+                            } else if (delta) { //clicked in arrow, used for combos 
+								var index = -1;
+								if(values.constructor === Object)
+									index = values_list.indexOf( String( w.value ) ) + delta;
+								else
+									index = values_list.indexOf( w.value ) + delta;
+                                if (index >= values_list.length) {
+                                    index = values_list.length - 1;
                                 }
                                 if (index < 0) {
-                                    index = values_list.length - 1;
+                                    index = 0;
                                 }
 								if( values.constructor === Array )
 	                                w.value = values[index];
 								else
-	                                w.value = values[ values_list[index] ];
-                            } else { //combo
-                                var menu = new LiteGraph.ContextMenu(values,{
+	                                w.value = index;
+                            } else { //combo clicked 
+								var text_values = values != values_list ? Object.values(values) : values;
+                                var menu = new LiteGraph.ContextMenu(text_values, {
                                         scale: Math.max(1, this.ds.scale),
                                         event: event,
                                         className: "dark",
@@ -8432,6 +8533,8 @@ LGraphNode.prototype.executeAction = function(action)
                                     },
                                     ref_window);
                                 function inner_clicked(v, option, event) {
+									if(values != values_list)
+										v = text_values.indexOf(v);
                                     this.value = v;
                                     inner_value_change(this, v);
                                     that.dirty_canvas = true;
@@ -10093,8 +10196,8 @@ LGraphNode.prototype.executeAction = function(action)
 
     //API *************************************************
     //like rect but rounded corners
-    if (this.CanvasRenderingContext2D) {
-        CanvasRenderingContext2D.prototype.roundRect = function(
+    if (typeof(window) != "undefined" && window.CanvasRenderingContext2D) {
+        window.CanvasRenderingContext2D.prototype.roundRect = function(
             x,
             y,
             width,
@@ -10290,11 +10393,12 @@ LGraphNode.prototype.executeAction = function(action)
             }
         }
 
-        if (
-            options.event &&
-            options.event.constructor !== MouseEvent &&
-            options.event.constructor !== CustomEvent &&
-	    options.event.constructor !== PointerEvent
+		var eventClass = null;
+		if(options.event) //use strings because comparing classes between windows doesnt work
+			eventClass = options.event.constructor.name;
+        if ( eventClass !== "MouseEvent" &&
+            eventClass !== "CustomEvent" &&
+			eventClass !== "PointerEvent"
         ) {
             console.error(
                 "Event passed to ContextMenu is not of type MouseEvent or CustomEvent. Ignoring it."
@@ -10435,11 +10539,13 @@ LGraphNode.prototype.executeAction = function(action)
 
             var body_rect = document.body.getBoundingClientRect();
             var root_rect = root.getBoundingClientRect();
+			if(body_rect.height == 0)
+				console.error("document.body height is 0. That is dangerous, set html,body { height: 100%; }");
 
-            if (left > body_rect.width - root_rect.width - 10) {
+            if (body_rect.width && left > body_rect.width - root_rect.width - 10) {
                 left = body_rect.width - root_rect.width - 10;
             }
-            if (top > body_rect.height - root_rect.height - 10) {
+            if (body_rect.height && top > body_rect.height - root_rect.height - 10) {
                 top = body_rect.height - root_rect.height - 10;
             }
         }
@@ -11152,7 +11258,7 @@ if (typeof exports != "undefined") {
     };
 
     Subgraph.prototype.serialize = function() {
-        var data = LGraphNode.prototype.serialize.call(this);
+        var data = LiteGraph.LGraphNode.prototype.serialize.call(this);
         data.subgraph = this.subgraph.serialize();
         return data;
     };
@@ -11369,27 +11475,8 @@ if (typeof exports != "undefined") {
             enumerable: true
         });
 
-        this.name_widget = this.addWidget(
-            "text",
-            "Name",
-            this.properties.name,
-            function(v) {
-                if (!v) {
-                    return;
-                }
-                that.properties.name = v;
-            }
-        );
-        this.type_widget = this.addWidget(
-            "text",
-            "Type",
-            this.properties.type,
-            function(v) {
-                v = v || "";
-                that.properties.type = v;
-            }
-        );
-
+        this.name_widget = this.addWidget("text","Name",this.properties.name,"name");
+        this.type_widget = this.addWidget("text","Type",this.properties.type,"type");
         this.widgets_up = true;
         this.size = [180, 60];
     }
@@ -11428,12 +11515,7 @@ if (typeof exports != "undefined") {
     function ConstantNumber() {
         this.addOutput("value", "number");
         this.addProperty("value", 1.0);
-        this.widget = this.addWidget(
-            "number",
-            "value",
-            1,
-            "value"
-        );
+        this.widget = this.addWidget("number","value",1,"value");
         this.widgets_up = true;
         this.size = [180, 30];
     }
@@ -11452,6 +11534,11 @@ if (typeof exports != "undefined") {
         return this.title;
     };
 
+	ConstantNumber.prototype.setValue = function(v)
+	{
+		this.setProperty("value",v);
+	}
+
     ConstantNumber.prototype.onDrawBackground = function(ctx) {
         //show the current value
         this.outputs[0].label = this.properties["value"].toFixed(3);
@@ -11462,12 +11549,7 @@ if (typeof exports != "undefined") {
     function ConstantBoolean() {
         this.addOutput("", "boolean");
         this.addProperty("value", true);
-        this.widget = this.addWidget(
-            "toggle",
-            "value",
-            true,
-            "value"
-        );
+        this.widget = this.addWidget("toggle","value",true,"value");
         this.widgets_up = true;
         this.size = [140, 30];
     }
@@ -11480,17 +11562,23 @@ if (typeof exports != "undefined") {
         this.setOutputData(0, this.properties["value"]);
     };
 
+	ConstantBoolean.prototype.setValue = ConstantNumber.prototype.setValue;
+
+	ConstantBoolean.prototype.onGetInputs = function() {
+		return [["toggle", LiteGraph.ACTION]];
+	};
+
+	ConstantBoolean.prototype.onAction = function(action)
+	{
+		this.setValue( !this.properties.value );
+	}
+
     LiteGraph.registerNodeType("basic/boolean", ConstantBoolean);
 
     function ConstantString() {
         this.addOutput("", "string");
         this.addProperty("value", "");
-        this.widget = this.addWidget(
-            "text",
-            "value",
-            "",
-            "value" //link to property value
-        );
+        this.widget = this.addWidget("text","value","","value");  //link to property value
         this.widgets_up = true;
         this.size = [180, 30];
     }
@@ -11504,17 +11592,124 @@ if (typeof exports != "undefined") {
         this.setOutputData(0, this.properties["value"]);
     };
 
+	ConstantString.prototype.setValue = ConstantNumber.prototype.setValue;
+
+	ConstantString.prototype.onDropFile = function(file)
+	{
+		var that = this;
+		var reader = new FileReader();
+		reader.onload = function(e)
+		{
+			that.setProperty("value",e.target.result);
+		}
+		reader.readAsText(file);
+	}
+
     LiteGraph.registerNodeType("basic/string", ConstantString);
 
+    function ConstantFile() {
+        this.addInput("url", "");
+        this.addOutput("", "");
+        this.addProperty("url", "");
+        this.addProperty("type", "text");
+        this.widget = this.addWidget("text","url","","url");
+        this._data = null;
+    }
+
+    ConstantFile.title = "Const File";
+    ConstantFile.desc = "Fetches a file from an url";
+    ConstantFile["@type"] = { type: "enum", values: ["text","arraybuffer","blob","json"] };
+
+    ConstantFile.prototype.onPropertyChanged = function(name, value) {
+        if (name == "url")
+		{
+			if( value == null || value == "")
+				this._data = null;
+			else
+			{
+				this.fetchFile(value);
+			}
+		}
+	}
+
+    ConstantFile.prototype.onExecute = function() {
+		var url = this.getInputData(0) || this.properties.url;
+		if(url && (url != this._url || this._type != this.properties.type))
+			this.fetchFile(url);
+        this.setOutputData(0, this._data );
+    };
+
+	ConstantFile.prototype.setValue = ConstantNumber.prototype.setValue;
+
+    ConstantFile.prototype.fetchFile = function(url) {
+		var that = this;
+		if(!url || url.constructor !== String)
+		{
+			that._data = null;
+            that.boxcolor = null;
+			return;
+		}
+
+		this._url = url;
+		this._type = this.properties.type;
+        if (url.substr(0, 4) == "http" && LiteGraph.proxy) {
+            url = LiteGraph.proxy + url.substr(url.indexOf(":") + 3);
+        }
+		fetch(url)
+		.then(function(response) {
+			if(!response.ok)
+				 throw new Error("File not found");
+
+			if(that.properties.type == "arraybuffer")
+				return response.arrayBuffer();
+			else if(that.properties.type == "text")
+				return response.text();
+			else if(that.properties.type == "json")
+				return response.json();
+			else if(that.properties.type == "blob")
+				return response.blob();
+		})
+		.then(function(data) {
+			that._data = data;
+            that.boxcolor = "#AEA";
+		})
+		.catch(function(error) {
+			that._data = null;
+            that.boxcolor = "red";
+			console.error("error fetching file:",url);
+		});
+    };
+
+	ConstantFile.prototype.onDropFile = function(file)
+	{
+		var that = this;
+		this._url = file.name;
+		this._type = this.properties.type;
+		this.properties.url = file.name;
+		var reader = new FileReader();
+		reader.onload = function(e)
+		{
+            that.boxcolor = "#AEA";
+			var v = e.target.result;
+			if( that.properties.type == "json" )
+				v = JSON.parse(v);
+			that._data = v;
+		}
+		if(that.properties.type == "arraybuffer")
+			reader.readAsArrayBuffer(file);
+		else if(that.properties.type == "text" || that.properties.type == "json")
+			reader.readAsText(file);
+		else if(that.properties.type == "blob")
+			return reader.readAsBinaryString(file);
+	}
+
+    LiteGraph.registerNodeType("basic/file", ConstantFile);
+
+	//to store json objects
     function ConstantData() {
         this.addOutput("", "");
         this.addProperty("value", "");
-        this.widget = this.addWidget(
-            "text",
-            "json",
-            "",
-            this.setValue.bind(this)
-        );
+        this.widget = this.addWidget("text","json","","value");
         this.widgets_up = true;
         this.size = [140, 30];
         this._value = null;
@@ -11522,11 +11717,6 @@ if (typeof exports != "undefined") {
 
     ConstantData.title = "Const Data";
     ConstantData.desc = "Constant Data";
-
-    ConstantData.prototype.setValue = function(v) {
-        this.properties.value = v;
-        this.onPropertyChanged("value", v);
-    };
 
     ConstantData.prototype.onPropertyChanged = function(name, value) {
         this.widget.value = value;
@@ -11546,18 +11736,113 @@ if (typeof exports != "undefined") {
         this.setOutputData(0, this._value);
     };
 
+	ConstantData.prototype.setValue = ConstantNumber.prototype.setValue;
+
     LiteGraph.registerNodeType("basic/data", ConstantData);
+
+	//to store json objects
+    function ConstantArray() {
+        this.addInput("", "");
+        this.addOutput("", "array");
+        this.addProperty("value", "");
+        this.widget = this.addWidget("text","array","","value");
+        this.widgets_up = true;
+        this.size = [140, 30];
+        this._value = null;
+    }
+
+    ConstantArray.title = "Const Array";
+    ConstantArray.desc = "Constant Array";
+
+    ConstantArray.prototype.onPropertyChanged = function(name, value) {
+        this.widget.value = value;
+        if (value == null || value == "") {
+            return;
+        }
+
+        try {
+            this._value = JSON.parse(value);
+            this.boxcolor = "#AEA";
+        } catch (err) {
+            this.boxcolor = "red";
+        }
+    };
+
+    ConstantArray.prototype.onExecute = function() {
+        var v = this.getInputData(0);
+		if(v && v.length)
+		{
+			if(!this._value)
+				this._value = new Array();
+			this._value.length = v.length;
+			for(var i = 0; i < v.length; ++i)
+				this._value[i] = v[i];
+		}
+		this.setOutputData(0, this._value);
+    };
+
+	ConstantArray.prototype.setValue = ConstantNumber.prototype.setValue;
+
+    LiteGraph.registerNodeType("basic/array", ConstantArray);
+
+    function ArrayElement() {
+        this.addInput("array", "array,table,string");
+        this.addInput("index", "number");
+        this.addOutput("value", "");
+		this.addProperty("index",0);
+    }
+
+    ArrayElement.title = "Array[i]";
+    ArrayElement.desc = "Returns an element from an array";
+
+    ArrayElement.prototype.onExecute = function() {
+        var array = this.getInputData(0);
+        var index = this.getInputData(1);
+		if(index == null)
+			index = this.properties.index;
+		if(array == null || index == null )
+			return;
+        this.setOutputData(0, array[Math.floor(Number(index))] );
+    };
+
+    LiteGraph.registerNodeType("basic/array[]", ArrayElement);
+
+    function TableElement() {
+        this.addInput("table", "table");
+        this.addInput("row", "number");
+        this.addInput("col", "number");
+        this.addOutput("value", "");
+		this.addProperty("row",0);
+		this.addProperty("column",0);
+    }
+
+    TableElement.title = "Table[row][col]";
+    TableElement.desc = "Returns an element from a table";
+
+    TableElement.prototype.onExecute = function() {
+        var table = this.getInputData(0);
+        var row = this.getInputData(1);
+        var col = this.getInputData(2);
+		if(row == null)
+			row = this.properties.row;
+		if(col == null)
+			col = this.properties.column;
+		if(table == null || row == null || col == null)
+			return;
+		var row = table[Math.floor(Number(row))];
+		if(row)
+	        this.setOutputData(0, row[Math.floor(Number(col))] );
+		else
+	        this.setOutputData(0, null );
+    };
+
+    LiteGraph.registerNodeType("basic/table[][]", TableElement);
 
     function ObjectProperty() {
         this.addInput("obj", "");
         this.addOutput("", "");
         this.addProperty("value", "");
-        this.widget = this.addWidget(
-            "text",
-            "prop.",
-            "",
-            this.setValue.bind(this)
-        );
+        this.widget = this.addWidget("text","prop.","",this.setValue.bind(this) );
         this.widgets_up = true;
         this.size = [140, 30];
         this._value = null;
@@ -11666,6 +11951,18 @@ if (typeof exports != "undefined") {
 
     LiteGraph.registerNodeType("basic/variable", Variable);
 
+    function length(v) {
+        if(v && v.length != null)
+			return Number(v.length);
+		return 0;
+    }
+
+    LiteGraph.wrapFunctionAsNode(
+        "basic/length",
+        length,
+        ["*"],
+        "number"
+    );
 
 	function DownloadData() {
         this.size = [60, 30];
@@ -13546,6 +13843,7 @@ if (typeof exports != "undefined") {
     function MathRange() {
         this.addInput("in", "number", { locked: true });
         this.addOutput("out", "number", { locked: true });
+        this.addOutput("clamped", "number", { locked: true });
 
         this.addProperty("in", 0);
         this.addProperty("in_min", 0);
@@ -13553,7 +13851,7 @@ if (typeof exports != "undefined") {
         this.addProperty("out_min", 0);
         this.addProperty("out_max", 1);
 
-        this.size = [80, 30];
+        this.size = [120, 50];
     }
 
     MathRange.title = "Range";
@@ -13587,10 +13885,22 @@ if (typeof exports != "undefined") {
         var in_max = this.properties.in_max;
         var out_min = this.properties.out_min;
         var out_max = this.properties.out_max;
+		/*
+		if( in_min > in_max )
+		{
+			in_min = in_max;
+			in_max = this.properties.in_min;
+		}
+		if( out_min > out_max )
+		{
+			out_min = out_max;
+			out_max = this.properties.out_min;
+		}
+		*/
 
-        this._last_v =
-            ((v - in_min) / (in_max - in_min)) * (out_max - out_min) + out_min;
+        this._last_v = ((v - in_min) / (in_max - in_min)) * (out_max - out_min) + out_min;
         this.setOutputData(0, this._last_v);
+        this.setOutputData(1, Math.clamp( this._last_v, out_min, out_max ));
     };
 
     MathRange.prototype.onDrawBackground = function(ctx) {
@@ -14683,143 +14993,6 @@ if (typeof exports != "undefined") {
 
     LiteGraph.registerNodeType("math3d/xyzw-to-vec4", Math3DXYZWToVec4);
 
-    //if glMatrix is installed...
-    if (global.glMatrix) {
-        function Math3DQuaternion() {
-            this.addOutput("quat", "quat");
-            this.properties = { x: 0, y: 0, z: 0, w: 1 };
-            this._value = quat.create();
-        }
-
-        Math3DQuaternion.title = "Quaternion";
-        Math3DQuaternion.desc = "quaternion";
-
-        Math3DQuaternion.prototype.onExecute = function() {
-            this._value[0] = this.properties.x;
-            this._value[1] = this.properties.y;
-            this._value[2] = this.properties.z;
-            this._value[3] = this.properties.w;
-            this.setOutputData(0, this._value);
-        };
-
-        LiteGraph.registerNodeType("math3d/quaternion", Math3DQuaternion);
-
-        function Math3DRotation() {
-            this.addInputs([["degrees", "number"], ["axis", "vec3"]]);
-            this.addOutput("quat", "quat");
-            this.properties = { angle: 90.0, axis: vec3.fromValues(0, 1, 0) };
-
-            this._value = quat.create();
-        }
-
-        Math3DRotation.title = "Rotation";
-        Math3DRotation.desc = "quaternion rotation";
-
-        Math3DRotation.prototype.onExecute = function() {
-            var angle = this.getInputData(0);
-            if (angle == null) {
-                angle = this.properties.angle;
-            }
-            var axis = this.getInputData(1);
-            if (axis == null) {
-                axis = this.properties.axis;
-            }
-
-            var R = quat.setAxisAngle(this._value, axis, angle * 0.0174532925);
-            this.setOutputData(0, R);
-        };
-
-        LiteGraph.registerNodeType("math3d/rotation", Math3DRotation);
-
-        //Math3D rotate vec3
-        function Math3DRotateVec3() {
-            this.addInputs([["vec3", "vec3"], ["quat", "quat"]]);
-            this.addOutput("result", "vec3");
-            this.properties = { vec: [0, 0, 1] };
-        }
-
-        Math3DRotateVec3.title = "Rot. Vec3";
-        Math3DRotateVec3.desc = "rotate a point";
-
-        Math3DRotateVec3.prototype.onExecute = function() {
-            var vec = this.getInputData(0);
-            if (vec == null) {
-                vec = this.properties.vec;
-            }
-            var quat = this.getInputData(1);
-            if (quat == null) {
-                this.setOutputData(vec);
-            } else {
-                this.setOutputData(
-                    0,
-                    vec3.transformQuat(vec3.create(), vec, quat)
-                );
-            }
-        };
-
-        LiteGraph.registerNodeType("math3d/rotate_vec3", Math3DRotateVec3);
-
-        function Math3DMultQuat() {
-            this.addInputs([["A", "quat"], ["B", "quat"]]);
-            this.addOutput("A*B", "quat");
-
-            this._value = quat.create();
-        }
-
-        Math3DMultQuat.title = "Mult. Quat";
-        Math3DMultQuat.desc = "rotate quaternion";
-
-        Math3DMultQuat.prototype.onExecute = function() {
-            var A = this.getInputData(0);
-            if (A == null) {
-                return;
-            }
-            var B = this.getInputData(1);
-            if (B == null) {
-                return;
-            }
-
-            var R = quat.multiply(this._value, A, B);
-            this.setOutputData(0, R);
-        };
-
-        LiteGraph.registerNodeType("math3d/mult-quat", Math3DMultQuat);
-
-        function Math3DQuatSlerp() {
-            this.addInputs([
-                ["A", "quat"],
-                ["B", "quat"],
-                ["factor", "number"]
-            ]);
-            this.addOutput("slerp", "quat");
-            this.addProperty("factor", 0.5);
-
-            this._value = quat.create();
-        }
-
-        Math3DQuatSlerp.title = "Quat Slerp";
-        Math3DQuatSlerp.desc = "quaternion spherical interpolation";
-
-        Math3DQuatSlerp.prototype.onExecute = function() {
-            var A = this.getInputData(0);
-            if (A == null) {
-                return;
-            }
-            var B = this.getInputData(1);
-            if (B == null) {
-                return;
-            }
-            var factor = this.properties.factor;
-            if (this.getInputData(2) != null) {
-                factor = this.getInputData(2);
-            }
-
-            var R = quat.slerp(this._value, A, B, factor);
-            this.setOutputData(0, R);
-        };
-
-        LiteGraph.registerNodeType("math3d/quat-slerp", Math3DQuatSlerp);
-    } //glMatrix
 })(this);
 
 (function(global) {
@@ -15288,6 +15461,21 @@ if (typeof exports != "undefined") {
 			var target_min = this.properties.target_min;
 			var target_max = this.properties.target_max;
 
+			//swap to avoid errors
+			/*
+			if(range_min > range_max)
+			{
+				range_min = range_max;
+				range_max = this.properties.range_min;
+			}
+
+			if(target_min > target_max)
+			{
+				target_min = target_max;
+				target_max = this.properties.target_min;
+			}
+			*/
+
 			for(var i = 0; i < 3; ++i)
 			{
 				var r = range_max[i] - range_min[i];
@@ -15336,8 +15524,8 @@ if (typeof exports != "undefined") {
     LiteGraph.wrapFunctionAsNode(
         "string/compare",
         compare,
-        ["String", "String"],
-        "Boolean"
+        ["string", "string"],
+        "boolean"
     );
 
     function concatenate(a, b) {
@@ -15353,8 +15541,8 @@ if (typeof exports != "undefined") {
     LiteGraph.wrapFunctionAsNode(
         "string/concatenate",
         concatenate,
-        ["String", "String"],
-        "String"
+        ["string", "string"],
+        "string"
     );
 
     function contains(a, b) {
@@ -15367,8 +15555,8 @@ if (typeof exports != "undefined") {
     LiteGraph.wrapFunctionAsNode(
         "string/contains",
         contains,
-        ["String", "String"],
-        "Boolean"
+        ["string", "string"],
+        "boolean"
     );
 
     function toUpperCase(a) {
@@ -15381,22 +15569,33 @@ if (typeof exports != "undefined") {
     LiteGraph.wrapFunctionAsNode(
         "string/toUpperCase",
         toUpperCase,
-        ["String"],
-        "String"
+        ["string"],
+        "string"
     );
 
-    function split(a, b) {
-        if (a != null && a.constructor === String) {
-            return a.split(b || " ");
-        }
-        return [a];
+    function split(str, separator) {
+		if(separator == null)
+			separator = this.properties.separator;
+        if (str == null )
+	        return [];
+		if( str.constructor === String )
+			return str.split(separator || " ");
+		else if( str.constructor === Array )
+		{
+			var r = [];
+			for(var i = 0; i < str.length; ++i)
+				r[i] = str[i].split(separator || " ");
+			return r;
+		}
+        return null;
     }
 
     LiteGraph.wrapFunctionAsNode(
         "string/split",
-        toUpperCase,
-        ["String", "String"],
-        "Array"
+        split,
+        ["string,array", "string"],
+        "array",
+		{ separator: "," }
     );
 
     function toFixed(a) {
@@ -15409,10 +15608,41 @@ if (typeof exports != "undefined") {
     LiteGraph.wrapFunctionAsNode(
         "string/toFixed",
         toFixed,
-        ["Number"],
-        "String",
+        ["number"],
+        "string",
         { precision: 0 }
     );
+
+
+    function StringToTable() {
+        this.addInput("", "string");
+        this.addOutput("table", "table");
+        this.addOutput("rows", "number");
+        this.addProperty("value", "");
+        this.addProperty("separator", ",");
+		this._table = null;
+    }
+
+    StringToTable.title = "toTable";
+    StringToTable.desc = "Splits a string to table";
+
+    StringToTable.prototype.onExecute = function() {
+        var input = this.getInputData(0);
+		if(!input)
+			return;
+		var separator = this.properties.separator || ",";
+		if(input != this._str || separator != this._last_separator )
+		{
+			this._last_separator = separator;
+			this._str = input;
+			this._table = input.split("\n").map(function(a){ return a.trim().split(separator)});
+		}
+        this.setOutputData(0, this._table );
+        this.setOutputData(1, this._table ? this._table.length : 0 );
+    };
+
+    LiteGraph.registerNodeType("string/toTable", StringToTable);
+
 })(this);
 
 (function(global) {
@@ -15646,9 +15876,7 @@ if (typeof exports != "undefined") {
             if (callback) {
                 callback(this);
             }
-            that.trace(
-                "Image loaded, size: " + that.img.width + "x" + that.img.height
-            );
+            console.log( "Image loaded, size: " + that.img.width + "x" + that.img.height );
             this.dirty = true;
             that.boxcolor = "#9F9";
             that.setDirtyCanvas(true);
@@ -15930,7 +16158,7 @@ if (typeof exports != "undefined") {
         if (name == "scale") {
             this.properties[name] = parseFloat(value);
             if (this.properties[name] == 0) {
-                this.trace("Error in scale");
+                console.error("Error in scale");
                 this.properties[name] = 1.0;
             }
         } else {
@@ -16100,10 +16328,23 @@ if (typeof exports != "undefined") {
     ImageVideo.prototype.loadVideo = function(url) {
         this._video_url = url;
 
+		var pos = url.substr(0,10).indexOf(":");
+		var protocol = "";
+		if(pos != -1)
+			protocol = url.substr(0,pos);
+
+		var host = "";
+		if(protocol)
+		{
+			host = url.substr(0,url.indexOf("/",protocol.length + 3));
+			host = host.substr(protocol.length+3);
+		}
+
         if (
             this.properties.use_proxy &&
-            url.substr(0, 4) == "http" &&
-            LiteGraph.proxy
+            protocol &&
+            LiteGraph.proxy &&
+			host != location.host
         ) {
             url = LiteGraph.proxy + url.substr(url.indexOf(":") + 3);
         }
@@ -16118,41 +16359,38 @@ if (typeof exports != "undefined") {
         var that = this;
         this._video.addEventListener("loadedmetadata", function(e) {
             //onload
-            that.trace("Duration: " + this.duration + " seconds");
-            that.trace("Size: " + this.videoWidth + "," + this.videoHeight);
+            console.log("Duration: " + this.duration + " seconds");
+            console.log("Size: " + this.videoWidth + "," + this.videoHeight);
             that.setDirtyCanvas(true);
             this.width = this.videoWidth;
             this.height = this.videoHeight;
         });
         this._video.addEventListener("progress", function(e) {
             //onload
-            //that.trace("loading...");
+            console.log("video loading...");
         });
         this._video.addEventListener("error", function(e) {
-            console.log("Error loading video: " + this.src);
-            that.trace("Error loading video: " + this.src);
+            console.error("Error loading video: " + this.src);
             if (this.error) {
                 switch (this.error.code) {
                     case this.error.MEDIA_ERR_ABORTED:
-                        that.trace("You stopped the video.");
+                        console.error("You stopped the video.");
                         break;
                     case this.error.MEDIA_ERR_NETWORK:
-                        that.trace("Network error - please try again later.");
+                        console.error("Network error - please try again later.");
                         break;
                     case this.error.MEDIA_ERR_DECODE:
-                        that.trace("Video is broken..");
+                        console.error("Video is broken..");
                         break;
                     case this.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-                        that.trace(
-                            "Sorry, your browser can't play this video."
-                        );
+                        console.error("Sorry, your browser can't play this video.");
                         break;
                 }
             }
         });
 
         this._video.addEventListener("ended", function(e) {
-            that.trace("Ended.");
+            console.log("Video Ended.");
             this.play(); //loop
         });
 
@@ -16169,7 +16407,7 @@ if (typeof exports != "undefined") {
     };
 
     ImageVideo.prototype.play = function() {
-        if (this._video) {
+        if (this._video && this._video.videoWidth ) { //is loaded
             this._video.play();
         }
     };
@@ -16197,7 +16435,7 @@ if (typeof exports != "undefined") {
         if (!this._video) {
             return;
         }
-        this.trace("Video paused");
+        console.log("Video paused");
         this._video.pause();
     };
 
@@ -24581,7 +24819,7 @@ function LGraphGeometryDisplace() {
         MIDIEvent.commands_reversed[MIDIEvent.commands[i]] = i;
     }
 
-    //MIDI wrapper
+    //MIDI wrapper, instantiate by MIDIIn and MIDIOut
     function MIDIInterface(on_ready, on_error) {
         if (!navigator.requestMIDIAccess) {
             this.error = "not suppoorted";
@@ -24600,9 +24838,12 @@ function LGraphGeometryDisplace() {
             cc: []
         };
 
-        navigator
-            .requestMIDIAccess()
-            .then(this.onMIDISuccess.bind(this), this.onMIDIFailure.bind(this));
+		this.input_ports = null;
+		this.input_ports_info = [];
+		this.output_ports = null;
+		this.output_ports_info = [];
+
+        navigator.requestMIDIAccess().then(this.onMIDISuccess.bind(this), this.onMIDIFailure.bind(this));
     }
 
     MIDIInterface.input = null;
@@ -24623,80 +24864,34 @@ function LGraphGeometryDisplace() {
     MIDIInterface.prototype.updatePorts = function() {
         var midi = this.midi;
         this.input_ports = midi.inputs;
+		this.input_ports_info = [];
+        this.output_ports = midi.outputs;
+		this.output_ports_info = [];
+
         var num = 0;
 
         var it = this.input_ports.values();
         var it_value = it.next();
         while (it_value && it_value.done === false) {
             var port_info = it_value.value;
-            console.log(
-                "Input port [type:'" +
-                    port_info.type +
-                    "'] id:'" +
-                    port_info.id +
-                    "' manufacturer:'" +
-                    port_info.manufacturer +
-                    "' name:'" +
-                    port_info.name +
-                    "' version:'" +
-                    port_info.version +
-                    "'"
-            );
+			this.input_ports_info.push(port_info);
+            console.log( "Input port [type:'" + port_info.type + "'] id:'" + port_info.id + "' manufacturer:'" + port_info.manufacturer + "' name:'" + port_info.name + "' version:'" + port_info.version + "'" );
             num++;
             it_value = it.next();
         }
         this.num_input_ports = num;
 
         num = 0;
-        this.output_ports = midi.outputs;
         var it = this.output_ports.values();
         var it_value = it.next();
         while (it_value && it_value.done === false) {
             var port_info = it_value.value;
-            console.log(
-                "Output port [type:'" +
-                    port_info.type +
-                    "'] id:'" +
-                    port_info.id +
-                    "' manufacturer:'" +
-                    port_info.manufacturer +
-                    "' name:'" +
-                    port_info.name +
-                    "' version:'" +
-                    port_info.version +
-                    "'"
-            );
+			this.output_ports_info.push(port_info);
+            console.log( "Output port [type:'" + port_info.type + "'] id:'" + port_info.id + "' manufacturer:'" + port_info.manufacturer + "' name:'" + port_info.name + "' version:'" + port_info.version + "'" );
             num++;
             it_value = it.next();
         }
         this.num_output_ports = num;
-
-        /* OLD WAY
-	for (var i = 0; i < this.input_ports.size; ++i) {
-		  var input = this.input_ports.get(i);
-		  if(!input)
-			  continue; //sometimes it is null?!
-			console.log( "Input port [type:'" + input.type + "'] id:'" + input.id +
-		  "' manufacturer:'" + input.manufacturer + "' name:'" + input.name +
-		  "' version:'" + input.version + "'" );
-			num++;
-	  }
-	this.num_input_ports = num;
-
-
-	num = 0;
-	this.output_ports = midi.outputs;
-	for (var i = 0; i < this.output_ports.size; ++i) {
-		  var output = this.output_ports.get(i);
-		  if(!output)
-			  continue; 
-		console.log( "Output port [type:'" + output.type + "'] id:'" + output.id +
-		  "' manufacturer:'" + output.manufacturer + "' name:'" + output.name +
-		  "' version:'" + output.version + "'" );
-			num++;
-	  }
-	this.num_output_ports = num;
-	*/
     };
 
     MIDIInterface.prototype.onMIDIFailure = function(msg) {
@@ -24746,7 +24941,7 @@ function LGraphGeometryDisplace() {
             return;
         }
 
-        var output_port = this.output_ports.get("output-" + port);
+        var output_port = this.output_ports_info[port];//this.output_ports.get("output-" + port);
         if (!output_port) {
             return;
         }
@@ -24793,10 +24988,9 @@ function LGraphGeometryDisplace() {
 
         if (name == "port") {
             var values = {};
-            for (var i = 0; i < this._midi.input_ports.size; ++i) {
-                var input = this._midi.input_ports.get("input-" + i);
-                values[i] =
-                    i + ".- " + input.name + " version:" + input.version;
+            for (var i = 0; i < this._midi.input_ports_info.length; ++i) {
+                var input = this._midi.input_ports_info[i];
+                values[i] = i + ".- " + input.name + " version:" + input.version;
             }
             return { type: "enum", values: values };
         }
@@ -24894,9 +25088,10 @@ function LGraphGeometryDisplace() {
         var that = this;
         new MIDIInterface(function(midi) {
             that._midi = midi;
+			that.widget.options.values = that.getMIDIOutputs();
         });
-
-		this.addWidget("combo","Device",this.properties.port,{ property: "port", values: this.getMIDIOutputs.bind(this) });
+		this.widget = this.addWidget("combo","Device",this.properties.port,{ property: "port", values: this.getMIDIOutputs.bind(this) });
+		this.size = [340,60];
     }
 
     LGMIDIOut.MIDIInterface = MIDIInterface;
@@ -24915,14 +25110,20 @@ function LGraphGeometryDisplace() {
             return { type: "enum", values: values };
         }
     };
+	LGMIDIOut.default_ports = {0:"unknown"};
 
 	LGMIDIOut.prototype.getMIDIOutputs = function()
 	{
 		var values = {};
-		for (var i = 0; i < this._midi.output_ports.size; ++i) {
-			var output = this._midi.output_ports.get(i);
-			if(output)
-				values[i] = i + ".- " + output.name + " version:" + output.version;
+		if(!this._midi)
+			return LGMIDIOut.default_ports;
+		if(this._midi.output_ports_info)
+		for (var i = 0; i < this._midi.output_ports_info.length; ++i) {
+			var output = this._midi.output_ports_info[i];
+			if(!output)
+				continue;
+			var name = i + ".- " + output.name + " version:" + output.version;
+			values[i] = name;
 		}
 		return values;
 	}
@@ -24933,7 +25134,7 @@ function LGraphGeometryDisplace() {
             return;
         }
         if (event == "send") {
-            this._midi.sendMIDI(this.port, midi_event);
+            this._midi.sendMIDI(this.properties.port, midi_event);
         }
         this.trigger("midi", midi_event);
     };
@@ -25172,6 +25373,24 @@ function LGraphGeometryDisplace() {
                             this.properties.value1 = (v | 0) % 255;
                         }
                         break;
+                    case "cmd":
+                        var v = this.getInputData(i);
+                        if (v != null) {
+                            this.properties.cmd = v;
+                        }
+                        break;
+                    case "value1":
+                        var v = this.getInputData(i);
+                        if (v != null) {
+                            this.properties.value1 = Math.clamp(v|0,0,127);
+                        }
+                        break;
+                    case "value2":
+                        var v = this.getInputData(i);
+                        if (v != null) {
+                            this.properties.value2 = Math.clamp(v|0,0,127);
+                        }
+                        break;
                 }
             }
         }
@@ -25240,7 +25459,7 @@ function LGraphGeometryDisplace() {
     };
 
     LGMIDIEvent.prototype.onGetInputs = function() {
-        return [["note", "number"]];
+        return [["cmd", "number"],["note", "number"],["value1", "number"],["value2", "number"]];
     };
 
     LGMIDIEvent.prototype.onGetOutputs = function() {
@@ -25496,6 +25715,119 @@ function LGraphGeometryDisplace() {
     };
 
     LiteGraph.registerNodeType("midi/quantize", LGMIDIQuantize);
+
+	function LGMIDIFromFile() {
+        this.properties = {
+            url: "",
+			autoplay: true
+        };
+
+        this.addInput("play", LiteGraph.ACTION);
+        this.addInput("pause", LiteGraph.ACTION);
+        this.addOutput("note", LiteGraph.EVENT);
+		this._midi = null;
+		this._current_time = 0;
+		this._playing = false;
+
+        if (typeof MidiParser == "undefined") {
+            console.error(
+                "midi-parser.js not included, LGMidiPlay requires that library: https://raw.githubusercontent.com/colxi/midi-parser-js/master/src/main.js"
+            );
+            this.boxcolor = "red";
+		}
+
+	}
+
+    LGMIDIFromFile.title = "MIDI fromFile";
+    LGMIDIFromFile.desc = "Plays a MIDI file";
+    LGMIDIFromFile.color = MIDI_COLOR;
+
+	LGMIDIFromFile.prototype.onAction = function( name )
+	{
+		if(name == "play")
+			this.play();
+		else if(name == "pause")
+			this._playing = !this._playing;
+	}
+
+	LGMIDIFromFile.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name == "url")
+			this.loadMIDIFile(value);
+	}
+
+    LGMIDIFromFile.prototype.onExecute = function() {
+		if(!this._midi)
+			return;
+
+		if(!this._playing)
+			return;
+
+		this._current_time += this.graph.elapsed_time;
+		var current_time = this._current_time * 100;
+
+		for(var i = 0; i < this._midi.tracks; ++i)
+		{
+			var track = this._midi.track[i];
+			if(!track._last_pos)
+			{
+				track._last_pos = 0;
+				track._time = 0;
+			}
+
+			var elem = track.event[ track._last_pos ];
+			if(elem && (track._time + elem.deltaTime) <= current_time )
+			{
+				track._last_pos++;
+				track._time += elem.deltaTime;
+
+				if(elem.data)
+				{
+					var midi_cmd = elem.type << 4 + elem.channel;
+					var midi_event = new MIDIEvent();
+					midi_event.setup([midi_cmd, elem.data[0], elem.data[1]]);
+					this.trigger("note", midi_event);
+				}
+			}
+			
+		}
+    };
+
+	LGMIDIFromFile.prototype.play = function()
+	{
+		this._playing = true;
+		this._current_time = 0;
+		for(var i = 0; i < this._midi.tracks; ++i)
+		{
+			var track = this._midi.track[i];
+			track._last_pos = 0;
+			track._time = 0;
+		}		
+	}
+
+	LGMIDIFromFile.prototype.loadMIDIFile = function(url)
+	{
+		var that = this;
+		LiteGraph.fetchFile( url, "arraybuffer", function(data)
+		{
+			that.boxcolor = "#AFA";
+			that._midi = MidiParser.parse( new Uint8Array(data) );
+			if(that.properties.autoplay)
+				that.play();
+		}, function(err){
+			that.boxcolor = "#FAA";
+			that._midi = null;
+		});
+	}
+
+	LGMIDIFromFile.prototype.onDropFile = function(file)
+	{
+		this.properties.url = "";
+		this.loadMIDIFile( file );
+	}
+
+    LiteGraph.registerNodeType("midi/fromFile", LGMIDIFromFile);
+
 
     function LGMIDIPlay() {
         this.properties = {
@@ -26018,6 +26350,7 @@ function LGraphGeometryDisplace() {
         }
     }
 
+	LGAudioSource.desc = "Plays an audio file";
     LGAudioSource["@src"] = { widget: "resource" };
     LGAudioSource.supported_extensions = ["wav", "ogg", "mp3"];
 
@@ -26033,7 +26366,7 @@ function LGraphGeometryDisplace() {
         }
 
         if (this.properties.autoplay) {
-            this.playBuffer(this._audiobuffer);
+			this.playBuffer(this._audiobuffer);
         }
     };
 
@@ -26088,8 +26421,10 @@ function LGraphGeometryDisplace() {
                 if (v === undefined) {
                     continue;
                 }
-                if (input.name == "gain") {
+                if (input.name == "gain")
                     this.audionode.gain.value = v;
+                else if (input.name == "src") {
+                    this.setProperty("src",v);
                 } else if (input.name == "playbackRate") {
                     this.properties.playbackRate = v;
                     for (var j = 0; j < this._audionodes.length; ++j) {
@@ -26144,7 +26479,10 @@ function LGraphGeometryDisplace() {
         audionode.playbackRate.value = this.properties.playbackRate;
         this._audionodes.push(audionode);
         audionode.connect(this.audionode); //connect to gain
-        this._audionodes.push(audionode);
+
+		this._audionodes.push(audionode);
+
+		this.trigger("start");
 
         audionode.onended = function() {
             //console.log("ended!");
@@ -26201,13 +26539,14 @@ function LGraphGeometryDisplace() {
     LGAudioSource.prototype.onGetInputs = function() {
         return [
             ["playbackRate", "number"],
+			["src","string"],
             ["Play", LiteGraph.ACTION],
             ["Stop", LiteGraph.ACTION]
         ];
     };
 
     LGAudioSource.prototype.onGetOutputs = function() {
-        return [["buffer", "audiobuffer"], ["ended", LiteGraph.EVENT]];
+        return [["buffer", "audiobuffer"], ["start", LiteGraph.EVENT], ["ended", LiteGraph.EVENT]];
     };
 
     LGAudioSource.prototype.onDropFile = function(file) {
@@ -27279,10 +27618,10 @@ LiteGraph.registerNodeType("audio/waveShaper", LGAudioWaveShaper);
         this._ws.onmessage = function(e) {
             that.boxcolor = "#AFA";
             var data = JSON.parse(e.data);
-            if (data.room && data.room != this.properties.room) {
+            if (data.room && data.room != that.properties.room) {
                 return;
             }
-            if (e.data.type == 1) {
+            if (data.type == 1) {
                 if (
                     data.data.object_class &&
                     LiteGraph[data.data.object_class]
@@ -27298,7 +27637,7 @@ LiteGraph.registerNodeType("audio/waveShaper", LGAudioWaveShaper);
                     that.triggerSlot(0, data.data);
                 }
             } else {
-                that._last_received_data[e.data.channel || 0] = data.data;
+                that._last_received_data[data.channel || 0] = data.data;
             }
         };
         this._ws.onerror = function(e) {

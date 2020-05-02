@@ -51,7 +51,7 @@ var ResourcesManager = {
 	resource_once_callbacks: {}, //callback called once
 
 	virtual_file_systems: {}, //protocols associated to urls  "VFS":"../"
-	skip_proxy_extensions: ["mp3","wav","ogg"], //this file formats should not be passed through the proxy
+	skip_proxy_extensions: ["mp3","wav","ogg","mp4","webm"], //this file formats should not be passed through the proxy
 	force_nocache_extensions: ["js","glsl","json"], //this file formats should be reloaded without using the cache
 	nocache_files: {}, //this is used by the editor to avoid using cached version of recently loaded files
 
@@ -393,7 +393,9 @@ var ResourcesManager = {
 				case 'https':
 					var full_url = url;
 					var extension = this.getExtension( url ).toLowerCase();
-					if(this.proxy && this.skip_proxy_extensions.indexOf( extension ) == -1 && (!options || (options && !options.ignore_proxy)) ) //proxy external files
+					var host = url.substr(0,url.indexOf("/",protocol.length + 3));
+					host = host.substr(protocol.length+3);
+					if(this.proxy && host != location.host && this.skip_proxy_extensions.indexOf( extension ) == -1 && (!options || (options && !options.ignore_proxy)) ) //proxy external files
 						return this.proxy + url; //this.proxy + url.substr(pos+3); //"://"
 					return full_url;
 					break;
@@ -1522,10 +1524,13 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 				texture._original_data = data;
 		}
 
-		if( !LS.ResourcesManager.keep_urls )
-			URL.revokeObjectURL( objectURL ); //free memory
-		else
-			texture._local_url = objectURL; //used in strange situations
+		if( objectURL )
+		{
+			if( !LS.ResourcesManager.keep_urls )
+				URL.revokeObjectURL( objectURL ); //free memory
+			else
+				texture._local_url = objectURL; //used in strange situations
+		}
 
 		if(callback)
 			callback(filename,texture,options);

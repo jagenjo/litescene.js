@@ -376,7 +376,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		if( environment_texture )
 		{
-			var tex = LS.ResourcesManager.textures[ environment_texture ];
+			var tex = environment_texture.constructor === String ? LS.ResourcesManager.textures[ environment_texture ] : environment_texture;
 			if( tex && tex.texture_type == GL.TEXTURE_2D )
 			{
 				if( tex._is_planar )
@@ -565,6 +565,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 
 	//global stuff
 	this._render_state.enable( render_settings );
+	gl.disable( gl.BLEND ); //picking shouldnt use blending or colors will be wrong
 	LS.Renderer.bindSamplers( this._samplers );
 	LS.Renderer.bindSamplers( instance.samplers );
 

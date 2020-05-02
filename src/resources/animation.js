@@ -324,6 +324,11 @@ function Take(o)
 
 }
 
+Take.prototype.clear = function()
+{
+	this.tracks = [];
+}
+
 Take.prototype.configure = function( o )
 {
 	if( o.name )

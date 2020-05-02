@@ -70,8 +70,8 @@ function Scene()
 	//work in progress, not finished yet. This will contain all the objects in cells
 	this._spatial_container = new LS.SpatialContainer();
 
-	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
-	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
+	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene) they do not have access to the data in the scene
+	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app. they have access to the scene data
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
 
 	//track with global animations of the scene
@@ -645,6 +645,9 @@ Scene.getScriptsList = function( scene, allow_local, full_paths )
 			scripts.push( script_url );
 		}
 	}
+
+	scripts = scripts.map(function(a){ return a.trim(); }); //careful with spaces
+
 	return scripts;
 }
 
@@ -693,6 +696,7 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 				continue;
 			}
 
+			//we use blobs because we have the data locally but we need to load it from an url (the script loader works like that)
 			var blob = new Blob([res.data],{encoding:"UTF-8", type: 'text/plain;charset=UTF-8'});
 			var objectURL = URL.createObjectURL( blob );
 			final_scripts.push( objectURL );
@@ -1236,7 +1240,23 @@ Scene.prototype.setPropertyValueFromPath = function( path, value, root_node, off
 	}
 
 	//get node
-	var node = root_node ? root_node.findNode( path[offset] ) : this.getNode( path[offset] );
+	var node = null;
+	if( root_node )
+	{
+		var name = path[offset];
+		if( name.indexOf("|") != -1)
+		{
+			var tokens = name.split("|");
+			var node = root_node;
+			for(var i = 0; i < tokens.length && node; ++i)
+				node = node.getChildByName( tokens[i] );
+		}
+		else
+			node = root_node.findNode( path[offset] );
+	}
+	else
+		node = this.getNode( path[offset] );
+
 	if(!node)
 		return null;
 

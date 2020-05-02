@@ -29,7 +29,7 @@ function RenderSettings( o )
 	this.render_gui = true; //render gui
 	this.render_helpers = true; //render helpers (for the editor)
 
-	this.layers = 0xFF; //this is masked with the camera layers when rendering
+	this.layers = 0xFFFF; //this is masked with the camera layers when rendering
 
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 	this.frustum_culling = true; //test bounding box by frustum to determine visibility

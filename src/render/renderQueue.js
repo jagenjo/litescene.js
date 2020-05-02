@@ -4,13 +4,13 @@
 //It works similar to the one in Unity
 function RenderQueue( value, sort_mode, options )
 {
+	this.enabled = true;
+
 	//container for all instances that belong to this render queue
 	this.instances = [];
 
 	this.value = value || 0;
 	this.sort_mode = sort_mode || LS.RenderQueue.NO_SORT;
-	this.range_start = 0;
-	this.range_end = 9;
 	this.must_clone_buffers = false; //used for readback rendering like refracion
 	//this.visible_in_pass = null;
 
@@ -77,14 +77,13 @@ RenderQueue.prototype.finish = function( pass )
 		this.onFinish( pass, render_settings );
 }
 
-
 //we use 5 so from 0 to 9 is one queue, from 10 to 19 another one, etc
 RenderQueue.AUTO =			-1;
-RenderQueue.BACKGROUND =	5;
-RenderQueue.GEOMETRY =		15;
-RenderQueue.TRANSPARENT =	25;
-RenderQueue.READBACK_COLOR = 35;
-RenderQueue.OVERLAY =		45;
+RenderQueue.BACKGROUND =	5; //0..9
+RenderQueue.GEOMETRY =		35; //30..39
+RenderQueue.TRANSPARENT =	75; //70..79
+RenderQueue.READBACK_COLOR = 95;//90..99
+RenderQueue.OVERLAY =		115; //100..119
 
 RenderQueue.NO_SORT = 0;
 RenderQueue.SORT_NEAR_TO_FAR = 1;

@@ -248,7 +248,10 @@ var Network = {
 			var script = document.createElement('script');
 			script.num = i;
 			script.type = 'text/javascript';
-			script.src = url[i] + "?" + LS.RM.getNoCache(true);
+			var full_url = url[i].trim();
+			if(full_url.substr(0,5) != "blob:")
+				full_url += "?" + LS.RM.getNoCache(true);
+			script.src = full_url;
 			script.async = false;
 			//if( script.src.substr(0,5) == "blob:") //local scripts could contain utf-8
 				script.charset = "UTF-8";

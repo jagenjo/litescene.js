@@ -1135,49 +1135,14 @@ Transform.prototype.orbit = (function() {
 * @param {boolean} in_world tells if the values are in world coordinates (otherwise asume its in local coordinates)
 */
 Transform.prototype.lookAt = (function() { 
-
-	//avoid garbage
-	var GM = mat4.create();
 	var temp = mat4.create();
-	var temp_pos = vec3.create();
-	var temp_target = vec3.create();
-	var temp_up = vec3.create();
-	
 	return function( pos, target, up, in_world )
 	{
-		up = up || LS.TOP;
-
-		//convert to local space
-		if(in_world && this._parent)
-		{
-			this._parent.getGlobalMatrix( GM );
-			var inv = mat4.invert(GM,GM);
-			if(!inv)
-				return;
-			mat4.multiplyVec3(temp_pos, inv, pos);
-			mat4.multiplyVec3(temp_target, inv, target);
-			mat4.rotateVec3(temp_up, inv, up );
-		}
-		else
-		{
-			temp_pos.set( pos );
-			temp_target.set( target );
-			temp_up.set( up );
-		}
-
-		mat4.lookAt(temp, temp_pos, temp_target, temp_up);
-		//mat4.invert(temp, temp);
-
-		quat.fromMat4( this._rotation, temp );
-		this._position.set( temp_pos );	
-		this._must_update = true;
-
-		/*
+		//compute matrix in world space
 		mat4.lookAt(temp, pos, target, up);
 		mat4.invert(temp, temp);
-		this.fromMatrix(temp);
-		this.updateGlobalMatrix();
-		*/
+		//pass it to fromMatrix
+		this.fromMatrix(temp, true);
 	}
 })();
 

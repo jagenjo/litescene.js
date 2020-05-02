@@ -2,26 +2,94 @@
 // Shadows are complex because there are too many combinations: SPOT/DIRECT,OMNI or DEPTH_COMPONENT,RGBA or HARD,SOFT,VARIANCE
 // This class encapsulates the shadowmap generation, and also how how it is read from the shader (using a ShaderBlock)
 
+/**
+* Shadowmap contains all the info necessary to generate the shadowmap
+* @class Shadowmap
+* @constructor
+* @param {Object} object to configure from
+*/
 function Shadowmap( light )
 {
-	this.light = light;
+	//maybe useful
+	//this.enabled = true;
 
-	this.resolution = 512;
+	/**
+	* Shadowmap resolution, if let to 0 it will use the system default
+	* @property resolution
+	* @type {Number}
+	* @default 0
+	*/
+	this.resolution = 0;
+
+	/**
+	* The offset applied to every depth before comparing it to avoid shadow acne
+	* @property bias
+	* @type {Number}
+	* @default 0.0
+	*/
 	this.bias = 0;
+
+	/**
+	* Which format to use to store the shadowmaps
+	* @property format
+	* @type {Number}
+	* @default GL.DEPTH_COMPONENT
+	*/
 	this.format = GL.DEPTH_COMPONENT;
+
+	/**
+	* Layers mask, this layers define which objects affect the shadow map (cast shadows)
+	* @property layers
+	* @type {Number}
+	* @default true
+	*/
 	this.layers = 0xFF; //visible layers
-	this.texture = null;
-	this.fbo = null;
-	this.shadow_params = vec4.create(); //1.0 / this.texture.width, this.shadow_bias, this.near, closest_far
-	this.reverse_faces = false; //improves quality in some cases
+
+	/**
+	* If true objects inside the shadowmap will be rendered with the back faces only
+	* @property reverse_faces
+	* @type {Boolean}
+	* @default false
+	*/
+	this.reverse_faces = true; //improves quality in some cases
+
+
+	this.shadow_mode = 1; //0:hard, 1:bilinear, ...
+
+	this.linear_filter = true;
+
+	/**
+	* The shadowmap texture, could be stored as color or depth depending on the settings
+	* @property texture
+	* @type {GL.Texture}
+	* @default true
+	*/
+	this._texture = null;
+	this._light = light;
+	this._fbo = null;
+	this._shadow_params = vec4.create(); //1.0 / this._texture.width, this.shadow_bias, this.near, closest_far
+	this._shadow_extra_params = vec4.create(); //custom params in case the user wants to tweak the shadowmap with a cusstom shader
 }
 
+LS.Shadowmap = Shadowmap;
+
 Shadowmap.use_shadowmap_depth_texture = true;
+
+Shadowmap.prototype.getLocator = function()
+{
+	return this._light.getLocator() + "/" + "shadowmap";
+}
+
+Shadowmap.prototype.configure = function(v)
+{
+	for(var i in v)
+		this[i] = v[i];
+}
 
 //enable block
 Shadowmap.prototype.getReadShaderBlock = function()
 {
-	if( this.texture.format != GL.DEPTH_COMPONENT )
+	if( this._texture.format != GL.DEPTH_COMPONENT )
 		return Shadowmap.shader_block.flag_mask | Shadowmap.depth_in_color_block.flag_mask;
 	return Shadowmap.shader_block.flag_mask;
 }
@@ -38,7 +106,7 @@ Shadowmap.prototype.precomputeStaticShadowmap = function()
 
 Shadowmap.prototype.generate = function( instances, render_settings, precompute_static )
 {
-	var light = this.light;
+	var light = this._light;
 
 	var light_intensity = light.computeLightIntensity();
 	if( light_intensity < 0.0001 )
@@ -54,10 +122,11 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	var shadowmap_height = shadowmap_resolution;
 	if( light.type == LS.Light.OMNI)
 		shadowmap_height *= 6; //for every face
+	var magFilter = this.linear_filter ? gl.LINEAR : gl.NEAREST;
 
 	//var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
 	var tex_type = gl.TEXTURE_2D;
-	if(this.texture == null || this.texture.width != shadowmap_width || this.texture.height != shadowmap_height ||  this.texture.texture_type != tex_type )
+	if(this._texture == null || this._texture.width != shadowmap_width || this._texture.height != shadowmap_height ||  this._texture.texture_type != tex_type || this._texture.magFilter != magFilter )
 	{
 		var type = gl.UNSIGNED_BYTE;
 		var format = gl.RGBA;
@@ -70,21 +139,21 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 		}
 
 		//create texture to store the shadowmap
-		this.texture = new GL.Texture( shadowmap_width, shadowmap_height, { type: type, texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
+		this._texture = new GL.Texture( shadowmap_width, shadowmap_height, { type: type, texture_type: tex_type, format: format, magFilter: magFilter, minFilter: gl.NEAREST });
 
 		//if( this.precompute_static_shadowmap && (format != gl.DEPTH_COMPONENT || gl.extensions.EXT_frag_depth) )
 		//	this._static_shadowmap = new GL.Texture( shadowmap_width, shadowmap_height, { type: type, texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
 
 		//index, for debug
-		this.texture.filename = ":shadowmap_" + light.uid;
-		LS.ResourcesManager.textures[ this.texture.filename ] = this.texture; 
+		this._texture.filename = ":shadowmap_" + light.uid;
+		LS.ResourcesManager.textures[ this._texture.filename ] = this._texture; 
 
-		if( this.texture.texture_type == gl.TEXTURE_2D )
+		if( this._texture.texture_type == gl.TEXTURE_2D )
 		{
 			if(format == gl.RGBA)
-				this.fbo = new GL.FBO( [this.texture] );
+				this._fbo = new GL.FBO( [this._texture] );
 			else
-				this.fbo = new GL.FBO( null, this.texture );
+				this._fbo = new GL.FBO( null, this._texture );
 		}
 	}
 
@@ -97,14 +166,14 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 
 	//render the scene inside the texture
 	// Render the object viewed from the light using a shader that returns the fragment depth.
-	this.texture.unbind(); 
+	this._texture.unbind(); 
 
-	LS.Renderer._current_target = this.texture;
-	this.fbo.bind();
+	LS.Renderer._current_target = this._texture;
+	this._fbo.bind();
 
 	var sides = 1;
-	var viewport_width = this.texture.width;
-	var viewport_height = this.texture.height;
+	var viewport_width = this._texture.width;
+	var viewport_height = this._texture.height;
 	if( light.type == LS.Light.OMNI )
 	{
 		sides = 6;
@@ -112,7 +181,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	}
 
 	gl.clearColor(1, 1, 1, 1);
-	if( this.texture.type == gl.DEPTH_COMPONENT )
+	if( this._texture.type == gl.DEPTH_COMPONENT )
 		gl.colorMask(false,false,false,false);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -120,8 +189,10 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	{
 		var shadow_camera = light.getLightCamera(i);
 		shadow_camera.near;
-		this.shadow_params[2] = this.texture.near = shadow_camera.near;
-		this.shadow_params[3] = this.texture.far = shadow_camera.far;
+		if(!this._texture.near_far_planes)
+			this._texture.near_far_planes = vec2.create();
+		this._shadow_params[2] = this._texture.near_far_planes[0] = shadow_camera.near;
+		this._shadow_params[3] = this._texture.near_far_planes[1] = shadow_camera.far;
 		LS.Renderer.enableCamera( shadow_camera, render_settings, true );
 
 		var viewport_y = 0;
@@ -138,7 +209,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 		LS.Renderer._reverse_faces = false;
 	}
 
-	this.fbo.unbind();
+	this._fbo.unbind();
 	LS.Renderer._current_target = null;
 	gl.colorMask(true,true,true,true);
 
@@ -147,33 +218,42 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	LS.Renderer._current_light = null;
 	
 	if(this.onPostProcessShadowMap)
-		this.onPostProcessShadowMap( this.texture );
+		this.onPostProcessShadowMap( this._texture );
 }
 
 Shadowmap.prototype.prepare = function( uniforms, samplers )
 {
-	if(!this.texture)
+	if(!this._texture)
 	{
 		console.warn("shadowmap without texture?");
 		return;
 	}
 
-	var light = this.light;
+	var light = this._light;
 	var closest_far = light.computeFar();
-	uniforms.u_shadow_params = this.shadow_params;
-	this.shadow_params[0] = 1.0 / this.texture.width;
-	this.shadow_params[1] = this.bias;
+	uniforms.u_shadow_params = this._shadow_params;
+	this._shadow_params[0] = 1.0 / this._texture.width;
+	this._shadow_params[1] = this.bias;
+	this._shadow_extra_params[0] = this.shadow_mode;
+	uniforms.u_shadow_extra = this._shadow_extra_params;
 	//2 and 3 are set when rendering the shadowmap
 
 	uniforms.shadowmap = LS.Renderer.SHADOWMAP_TEXTURE_SLOT;
-	samplers[ LS.Renderer.SHADOWMAP_TEXTURE_SLOT ] = this.texture;
+
+	samplers[ LS.Renderer.SHADOWMAP_TEXTURE_SLOT ] = this._texture;
+}
+
+//called when we no longer need this shadowmap
+Shadowmap.prototype.release = function()
+{
+	this._texture = null;
 }
 
 Shadowmap.prototype.toViewport = function()
 {
-	if(!this.texture)
+	if(!this._texture)
 		return;
-	this.texture.toViewport(); //TODO: create shader to visualize correctly
+	this._texture.toViewport(); //TODO: create shader to visualize correctly
 }
 
 //*******************************
@@ -202,7 +282,8 @@ Shadowmap._enabled_fragment_code = "\n\
 	\n\
 	uniform sampler2D shadowmap;\n\
 	varying vec4 v_light_coord;\n\
-	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
+	uniform vec4 u_shadow_params; //[ 1.0/(texture_size), bias, near, far ]\n\
+	uniform vec4 u_shadow_extra; //[hard, ...]\n\
 	\n\
 	float UnpackDepth(vec4 depth)\n\
 	{\n\
@@ -272,6 +353,8 @@ Shadowmap._enabled_fragment_code = "\n\
 			//real_depth = linearDepthNormalized( real_depth, u_shadow_params.z, u_shadow_params.w );\n\
 		#endif\n\
 		vec2 topleft_uv = sample * texsize;\n\
+		if(u_shadow_extra.x == 0.0) //hard \n\
+			return pixelShadow( sample );\n\
 		vec2 offset_uv = fract( topleft_uv );\n\
 		offset_uv.x = expFunc(offset_uv.x);\n\
 		offset_uv.y = expFunc(offset_uv.y);\n\

@@ -27,6 +27,8 @@ function VideoPlayer(o)
 		this.configure(o);
 }
 
+VideoPlayer.icon = "mini-icon-video.png";
+
 Object.defineProperty( VideoPlayer.prototype, "enabled", {
 	set: function(v){
 		this._enabled = v;

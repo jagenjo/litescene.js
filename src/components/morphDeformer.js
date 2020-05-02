@@ -72,7 +72,11 @@ Object.defineProperty( MorphDeformer.prototype, "name_weights", {
 		{
 			var m = this.morph_targets[i];
 			if(v[m.mesh] !== undefined)
-				m.weight = Number(v[m.mesh]);
+			{
+				var weight = Number(v[m.mesh]);
+				if(!isNaN(weight))	
+					m.weight = weight;
+			}
 		}
 	},
 	get: function()
@@ -325,8 +329,8 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	//create the texture container where all will be merged
 	if(!this._morphtarget_vertices_texture || this._morphtarget_vertices_texture.height != base_vertices_buffer._texture.height )
 	{
-		this._morphtarget_vertices_texture = new GL.Texture( base_vertices_buffer._texture.width, base_vertices_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: true });
-		this._morphtarget_normals_texture = new GL.Texture( base_normals_buffer._texture.width, base_normals_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: true });
+		this._morphtarget_vertices_texture = new GL.Texture( base_vertices_buffer._texture.width, base_vertices_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: false });
+		this._morphtarget_normals_texture = new GL.Texture( base_normals_buffer._texture.width, base_normals_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: false });
 
 		//used in the shader
 		this._texture_size = vec4.fromValues( this._morphtarget_vertices_texture.width, this._morphtarget_vertices_texture.height, 
@@ -628,7 +632,7 @@ MorphDeformer.prototype.createGeometryTexture = function( data_buffer, texture )
 	var buffer_padded = new Float32Array( width * height * 3 );
 	buffer_padded.set( stream_data );
 	if(!texture || texture.width != width || texture.height != height )
-		texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer_padded, no_flip: true });
+		texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer_padded, no_flip: false });
 	else
 		texture.uploadData( buffer_padded );
 	return texture;
@@ -703,9 +707,38 @@ MorphDeformer.prototype.setMorphMesh = function(index, value)
 */
 MorphDeformer.prototype.setMorphWeight = function(index, value)
 {
-	if(index >= this.morph_targets.length)
+	if( index >= this.morph_targets.length || isNaN(value) )
 		return;
 	this.morph_targets[index].weight = value;
+}
+
+MorphDeformer.prototype.getPrettyName = function( info, locator, locator_path )
+{
+	//console.log(locator_path);
+	if(locator_path[ locator_path.length - 1 ] == "weight")
+	{
+		var names = this.morph_targets.map(function(a){return a.mesh;});
+		names = MorphDeformer.removeSharedString(names); //remove part
+		var index = this.morph_targets.indexOf( info.target );
+		if(index != -1)
+		{
+			var name = names[index].replace(/_/g," ");
+			return info.node.name + "::" + name;
+		}
+	}
+}
+
+MorphDeformer.removeSharedString = function(array)
+{
+	var n = computeSharedInitialString(array);
+	array = array.map(function(a){ 
+		a = a.substr(n);
+		var last = a.lastIndexOf(".");
+		if(last != -1)
+			return a.substr(0,last);
+		return a;
+	});
+	return array;
 }
 
 MorphDeformer.prototype.getPropertyInfoFromPath = function( path )
@@ -730,6 +763,7 @@ MorphDeformer.prototype.getPropertyInfoFromPath = function( path )
 
 	return {
 		node: this._root,
+		component: this,
 		target: this.morph_targets[num],
 		name: varname,
 		value: this.morph_targets[num][ varname ] !== undefined ? this.morph_targets[num][ varname ] : null,
@@ -742,6 +776,9 @@ MorphDeformer.prototype.setPropertyValueFromPath = function( path, value, offset
 	offset = offset || 0;
 
 	if( path.length < (offset+1) )
+		return;
+
+	if(isNaN(value))
 		return;
 
 	if( path[offset] != "morphs" )
@@ -765,10 +802,13 @@ MorphDeformer.prototype.setProperty = function(name, value)
 		name = name.substr(5);
 		var t = name.split("_");
 		var num = parseInt( t[0] );
-		if( num < this.morph_targets.length )
+		if( num >= 0 && num < this.morph_targets.length )
 		{
 			if( t[1] == "weight" )
-				this.morph_targets[ num ].weight = value;
+			{
+				if(!isNaN(value)) //this happened some times...
+					this.morph_targets[ num ].weight = value;
+			}
 			else if( t[1] == "mesh" )
 				this.morph_targets[ num ].mesh = value;
 		}

@@ -14,6 +14,7 @@ function PlayAnimation(o)
 
 	this._animation = "";
 	this._take = "default";
+	this.autoload = true;
 
 	/**
 	* the root node locator where to apply the animation, is none is specified it is applied using the scene root node
@@ -330,9 +331,10 @@ PlayAnimation.prototype.onUpdateBlendAnimation = function( dt )
 * returns the current animation or an animation with a given name
 * @method getAnimation
 * @param {String} name [optional] the name of the animation, if omited then uses the animation set in the component
+* @param {Bool} force_load [optional] if true and the animation is not loaded, it will be loaded
 * @return {LS.Animation} the animation container
 */
-PlayAnimation.prototype.getAnimation = function( name )
+PlayAnimation.prototype.getAnimation = function( name, force_load )
 {
 	name = name === undefined ? this.animation : name;
 
@@ -340,6 +342,8 @@ PlayAnimation.prototype.getAnimation = function( name )
 	if(!name || name[0] == "@") 
 		return scene.animation;
 	var anim = LS.ResourcesManager.getResource( name );
+	if(!anim && force_load)
+		LS.ResourcesManager.load( name );
 	if( anim && anim.constructor === LS.Animation )
 		return anim;
 	return null;
@@ -387,6 +391,8 @@ PlayAnimation.prototype.play = function()
 		console.error("cannot play an animation if the component doesnt belong to a node in a scene");
 
 	this.playing = true;
+
+	this.getAnimation(null,this.autoload); //force load
 
 	this.current_time = 0;
 	if(this.range)

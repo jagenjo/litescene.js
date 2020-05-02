@@ -47,13 +47,6 @@ function Light(o)
 	*/
 	this.illuminated_layers = 0xFF;
 
-	/**
-	* Layers mask, this layers define which objects affect the shadow map (cast shadows)
-	* @property shadows_layers
-	* @type {Number}
-	* @default true
-	*/
-	this.shadows_layers = 0xFF;
 
 	/**
 	* Near distance
@@ -131,13 +124,11 @@ function Light(o)
 	* @type {Boolean}
 	* @default false
 	*/
-	this.cast_shadows = false;
-	this.precompute_static_shadowmap = false;
-	this.shadow_bias = 0.05;
-	this.shadowmap_resolution = 0; //use automatic shadowmap size
+	this._cast_shadows = false;
 
 	//shadowmap class
-	this._shadowmap = null; //Shadowmap class
+	this._shadowmap = null; //Shadow class
+	this._precompute_shadowmaps_on_startup = false;
 	this._update_shadowmap_render_settings = null;
 
 	//used to force the computation of the light matrix for the shader (otherwise only if projective texture or shadows are enabled)
@@ -169,7 +160,6 @@ function Light(o)
 	//configure
 	if(o) 
 		this.configure(o);
-
 }
 
 Light.NO_ATTENUATION = 0;
@@ -237,6 +227,28 @@ Object.defineProperty( Light.prototype, 'spot_cone', {
 	enumerable: true
 });
 
+Object.defineProperty( Light.prototype, 'cast_shadows', {
+	get: function() { return this._cast_shadows; },
+	set: function(v) { 
+		this._cast_shadows = v;
+		if(!this._shadowmap && v)
+			this._shadowmap = new LS.Shadowmap(this);
+	},
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, 'shadows', {
+	get: function() { 
+		return this._shadowmap; 
+	},
+	set: function(v) {
+		if(!this._shadowmap)
+			this._shadowmap = new LS.Shadowmap(this);
+		this._shadowmap.configure(v);
+	},
+	enumerable: false
+});
+
 Light.OMNI = 1;
 Light.SPOT = 2;
 Light.DIRECTIONAL = 3;
@@ -269,11 +281,27 @@ Light.prototype.onRemovedFromScene = function(scene)
 	LS.ResourcesManager.unregisterResource( ":shadowmap_" + this.uid );
 }
 
+Light.prototype.onSerialize = function(v)
+{
+	if(this._shadowmap)
+		v.shadows = LS.cloneObject(this._shadowmap);
+}
+
+Light.prototype.onConfigure = function(v)
+{
+	if(v.shadows)
+	{
+		if(!this._shadowmap)
+			this._shadowmap = new LS.Shadowmap(this);
+		LS.cloneObject(v.shadows, this._shadowmap);
+	}
+}
+
 Light.prototype.onGenerateShadowmap = function(e)
 {
 	if( this._update_shadowmap_render_settings )
 	{
-		this.generateShadowmap( this._update_shadowmap_render_settings );
+		this.generateShadowmap( this._update_shadowmap_render_settings, this._precompute_shadowmaps_on_startup );
 		this._update_shadowmap_render_settings = null;
 	}
 }
@@ -522,12 +550,13 @@ Light.prototype.prepare = function( render_settings )
 	this._update_shadowmap_render_settings = null;
 
 	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture || this.cast_shadows || this.force_light_matrix)
+	if(this.projective_texture || this._cast_shadows || this.force_light_matrix)
 		this.updateLightCamera();
 
-	if( (!render_settings.shadows_enabled || !this.cast_shadows) && this._shadowmap)
+	if( (!render_settings.shadows_enabled || !this._cast_shadows) && this._shadowmap )
 	{
-		this._shadowmap = null;
+		//this._shadowmap = null; 
+		this._shadowmap.release();//I keep the shadowmap class but free the memory of the texture
 		delete LS.ResourcesManager.textures[":shadowmap_" + this.uid ];
 	}
 
@@ -591,7 +620,7 @@ Light.prototype.prepare = function( render_settings )
 	}
 
 	//generate shadowmaps
-	var must_update_shadowmap = (render_settings.update_shadowmaps || (!this._shadowmap && !LS.ResourcesManager.isLoading())) && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
+	var must_update_shadowmap = (render_settings.update_shadowmaps || (!this._shadowmap._texture && !LS.ResourcesManager.isLoading())) && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
 	if(must_update_shadowmap)
 	{
 		var is_inside_one_frustum = false;
@@ -601,7 +630,7 @@ Light.prototype.prepare = function( render_settings )
 	}
 
 	if( this._shadowmap && !this.cast_shadows )
-		this._shadowmap = null; //remove shadowmap
+		this._shadowmap.release();
 
 	//prepare shadowmap
 	if( this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_settings.shadows_disabled ) //render_settings.update_all_shadowmaps
@@ -647,10 +676,7 @@ Light.prototype.generateShadowmap = function ( render_settings, precompute_stati
 		return;
 
 	if(!this._shadowmap)
-		this._shadowmap = new Shadowmap( this );
-	this._shadowmap.bias = this.shadow_bias;
-	this._shadowmap.resolution = this.shadowmap_resolution;
-	this._shadowmap.layers = this.shadows_layers;
+		this._shadowmap = new Shadowmap( this ); //this should never happend (it is created in cast_shadows = true, by just in case
 	this._shadowmap.generate( null, render_settings, precompute_static );
 }
 

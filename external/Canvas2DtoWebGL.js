@@ -775,7 +775,7 @@ function enableWebGLCanvas( canvas, options )
 		else if( fill_style.constructor === GL.Texture ) //pattern
 		{
 			var tex = fill_style;
-			uniforms.u_color = [1,1,1, this.globalAlpha]; 
+			uniforms.u_color = [1,1,1, this._globalAlpha]; 
 			uniforms.u_texture = 0;
 			tmp_vec4.set([0,0,1/tex.width, 1/tex.height]);
 			uniforms.u_texture_transform = tmp_vec4;
@@ -1154,6 +1154,7 @@ function enableWebGLCanvas( canvas, options )
 		gl.disable( gl.STENCIL_TEST );
 		gl.enable( gl.BLEND );
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		gl.blendEquation( gl.FUNC_ADD );
 		gl.lineWidth = 1;
 		global_index = 0;
 		mat4.identity( extra_projection );
@@ -1298,7 +1299,7 @@ function enableWebGLCanvas( canvas, options )
 		if(this.textAlign == "right")
 			offset = x + point_size * 0.5;
 		else if(this.textAlign == "center")
-			offset = x * 0.5;
+			offset = (x + point_size * 0.5 ) * 0.5;
 		if(offset)
 			for(var i = 0; i < points.length; i += 3)
 				points[i] -= offset;
@@ -1333,8 +1334,19 @@ function enableWebGLCanvas( canvas, options )
 		var atlas = createFontAtlas.call( this, this._font_family, this._font_mode );
 		var info = atlas.info;
 		var point_size = Math.ceil( this._font_size * 1.1 );
-		var spacing = point_size * atlas.info.spacing / atlas.info.char_size - 1 ;
-		return { width: text.length * spacing, height: point_size };
+		var textsize = 0;
+		for(var i = 0; i < text.length; ++i)
+		{
+			var charinfo = info.kernings[ text[i] ];
+			if(charinfo)
+				textsize += charinfo.nwidth;
+			else
+				textsize += spacing / info.char_size;
+		}
+		//var spacing = point_size * info.spacing / info.char_size - 1;
+		//textsize = text.length * spacing;
+		textsize *= point_size;
+		return { width: textsize, height: point_size };
 	}
 
 	function createFontAtlas( fontname, fontmode, force )
@@ -1530,6 +1542,25 @@ function enableWebGLCanvas( canvas, options )
 		}
 	});
 
+	Object.defineProperty(gl, "globalCompositeOperation", {
+		get: function() { return this._globalCompositeOperation; },
+		set: function(v) { 
+			this._globalCompositeOperation = v;
+			gl.blendEquation( gl.FUNC_ADD ); 
+			//gl.blendEquationSeparate( );
+			switch(v)
+			{
+				case "source-over": 
+					gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+					break;
+				case "difference": 
+					gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA ); 
+					gl.blendEquation( gl.FUNC_REVERSE_SUBTRACT ); 
+					break;
+			}
+		}
+	});
+
 	Object.defineProperty(gl, "font", {
 		get: function() { return this._font; },
 		set: function(v) { 
@@ -1579,6 +1610,7 @@ function enableWebGLCanvas( canvas, options )
 	ctx.shadowColor = "transparent";
 	ctx.shadowOffsetX = ctx.shadowOffsetY = 0;
 	ctx.globalAlpha = 1;
+	ctx.globalCompositeOperation = "source-over";
 	ctx.setLineWidth = ctx.lineWidth; //save the webgl function
 	ctx.lineWidth = 4; //set lineWidth as a number
 	ctx.imageSmoothingEnabled = true;

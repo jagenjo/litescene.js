@@ -91,7 +91,7 @@ var parserOBJ = {
 					for(var i = 1; i < tokens.length; ++i)
 						polygon_indices.push( getIndex( tokens[i] ) );
 					group.indices.push( polygon_indices[0], polygon_indices[1], polygon_indices[2] );
-					//polygons are break intro triangles
+					//polygons are break intro triangles (assuming they are convex!)
 					for(var i = 2; i < polygon_indices.length-1; ++i)
 						group.indices.push( polygon_indices[0], polygon_indices[i], polygon_indices[i+1] );
 					break;
