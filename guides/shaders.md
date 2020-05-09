@@ -197,7 +197,7 @@ To do this first the shader must accept to have the shaderblock supported by usi
 
 ### pragma snippet
 
-You can include snippets of code that are stored in the snippets container of the ```LS.ShadersManager```, this is used internally to avoid creating the same code several times or to update code from scripts.
+You can include snippets of code that are stored in the snippets container of the ```LS.Shaders```, this is used internally to avoid creating the same code several times or to update code from scripts.
 
 ```c++
 	#pragma snippet "lighting"
@@ -207,7 +207,7 @@ To create a snippet:
 
 
 ```javascript
-	LS.ShadersManager.registerSnippet("mysnippet", "//code...");
+	LS.Shaders.registerSnippet("mysnippet", "//code...");
 ```
 
 ### pragma event
