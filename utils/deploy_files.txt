@@ -114,7 +114,7 @@
 ../src/components/poser.js
 ../src/components/spline.js
 ../src/components/canvas3d.js
-../src/components/videoPlayer.js
+../src/components/mediaPlayer.js
 ../src/components/interactiveController.js
 
 ../src/render/basePipeline.js

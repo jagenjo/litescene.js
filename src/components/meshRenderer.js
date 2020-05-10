@@ -287,7 +287,7 @@ MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resourc
 MeshRenderer.prototype.checkRenderInstances = function()
 {
 	return;
-
+	/*
 	var should_be_attached = this._enabled && this._root.scene;
 
 	if( should_be_attached && !this._is_attached )
@@ -300,6 +300,7 @@ MeshRenderer.prototype.checkRenderInstances = function()
 		this._root.scene.detachSceneElement( this._RI );
 		this._is_attached = false;
 	}
+	*/
 }
 
 //*

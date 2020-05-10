@@ -685,7 +685,6 @@ Track.QUAT = LS.TYPES_INDEX["quat"];
 Track.TRANS10 = LS.TYPES_INDEX["trans10"];
 Track.EVENT = LS.TYPES_INDEX["event"];
 
-
 /** 
 * @property property {String} the locator to the property this track should modify ( "node/component_uid/property" )
 **/
@@ -776,6 +775,17 @@ Track.prototype.serialize = function()
 	{
 		if(this.value_size <= 1)
 		{
+			if(this.data.type == "event")
+			{
+				//weird bug where the track contains components
+				for(var i = 0; i < data.length; ++i)
+				{
+					var k = data[i];
+					if(k[1] && k[1].constructor.is_component)
+						k[1] = null;
+				}
+			}
+
 			if(this.data.concat)
 				o.data = this.data.concat(); //regular array, clone it
 			else

@@ -8471,6 +8471,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 		return false;
 
 	var old_properties = this._properties_by_name;
+	var old_state = this._render_state.serialize();
 	if( shader_code._has_error ) //save them
 		this._last_valid_properties = old_properties; 
 	else if( this._last_valid_properties )
@@ -8498,6 +8499,8 @@ ShaderMaterial.prototype.processShaderCode = function()
 		if( this[i] && this[i].constructor === Function )
 			delete this[i];
 	}
+
+	this._render_state.configure(old_state);
 
 	//apply init 
 	if( shader_code._functions.init )
@@ -8531,7 +8534,6 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//restore old values
 	this.assignOldProperties( old_properties );
-
 }
 
 //used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties
@@ -17433,7 +17435,6 @@ Track.QUAT = LS.TYPES_INDEX["quat"];
 Track.TRANS10 = LS.TYPES_INDEX["trans10"];
 Track.EVENT = LS.TYPES_INDEX["event"];
 
-
 /** 
 * @property property {String} the locator to the property this track should modify ( "node/component_uid/property" )
 **/
@@ -17524,6 +17525,17 @@ Track.prototype.serialize = function()
 	{
 		if(this.value_size <= 1)
 		{
+			if(this.data.type == "event")
+			{
+				//weird bug where the track contains components
+				for(var i = 0; i < data.length; ++i)
+				{
+					var k = data[i];
+					if(k[1] && k[1].constructor.is_component)
+						k[1] = null;
+				}
+			}
+
 			if(this.data.concat)
 				o.data = this.data.concat(); //regular array, clone it
 			else
@@ -22900,7 +22912,7 @@ function LGraphReprojectDepth()
 	this.addInput("color","Texture");
 	this.addInput("depth","Texture");
 	this.addInput("camera","Camera,Component");
-	this.properties = { enabled: true, pointSize: 1, offset: 0, triangles: false, filter: true, layers:0xFF };
+	this.properties = { enabled: true, pointSize: 1, offset: 0, triangles: false, depth_is_linear: false, skip_center: false, layers:0xFF };
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
@@ -22911,6 +22923,7 @@ function LGraphReprojectDepth()
 		u_point_size: 1,
 		u_depth_offset: 0,
 		u_ires: vec2.create(),
+		u_near_far: vec2.create(),
 		u_color_texture:0,
 		u_depth_texture:1,
 		u_vp: this._viewprojection_matrix
@@ -22933,7 +22946,12 @@ LGraphReprojectDepth.prototype.onExecute = function()
 	if( !depth || !camera || camera.constructor !== LS.Camera )
 		return;
 
-	color = color || GL.Texture.getWhiteTexture();
+	var no_color = false;
+	if(!color)
+	{
+		color = GL.Texture.getWhiteTexture();
+		no_color = true;
+	}
 
 	if(!LiteGraph.LGraphRender.onRequestCameraMatrices)
 	{
@@ -22957,20 +22975,27 @@ LGraphReprojectDepth.prototype.onExecute = function()
 	var uniforms = this._uniforms;
 	uniforms.u_point_size = this.properties.pointSize;
 	uniforms.u_depth_offset = this.properties.offset;
-	uniforms.u_ires.set([1/depth.width,1/depth.height]);
+	uniforms.u_is_linear = this.properties.depth_is_linear ? 1 : 0;
+	uniforms.u_use_depth_as_color = no_color ? 1 : 0;
+	uniforms.u_near_far.set(depth.near_far_planes ? depth.near_far_planes : [0,1]);
+	if(this.properties.skip_center)
+		uniforms.u_ires.set([0,0]);
+	else
+		uniforms.u_ires.set([1/depth.width,1/depth.height]);
 	mat4.invert( uniforms.u_depth_ivp, camera._viewprojection_matrix );
 	gl.enable( gl.DEPTH_TEST );
 	gl.disable( gl.BLEND );
 	color.bind(0);
-	gl.texParameteri( color.texture_type, gl.TEXTURE_MAG_FILTER, this.properties.filter ? gl.LINEAR : gl.NEAREST );
+	gl.texParameteri( color.texture_type, gl.TEXTURE_MAG_FILTER, this.properties.skip_center ? gl.LINEAR : gl.NEAREST );
 	depth.bind(1);
-	gl.texParameteri( depth.texture_type, gl.TEXTURE_MAG_FILTER, this.properties.filter ? gl.LINEAR : gl.NEAREST );
+	gl.texParameteri( depth.texture_type, gl.TEXTURE_MAG_FILTER, this.properties.skip_center ? gl.LINEAR : gl.NEAREST );
 	shader.uniforms( uniforms ).draw( mesh, this.properties.triangles ? gl.TRIANGLES : gl.POINTS );
 }
 
 
 LGraphReprojectDepth.vertex_shader = "\n\
 	\n\
+	precision highp float;\n\
 	attribute vec3 a_vertex;\n\
 	attribute vec2 a_coord;\n\
 	uniform sampler2D u_color_texture;\n\
@@ -22980,14 +23005,34 @@ LGraphReprojectDepth.vertex_shader = "\n\
 	uniform vec2 u_ires;\n\
 	uniform float u_depth_offset;\n\
 	uniform float u_point_size;\n\
+	uniform vec2 u_near_far;\n\
+	uniform int u_is_linear;\n\
+	uniform int u_use_depth_as_color;\n\
 	varying vec4 color;\n\
 	\n\
 	void main() {\n\
-		color = texture2D( u_color_texture, a_coord );\n\
-		float depth = texture2D( u_depth_texture, a_coord ).x * 2.0 - 1.0;\n\
-		vec4 pos2d = vec4( (a_coord)*2.0-vec2(1.0),depth + u_depth_offset,1.0);\n\
+		vec2 uv = a_coord + u_ires * 0.5;\n\
+		float depth = texture2D( u_depth_texture, uv ).x;\n\
+		if(u_is_linear == 1)\n\
+		{\n\
+			//must delinearize, doesnt work...\n\
+			//lz = u_near_far.x * (depth + 1.0) / (u_near_far.y + u_near_far.x - depth * (u_near_far.y - u_near_far.x));\n\
+			//depth = depth * 0.5 + 0.5;\n\
+			//depth = depth * 2.0 - 1.0;\n\
+			depth = ((u_near_far.x + u_near_far.y) * depth + u_near_far.x) / (1.0 + u_near_far.y - u_near_far.x);\n\
+			//depth = depth * 0.5 + 0.5;\n\
+			//depth = depth * 2.0 - 1.0;\n\
+		}\n\
+		else\n\
+			depth = depth * 2.0 - 1.0;\n\
+		if(u_use_depth_as_color == 1)\n\
+			color = vec4( depth * 0.5 + 0.5);\n\
+		else\n\
+			color = texture2D( u_color_texture, uv );\n\
+		vec4 pos2d = vec4( uv*2.0-vec2(1.0),depth + u_depth_offset,1.0);\n\
 		vec4 pos3d = u_depth_ivp * pos2d;\n\
-		//pos3d.xyz = pos3d.xyz / pos3d.w;\n\
+		//if(u_must_linearize == 0)\n\
+		//	pos3d /= pos3d.w;\n\
 		gl_Position = u_vp * pos3d;\n\
 		gl_PointSize = u_point_size;\n\
 	}\n\
@@ -34337,7 +34382,6 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	for(var i = 0; i < sides; ++i) //in case of omni
 	{
 		var shadow_camera = light.getLightCamera(i);
-		shadow_camera.near;
 		if(!this._texture.near_far_planes)
 			this._texture.near_far_planes = vec2.create();
 		this._shadow_params[2] = this._texture.near_far_planes[0] = shadow_camera.near;
@@ -40046,7 +40090,7 @@ MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resourc
 MeshRenderer.prototype.checkRenderInstances = function()
 {
 	return;
-
+	/*
 	var should_be_attached = this._enabled && this._root.scene;
 
 	if( should_be_attached && !this._is_attached )
@@ -40059,6 +40103,7 @@ MeshRenderer.prototype.checkRenderInstances = function()
 		this._root.scene.detachSceneElement( this._RI );
 		this._is_attached = false;
 	}
+	*/
 }
 
 //*
@@ -44098,6 +44143,11 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 	{
 		var yaw = mouse_event.deltax * this.rot_speed;
 		var pitch = -mouse_event.deltay * this.rot_speed;
+		var eye = cam.getEye();
+		var center = cam.getCenter();
+		var front = cam.getFront();
+		var right = cam.getRight();
+		var up = cam.getUp();
 
 		//yaw rotation
 		if( Math.abs(yaw) > 0.0001 )
@@ -44109,18 +44159,17 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
-				var eye = cam.getEye();
-				node.transform.globalToLocal( eye, eye );
-				node.transform.orbit( -yaw, [0,1,0], eye );
-				cam.updateMatrices();
+				var v = vec3.create();
+				vec3.sub( v, eye, center );
+				vec3.rotateY(v,v,yaw*DEG2RAD);
+				vec3.scale( front, v, -1 );
+				vec3.normalize( front, front );
+				vec3.add( eye,v,center );
 			}
 			changed = true;
 		}
 
 		//pitch rotation
-		var right = cam.getRight();
-		var front = cam.getFront();
-		var up = cam.getUp();
 		var problem_angle = vec3.dot( up, front );
 		if( !(problem_angle > 0.99 && pitch > 0 || problem_angle < -0.99 && pitch < 0)) //avoid strange behaviours
 		{
@@ -44130,11 +44179,28 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
+				/*
 				var eye = cam.getEye();
-				node.transform.globalToLocal( eye, eye );
-				node.transform.orbit( -pitch, right, eye );
+				var center = cam.getCenter();
+				*/
+				var v = vec3.create();
+				vec3.sub( v, eye, center );
+				var R = quat.create();
+				quat.setAxisAngle(R,right,-pitch*DEG2RAD);
+				vec3.transformQuat(v,v,R);
+				vec3.add( eye,v,center );
+				//var center = cam.getCenter();
+				//node.transform.globalToLocal( center, center );
+				//node.transform.orbit( -pitch, right, center );
 			}
 			changed = true;
+		}
+
+		if(changed)
+		{
+			if(!is_global_camera)
+				node.transform.lookAt(eye,center,[0,1,0],true);
+			cam.updateMatrices();
 		}
 	}
 	else if(mode == CameraController.ORBIT_HORIZONTAL)
@@ -44150,9 +44216,9 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
-				var eye = cam.getEye();
-				node.transform.globalToLocal( eye, eye );
-				node.transform.orbit( -yaw, [0,1,0], eye );
+				var center = cam.getCenter();
+				node.transform.globalToLocal( center, center );
+				node.transform.orbit( -yaw, [0,1,0], center );
 				cam.updateMatrices();
 			}
 			changed = true;
@@ -52832,18 +52898,18 @@ Canvas3D.prototype.onResourceRenamed = function (old_name, new_name, resource)
 */
 
 LS.registerComponent( Canvas3D );
-///@FILE:../src/components/videoPlayer.js
+///@FILE:../src/components/mediaPlayer.js
 ///@INFO: UNCOMMON
 //work in progress
 
-function VideoPlayer(o)
+function MediaPlayer(o)
 {
 	this._enabled = true;
 
-	this._video = document.createElement("video");
-	this._video.muted = false;
-	this._video.autoplay = false;
-	this.bindVideoEvents( this._video );
+	this._media = document.createElement("video");
+	this._media.muted = false;
+	this._media.autoplay = false;
+	this.bindVideoEvents( this._media );
 
 	this._autoplay = true;
 	this.generate_mipmaps = false;
@@ -52862,21 +52928,23 @@ function VideoPlayer(o)
 		this.configure(o);
 }
 
-VideoPlayer.icon = "mini-icon-video.png";
+MediaPlayer.icon = "mini-icon-video.png";
 
-Object.defineProperty( VideoPlayer.prototype, "enabled", {
+MediaPlayer["@volume"] = { widget: "slider" }
+
+Object.defineProperty( MediaPlayer.prototype, "enabled", {
 	set: function(v){
 		this._enabled = v;
 		if(!v)
-			this._video.pause();
+			this._media.pause();
 		else
 		{
 			var scene = this._root ? this._root.scene : null;
-			if(scene && scene.state === LS.RUNNING && this._video.autoplay)
+			if(scene && scene.state === LS.RUNNING && this._media.autoplay)
 			{
-				if(this._video.currentTime >= this._video.duration)
-					this._video.currentTime = 0;
-				this._video.play();
+				if(this._media.currentTime >= this._media.duration)
+					this._media.currentTime = 0;
+				this._media.play();
 			}
 		}
 	},
@@ -52888,7 +52956,7 @@ Object.defineProperty( VideoPlayer.prototype, "enabled", {
 });
 
 //in case you are referencing a url with video that allow cors
-Object.defineProperty( VideoPlayer.prototype, "ignore_proxy", {
+Object.defineProperty( MediaPlayer.prototype, "ignore_proxy", {
 	set: function(v){
 		if( v == this._ignore_proxy )
 			return;
@@ -52902,7 +52970,7 @@ Object.defineProperty( VideoPlayer.prototype, "ignore_proxy", {
 	enumerable: true
 });
 
-Object.defineProperty( VideoPlayer.prototype, "src", {
+Object.defineProperty( MediaPlayer.prototype, "src", {
 	set: function(v){
 		if(v == this._src)
 			return;
@@ -52916,20 +52984,20 @@ Object.defineProperty( VideoPlayer.prototype, "src", {
 	enumerable: true
 });
 
-Object.defineProperty( VideoPlayer.prototype, "time", {
+Object.defineProperty( MediaPlayer.prototype, "time", {
 	set: function(v){
-		this._video.currentTime = time;
+		this._media.currentTime = time;
 	},
 	get: function()
 	{
-		return this._video.currentTime;
+		return this._media.currentTime;
 	},
 	enumerable: false
 });
 
-Object.defineProperty( VideoPlayer.prototype, "texture", {
+Object.defineProperty( MediaPlayer.prototype, "texture", {
 	set: function(v){
-		throw("videoPlayer texture cannot be set");
+		throw("MediaPlayer texture cannot be set");
 	},
 	get: function()
 	{
@@ -52938,10 +53006,10 @@ Object.defineProperty( VideoPlayer.prototype, "texture", {
 	enumerable: false
 });
 
-Object.defineProperty( VideoPlayer.prototype, "autoplay", {
+Object.defineProperty( MediaPlayer.prototype, "autoplay", {
 	set: function(v){
 		this._autoplay = v;
-		//this._video.autoplay = v;
+		//this._media.autoplay = v;
 	},
 	get: function()
 	{
@@ -52950,34 +53018,45 @@ Object.defineProperty( VideoPlayer.prototype, "autoplay", {
 	enumerable: true
 });
 
-Object.defineProperty( VideoPlayer.prototype, "muted", {
+Object.defineProperty( MediaPlayer.prototype, "muted", {
 	set: function(v){
-		this._video.muted = v;
+		this._media.muted = v;
 	},
 	get: function()
 	{
-		return this._video.muted;
+		return this._media.muted;
 	},
 	enumerable: true
 });
 
-Object.defineProperty( VideoPlayer.prototype, "duration", {
+Object.defineProperty( MediaPlayer.prototype, "volume", {
 	set: function(v){
-		throw("VideoPlayer duration cannot be assigned, is read-only");
+		this._media.volume = Math.clamp(v,0,1);
 	},
 	get: function()
 	{
-		return this._video.duration;
+		return this._media.volume;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( MediaPlayer.prototype, "duration", {
+	set: function(v){
+		throw("MediaPlayer duration cannot be assigned, is read-only");
+	},
+	get: function()
+	{
+		return this._media.duration;
 	},
 	enumerable: false
 });
 
-Object.defineProperty( VideoPlayer.prototype, "playback_rate", {
+Object.defineProperty( MediaPlayer.prototype, "playback_rate", {
 	set: function(v){
 		if(v < 0)
 			return;
 		this._playback_rate = v;
-		this._video.playbackRate = v;
+		this._media.playbackRate = v;
 	},
 	get: function()
 	{
@@ -52987,36 +53066,35 @@ Object.defineProperty( VideoPlayer.prototype, "playback_rate", {
 });
 
 
-Object.defineProperty( VideoPlayer.prototype, "video", {
+Object.defineProperty( MediaPlayer.prototype, "media", {
 	set: function(v){
 		if(!v || v.constructor !== HTMLVideoElement)
 			throw("Video must a HTMLVideoElement");
-		if( v == this._video )
+		if( v == this._media )
 			return;
-	
-		this._video = v;
-		this._video.muted = false;
-		this._video.autoplay = false;
-		this._video.playbackRate = this._playback_rate;
-		this.bindVideoEvents( this._video );
+			this._media = v;
+		this._media.muted = false;
+		this._media.autoplay = false;
+		this._media.playbackRate = this._playback_rate;
+		this.bindVideoEvents( this._media );
 	},
 	get: function()
 	{
-		return this._video;
+		return this._media;
 	},
 	enumerable: false
 });
 
-VideoPlayer.NONE = 0;
-VideoPlayer.PLANE = 1;
-VideoPlayer.TO_MATERIAL = 2;
-VideoPlayer.BACKGROUND = 5;
-VideoPlayer.BACKGROUND_STRETCH = 6;
+MediaPlayer.NONE = 0;
+MediaPlayer.PLANE = 1;
+MediaPlayer.TO_MATERIAL = 2;
+MediaPlayer.BACKGROUND = 5;
+MediaPlayer.BACKGROUND_STRETCH = 6;
 
-VideoPlayer["@src"] = { type: "resource" };
-VideoPlayer["@render_mode"] = { type: "enum", values: {"NONE":VideoPlayer.NONE, "PLANE": VideoPlayer.PLANE, "TO_MATERIAL": VideoPlayer.TO_MATERIAL, /* "BACKGROUND": VideoPlayer.BACKGROUND,*/ "BACKGROUND_STRETCH": VideoPlayer.BACKGROUND_STRETCH } };
+MediaPlayer["@src"] = { type: "resource" };
+MediaPlayer["@render_mode"] = { type: "enum", values: {"NONE":MediaPlayer.NONE, "PLANE": MediaPlayer.PLANE, "TO_MATERIAL": MediaPlayer.TO_MATERIAL, /* "BACKGROUND": MediaPlayer.BACKGROUND,*/ "BACKGROUND_STRETCH": MediaPlayer.BACKGROUND_STRETCH } };
 
-VideoPlayer.prototype.onAddedToScene = function(scene)
+MediaPlayer.prototype.onAddedToScene = function(scene)
 {
 	LEvent.bind( scene, "start", this.onStart, this);
 	LEvent.bind( scene, "pause", this.onPause, this);
@@ -53028,46 +53106,46 @@ VideoPlayer.prototype.onAddedToScene = function(scene)
 	LEvent.bind( scene, "finish", this.onFinish, this);
 }
 
-VideoPlayer.prototype.onRemovedFromScene = function(scene)
+MediaPlayer.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbindAll( scene, this );
 }
 
-VideoPlayer.prototype.onStart = function()
+MediaPlayer.prototype.onStart = function()
 {
 	if(this.autoplay)
 		this.play();
 }
 
-VideoPlayer.prototype.onPause = function()
+MediaPlayer.prototype.onPause = function()
 {
 	this.pause();
 }
 
-VideoPlayer.prototype.onUnpause = function()
+MediaPlayer.prototype.onUnpause = function()
 {
 	if(this.autoplay)
 		this.play();
 }
 
-VideoPlayer.prototype.onFinish = function()
+MediaPlayer.prototype.onFinish = function()
 {
 	this.stop();
 }
 
 /*
-VideoPlayer.prototype.onUpdate = function( e, dt )
+MediaPlayer.prototype.onUpdate = function( e, dt )
 {
-	if(!this.enabled || this._video.width == 0)
+	if(!this.enabled || this._media.width == 0)
 		return;
 
 	this._time += dt;
-	this._video.currentTime = this._time;
-	this._video.dirty = true;
+	this._media.currentTime = this._time;
+	this._media.dirty = true;
 }
 */
 
-VideoPlayer.prototype.load = function( url, force )
+MediaPlayer.prototype.load = function( url, force )
 {
 	if(!url)
 		return;
@@ -53078,12 +53156,12 @@ VideoPlayer.prototype.load = function( url, force )
 		return;
 
 	this._url_loading = url;
-	this._video.crossOrigin = "anonymous";
-	this._video.src = final_url;
-	//this._video.type = "type=video/mp4";
+	this._media.crossOrigin = "anonymous";
+	this._media.src = final_url;
+	//this._media.type = "type=video/mp4";
 }
 
-VideoPlayer.prototype.bindVideoEvents = function( video )
+MediaPlayer.prototype.bindVideoEvents = function( video )
 {
 	video._component = this;
 
@@ -53092,7 +53170,7 @@ VideoPlayer.prototype.bindVideoEvents = function( video )
 
 	video.has_litescene_events = true;
 
-	this._video.addEventListener("loadedmetadata",function(e) {
+	this._media.addEventListener("loadedmetadata",function(e) {
 		//onload
 		console.log("Duration: " + this.duration + " seconds");
 		console.log("Size: " + this.videoWidth + "," + this.videoHeight);
@@ -53106,12 +53184,12 @@ VideoPlayer.prototype.bindVideoEvents = function( video )
 	});
 
 	/*
-	this._video.addEventListener("progress",function(e) {
+	this._media.addEventListener("progress",function(e) {
 		//onload
 	});
 	*/
 
-	this._video.addEventListener("error",function(e) {
+	this._media.addEventListener("error",function(e) {
 		console.error("Error loading video: " + this.src);
 		if (this.error) {
 		 switch (this.error.code) {
@@ -53131,7 +53209,7 @@ VideoPlayer.prototype.bindVideoEvents = function( video )
 		}
 	});
 
-	this._video.addEventListener("ended",function(e) {
+	this._media.addEventListener("ended",function(e) {
 		if(!this._component)
 			return;
 		console.log("Ended.");
@@ -53144,39 +53222,39 @@ VideoPlayer.prototype.bindVideoEvents = function( video )
 	});
 }
 
-VideoPlayer.prototype.play = function()
+MediaPlayer.prototype.play = function()
 {
-	if(this._video.videoWidth)
-		this._video.play();
+	if(this._media.duration)
+		this._media.play();
 }
 
-VideoPlayer.prototype.playPause = function()
+MediaPlayer.prototype.playPause = function()
 {
-	if(this._video.paused)
+	if(this._media.paused)
 		this.play();
 	else
 		this.pause();
 }
 
-VideoPlayer.prototype.stop = function()
+MediaPlayer.prototype.stop = function()
 {
-	this._video.pause();
-	this._video.currentTime = 0;
+	this._media.pause();
+	this._media.currentTime = 0;
 }
 
-VideoPlayer.prototype.pause = function()
+MediaPlayer.prototype.pause = function()
 {
-	this._video.pause();
+	this._media.pause();
 }
 
 //uploads the video frame to the GPU
-VideoPlayer.prototype.onBeforeRender = function(e)
+MediaPlayer.prototype.onBeforeRender = function(e)
 {
-	//no video assigned or not loaded yet
-	if(!this.enabled || this._video.videoWidth == 0)
+	//no video assigned or not loaded yet (or audio)
+	if(!this.enabled || !this._media.videoWidth )
 		return;
 
-	var video = this._video;
+	var video = this._media;
 
 	var must_have_mipmaps = this.generate_mipmaps;
 	if( !GL.isPowerOfTwo(video.videoWidth) || !GL.isPowerOfTwo(video.videoHeight) )
@@ -53209,7 +53287,7 @@ VideoPlayer.prototype.onBeforeRender = function(e)
 		LS.RM.registerResource( this.texture_name, this._texture );
 
 	//assign to material color texture
-	if(this.render_mode == VideoPlayer.TO_MATERIAL)
+	if(this.render_mode == MediaPlayer.TO_MATERIAL)
 	{
 		var material = this._root.getMaterial();
 		if(material)
@@ -53217,12 +53295,12 @@ VideoPlayer.prototype.onBeforeRender = function(e)
 	}
 }
 
-VideoPlayer.prototype.onBeforeRenderScene = function( e )
+MediaPlayer.prototype.onBeforeRenderScene = function( e )
 {
 	if(!this.enabled)
 		return;
 
-	if(this.render_mode != VideoPlayer.BACKGROUND && this.render_mode != VideoPlayer.BACKGROUND_STRETCH)
+	if(this.render_mode != MediaPlayer.BACKGROUND && this.render_mode != MediaPlayer.BACKGROUND_STRETCH)
 		return;
 
 	if(!this._texture)
@@ -53234,9 +53312,9 @@ VideoPlayer.prototype.onBeforeRenderScene = function( e )
 	this._texture.toViewport();
 }
 
-VideoPlayer.prototype.onCollectInstances = function( e, RIs )
+MediaPlayer.prototype.onCollectInstances = function( e, RIs )
 {
-	if( !this.enabled || this.render_mode != VideoPlayer.PLANE )
+	if( !this.enabled || this.render_mode != MediaPlayer.PLANE )
 		return;
 
 	if( !this._material )
@@ -53255,7 +53333,7 @@ VideoPlayer.prototype.onCollectInstances = function( e, RIs )
 	RIs.push( this._plane_ri);
 }
 
-LS.registerComponent( VideoPlayer );
+LS.registerComponent( MediaPlayer );
 ///@FILE:../src/components/interactiveController.js
 ///@INFO: UNCOMMON
 /**

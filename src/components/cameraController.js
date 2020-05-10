@@ -199,6 +199,11 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 	{
 		var yaw = mouse_event.deltax * this.rot_speed;
 		var pitch = -mouse_event.deltay * this.rot_speed;
+		var eye = cam.getEye();
+		var center = cam.getCenter();
+		var front = cam.getFront();
+		var right = cam.getRight();
+		var up = cam.getUp();
 
 		//yaw rotation
 		if( Math.abs(yaw) > 0.0001 )
@@ -210,18 +215,17 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
-				var eye = cam.getEye();
-				node.transform.globalToLocal( eye, eye );
-				node.transform.orbit( -yaw, [0,1,0], eye );
-				cam.updateMatrices();
+				var v = vec3.create();
+				vec3.sub( v, eye, center );
+				vec3.rotateY(v,v,yaw*DEG2RAD);
+				vec3.scale( front, v, -1 );
+				vec3.normalize( front, front );
+				vec3.add( eye,v,center );
 			}
 			changed = true;
 		}
 
 		//pitch rotation
-		var right = cam.getRight();
-		var front = cam.getFront();
-		var up = cam.getUp();
 		var problem_angle = vec3.dot( up, front );
 		if( !(problem_angle > 0.99 && pitch > 0 || problem_angle < -0.99 && pitch < 0)) //avoid strange behaviours
 		{
@@ -231,11 +235,28 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
+				/*
 				var eye = cam.getEye();
-				node.transform.globalToLocal( eye, eye );
-				node.transform.orbit( -pitch, right, eye );
+				var center = cam.getCenter();
+				*/
+				var v = vec3.create();
+				vec3.sub( v, eye, center );
+				var R = quat.create();
+				quat.setAxisAngle(R,right,-pitch*DEG2RAD);
+				vec3.transformQuat(v,v,R);
+				vec3.add( eye,v,center );
+				//var center = cam.getCenter();
+				//node.transform.globalToLocal( center, center );
+				//node.transform.orbit( -pitch, right, center );
 			}
 			changed = true;
+		}
+
+		if(changed)
+		{
+			if(!is_global_camera)
+				node.transform.lookAt(eye,center,[0,1,0],true);
+			cam.updateMatrices();
 		}
 	}
 	else if(mode == CameraController.ORBIT_HORIZONTAL)
@@ -251,9 +272,9 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
-				var eye = cam.getEye();
-				node.transform.globalToLocal( eye, eye );
-				node.transform.orbit( -yaw, [0,1,0], eye );
+				var center = cam.getCenter();
+				node.transform.globalToLocal( center, center );
+				node.transform.orbit( -yaw, [0,1,0], center );
 				cam.updateMatrices();
 			}
 			changed = true;

@@ -188,7 +188,6 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	for(var i = 0; i < sides; ++i) //in case of omni
 	{
 		var shadow_camera = light.getLightCamera(i);
-		shadow_camera.near;
 		if(!this._texture.near_far_planes)
 			this._texture.near_far_planes = vec2.create();
 		this._shadow_params[2] = this._texture.near_far_planes[0] = shadow_camera.near;

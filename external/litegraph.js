@@ -3591,10 +3591,7 @@
 
         //allows nodes to block connection
         if (target_node.onConnectInput) {
-            if (
-                target_node.onConnectInput(target_slot, output.type, output) ===
-                false
-            ) {
+            if ( target_node.onConnectInput(target_slot, output.type, output, this, slot) === false ) {
                 return null;
             }
         }
@@ -5580,6 +5577,10 @@ LGraphNode.prototype.executeAction = function(action)
                 if (this.resizing_node.size[0] < LiteGraph.NODE_MIN_WIDTH) {
                     this.resizing_node.size[0] = LiteGraph.NODE_MIN_WIDTH;
                 }
+
+		        if (this.resizing_node.onResize) {
+		            this.resizing_node.onResize(this.resizing_node.size);
+				}
 
                 this.canvas.style.cursor = "se-resize";
                 this.dirty_canvas = true;
@@ -8413,7 +8414,7 @@ LGraphNode.prototype.executeAction = function(action)
                     break;
                 default:
                     if (w.draw) {
-                        w.draw(ctx, node, w, y, H);
+                        w.draw(ctx, node, width, y, H);
                     }
                     break;
             }
@@ -13969,6 +13970,10 @@ if (typeof exports != "undefined") {
         this.addProperty("min", 0);
         this.addProperty("max", 1);
         this.addProperty("smooth", true);
+        this.addProperty("seed", 0);
+        this.addProperty("octaves", 1);
+        this.addProperty("persistence", 0.8);
+        this.addProperty("speed", 1);
         this.size = [90, 30];
     }
 
@@ -13999,7 +14004,22 @@ if (typeof exports != "undefined") {
 
     MathNoise.prototype.onExecute = function() {
         var f = this.getInputData(0) || 0;
-        var r = MathNoise.getValue(f, this.properties.smooth);
+		var iterations = this.properties.octaves || 1;
+		var r = 0;
+		var amp = 1;
+		var seed = this.properties.seed || 0;
+		f += seed;
+		var speed = this.properties.speed || 1;
+		var total_amp = 0;
+		for(var i = 0; i < iterations; ++i)
+		{
+			r += MathNoise.getValue(f * (1+i) * speed, this.properties.smooth) * amp;
+			total_amp += amp;
+			amp *= this.properties.persistence;
+			if(amp < 0.001)
+				break;
+		}
+		r /= total_amp;
         var min = this.properties.min;
         var max = this.properties.max;
         this._last_v = r * (max - min) + min;
@@ -19680,8 +19700,8 @@ void main() {\n\
 		};
 		this._uniforms = {
 			u_texture: 0,
-			u_near: 0.1,
-			u_far: 10000
+			u_camera_planes: null, //filled later
+			u_ires: vec2.create()
 		};
 	}
 
@@ -19713,9 +19733,6 @@ void main() {\n\
 		}
 
 		var uniforms = this._uniforms;
-
-		uniforms.u_near = tex.near_far_planes[0];
-		uniforms.u_far = tex.near_far_planes[1];
 		uniforms.u_invert = this.properties.invert ? 1 : 0;
 
 		gl.disable(gl.BLEND);
@@ -19735,6 +19752,8 @@ void main() {\n\
 			planes = [0.1, 1000];
 		} //hardcoded
 		uniforms.u_camera_planes = planes;
+		//uniforms.u_ires.set([1/tex.width, 1/tex.height]);
+		uniforms.u_ires.set([0,0]);
 
 		this._temp_texture.drawTo(function() {
 			tex.bind(0);
@@ -19750,15 +19769,14 @@ void main() {\n\
 		precision highp float;\n\
 		varying vec2 v_coord;\n\
 		uniform sampler2D u_texture;\n\
-		uniform float u_near;\n\
-		uniform float u_far;\n\
+		uniform vec2 u_camera_planes;\n\
 		uniform int u_invert;\n\
+		uniform vec2 u_ires;\n\
 		\n\
 		void main() {\n\
-			float zNear = u_near;\n\
-			float zFar = u_far;\n\
-			float depth = texture2D(u_texture, v_coord).x;\n\
-			depth = depth * 2.0 - 1.0;\n\
+			float zNear = u_camera_planes.x;\n\
+			float zFar = u_camera_planes.y;\n\
+			float depth = texture2D(u_texture, v_coord + u_ires*0.5).x * 2.0 - 1.0;\n\
 			float f = zNear * (depth + 1.0) / (zFar + zNear - depth * (zFar - zNear));\n\
 			if( u_invert == 1 )\n\
 				f = 1.0 - f;\n\

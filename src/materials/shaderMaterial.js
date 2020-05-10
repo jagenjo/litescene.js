@@ -208,6 +208,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 		return false;
 
 	var old_properties = this._properties_by_name;
+	var old_state = this._render_state.serialize();
 	if( shader_code._has_error ) //save them
 		this._last_valid_properties = old_properties; 
 	else if( this._last_valid_properties )
@@ -235,6 +236,8 @@ ShaderMaterial.prototype.processShaderCode = function()
 		if( this[i] && this[i].constructor === Function )
 			delete this[i];
 	}
+
+	this._render_state.configure(old_state);
 
 	//apply init 
 	if( shader_code._functions.init )
@@ -268,7 +271,6 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//restore old values
 	this.assignOldProperties( old_properties );
-
 }
 
 //used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties
