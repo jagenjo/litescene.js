@@ -18,10 +18,19 @@ If you want a reference about GLSL [check this website](http://www.shaderific.co
 
 When creating a shader you may want to call some javascript functions to prepare the properties of the material containing the shader, for this purpose you can write a part in the file that contain that JS code, separated from the GLSL code of the shaders.
 
+If you use a ```LS.ShaderMaterial``` you can create your own shader and define the properties.
+
 The main functions are:
  - ```createUniform( label, uniform_name, type, default_value, options )```: this will make the uniform with the ```uniform_name``` accessible from the editor and the code. The type must be of ```LS.TYPES``` keeping in mind that it has to be able to be passed to the shader.
  - ```createSampler( label, uniform_name, texture_options )```: this will make the uniform with the ```uniform_name``` accessible from the editor and the code.
  - ```createProperty( name, default_value, options )```: this will create a var that is not passed to the shader (used in conjuction with onPrepare).
+ 
+ The texture_options available are:
+ * is_cubemap: in case the texture must be a cubemap
+ * magFilter:  mag filter
+ * minFilter: min filter
+ * wrap: texture wrap mode
+ * missing: a string in case the texture is missing, could be "black","white","gray","normal", for 2D and "cubemap" for cubemaps.
 
 The subfile to contain this calls should be called ```\js```
 
