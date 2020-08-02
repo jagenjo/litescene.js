@@ -23,7 +23,7 @@ if(typeof(LiteGraph) != "undefined")
 
 		for(var i = 0; i < compos.length; ++i)
 		{
-			var name = LS.getClassName( compos[i].constructor );
+			var name = ONE.getClassName( compos[i].constructor );
 			result.push( [name, name] );
 		}
 
@@ -32,7 +32,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphScene.prototype.onAdded = function( graph )
 	{
-		this.bindEvents( this.graph.getScene ? this.graph.getScene() : LS.GlobalScene );
+		this.bindEvents( this.graph.getScene ? this.graph.getScene() : ONE.GlobalScene );
 	}
 
 	LGraphScene.prototype.onRemoved = function()
@@ -42,7 +42,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphScene.prototype.onConnectionsChange = function()
 	{
-		this.bindEvents( this.graph.getScene ? this.graph.getScene() : LS.GlobalScene );
+		this.bindEvents( this.graph.getScene ? this.graph.getScene() : ONE.GlobalScene );
 	}
 
 	//bind events attached to this component
@@ -74,7 +74,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphScene.prototype.onExecute = function()
 	{
-		var scene = this.graph.getScene ? this.graph.getScene() : LS.GlobalScene;
+		var scene = this.graph.getScene ? this.graph.getScene() : ONE.GlobalScene;
 
 		//read inputs
 		if(this.inputs)
@@ -138,6 +138,14 @@ if(typeof(LiteGraph) != "undefined")
 		this.bindNodeEvents( this._component );
 	}
 
+	LGraphSceneNode.prototype.getTitle = function()
+	{
+		var node = this._node || this.getNode();
+		if(node)
+			return node.name;
+		return this.title;
+	}
+
 	LGraphSceneNode.prototype.getNode = function()
 	{
 		var node_id = null;
@@ -150,7 +158,7 @@ if(typeof(LiteGraph) != "undefined")
 			node_id = this.getInputData(0);
 
 		//hardcoded node
-		if( node_id && node_id.constructor === LS.SceneNode )
+		if( node_id && node_id.constructor === ONE.SceneNode )
 		{
 			if(this._node != node_id)
 				this.bindNodeEvents(node_id);
@@ -172,7 +180,7 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		//get node from scene
-		var scene = this.graph && this.graph.getScene ? this.graph.getScene() : LS.GlobalScene;
+		var scene = this.graph && this.graph.getScene ? this.graph.getScene() : ONE.GlobalScene;
 		if(!scene)
 			return;
 
@@ -230,7 +238,7 @@ if(typeof(LiteGraph) != "undefined")
 				case "Material": this.setOutputData( i, node.getMaterial() ); break;
 				case "Mesh": this.setOutputData( i, node.getMesh() ); break;
 				case "Transform": this.setOutputData( i, node.transform ); break;
-				case "Global Model": this.setOutputData( i, node.transform ? node.transform._global_matrix : LS.IDENTITY ); break;
+				case "Global Model": this.setOutputData( i, node.transform ? node.transform._global_matrix : ONE.IDENTITY ); break;
 				case "Name": this.setOutputData( i, node.name ); break;
 				case "Children": this.setOutputData( i, node.children ); break;
 				case "UID": this.setOutputData( i, node.uid ); break;
@@ -245,7 +253,7 @@ if(typeof(LiteGraph) != "undefined")
 						var old_compo = node.scene.findComponentByUId( output.name );
 						if(old_compo)
 						{
-							var class_name = LS.getObjectClassName( old_compo );
+							var class_name = ONE.getObjectClassName( old_compo );
 							compo = node.getComponent( class_name );
 							if( compo )
 								output.name = compo.uid; //replace the uid
@@ -294,7 +302,7 @@ if(typeof(LiteGraph) != "undefined")
 
 		for(var i = 0; i < compos.length; ++i)
 		{
-			var name = LS.getClassName( compos[i].constructor );
+			var name = ONE.getClassName( compos[i].constructor );
 			result.push( [ compos[i].uid, name, { label: name } ] );
 		}
 
@@ -387,7 +395,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphMaterial.prototype.onCreateMaterial = function(w, graphcanvas, node, pos, event)
 	{
-		var types = Object.keys( LS.MaterialClasses );
+		var types = Object.keys( ONE.MaterialClasses );
 		types.push(null,"clear");
 		var menu = new LiteGraph.ContextMenu(types, { event: event, callback: inner });
 		var that = this;
@@ -399,9 +407,9 @@ if(typeof(LiteGraph) != "undefined")
 				return;
 			}
 
-			if(!LS.MaterialClasses[ v ])
+			if(!ONE.MaterialClasses[ v ])
 				return;
-			var mat = new LS.MaterialClasses[ v ];
+			var mat = new ONE.MaterialClasses[ v ];
 			that.material = mat;
 			EditorModule.inspect( that );
 		}
@@ -462,8 +470,8 @@ if(typeof(LiteGraph) != "undefined")
 		if( slot != -1)
 			return this.getInputData( slot );
 
-		if(	this.properties.material_id && LS.RM.materials[ this.properties.material_id ] )
-			return LS.RM.materials[ this.properties.material_id ];
+		if(	this.properties.material_id && ONE.RM.materials[ this.properties.material_id ] )
+			return ONE.RM.materials[ this.properties.material_id ];
 
 		if(	this.properties.node_id )
 		{
@@ -519,7 +527,7 @@ if(typeof(LiteGraph) != "undefined")
 		if( this.material && this.material.serialize )
 		{
 			o.material = this.material.serialize();
-			o.material.className = LS.getObjectClassName( this.material );
+			o.material.className = ONE.getObjectClassName( this.material );
 		}
 	}
 
@@ -527,7 +535,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		if(o.material)
 		{
-			var ctor = LS.MaterialClasses[ o.material.className ];
+			var ctor = ONE.MaterialClasses[ o.material.className ];
 			if(ctor)
 			{
 				this.material = new ctor();
@@ -542,7 +550,7 @@ if(typeof(LiteGraph) != "undefined")
 		var mat = this.getMaterial();
 		if(mat)
 		{
-			inspector.addTitle("Material (" + LS.getObjectClassName(mat) + ")" );
+			inspector.addTitle("Material (" + ONE.getObjectClassName(mat) + ")" );
 			EditorModule.showMaterialProperties( mat, inspector );
 		}
 		/*
@@ -662,7 +670,7 @@ if(typeof(LiteGraph) != "undefined")
 			return this._locator_info;
 		if( !this.graph )
 			return null;
-		var scene = this.graph._scene || LS.GlobalScene; //subgraphs do not have an scene assigned
+		var scene = this.graph._scene || ONE.GlobalScene; //subgraphs do not have an scene assigned
 		this._locator_info = scene.getPropertyInfoFromPath( this._locator_split );
 		if(this._locator_info && this.inputs && this.inputs.length)
 			this.inputs[0].type = this._locator_info.type;
@@ -768,7 +776,7 @@ if(typeof(LiteGraph) != "undefined")
 				type = var_info.type;
 		}
 		inspector.add( type, info.name, info.value, { callback: function(v){
-			LS.setObjectProperty( info.target, info.name, v );
+			ONE.setObjectProperty( info.target, info.name, v );
 		}});
 	}
 
@@ -887,9 +895,9 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphFrame.prototype.onInspect = function( inspector )
 	{
 		var that = this;
-		var render_context = this.graph.component.frame;
 		if(this.graph.component)
 		{
+			var render_context = this.graph.component.frame;
 			inspector.showObjectFields( render_context );
 			inspector.addSeparator();
 			inspector.addCheckbox("Antialiasing", this.graph.component.use_antialiasing, function(v){ that.graph.component.use_antialiasing = v; });

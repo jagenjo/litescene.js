@@ -4,13 +4,13 @@
 //It works similar to the one in Unity
 function RenderQueue( value, sort_mode, options )
 {
-	this.enabled = true;
+	this.enabled = true; //if disabled it will be skipped
 
 	//container for all instances that belong to this render queue
 	this.instances = [];
 
 	this.value = value || 0;
-	this.sort_mode = sort_mode || LS.RenderQueue.NO_SORT;
+	this.sort_mode = sort_mode || ONE.RenderQueue.NO_SORT;
 	this.must_clone_buffers = false; //used for readback rendering like refracion
 	//this.visible_in_pass = null;
 
@@ -34,9 +34,9 @@ RenderQueue.prototype.sort = function()
 	var func = null;
 	switch(this.sort_mode)
 	{
-		case 1: func = LS.RenderQueue.sort_near_to_far_func; break;
-		case 2: func = LS.RenderQueue.sort_far_to_near_func; break;
-		case 3: func = LS.RenderQueue.sort_by_priority_func; break;
+		case 1: func = ONE.RenderQueue.sort_near_to_far_func; break;
+		case 2: func = ONE.RenderQueue.sort_far_to_near_func; break;
+		case 3: func = ONE.RenderQueue.sort_by_priority_func; break;
 	}
 
 	if(func)
@@ -62,10 +62,10 @@ RenderQueue.prototype.start = function( pass, render_settings )
 			return false;
 	}
 
-	if(this.instances.length && this.must_clone_buffers && RenderQueue.readback_allowed && pass === LS.COLOR_PASS )
+	if(this.instances.length && this.must_clone_buffers && RenderQueue.readback_allowed && pass === ONE.COLOR_PASS )
 	{
-		if( LS.RenderFrameContext.current )
-			LS.RenderFrameContext.current.cloneBuffers();
+		if( ONE.RenderFrameContext.current )
+			ONE.RenderFrameContext.current.cloneBuffers();
 		//cubemaps are not cloned... too much work
 	}
 }
@@ -96,4 +96,4 @@ RenderQueue.sort_by_priority_func = function(a,b) { return b.priority - a.priori
 RenderQueue.sort_by_priority_and_near_to_far_func = function(a,b) { var r = b.priority - a.priority; return r ? r : (a._dist - b._dist) },
 RenderQueue.sort_by_priority_and_far_to_near_func = function(a,b) { var r = b.priority - a.priority; return r ? r : (b._dist - a._dist) },
 
-LS.RenderQueue = RenderQueue;
+ONE.RenderQueue = RenderQueue;

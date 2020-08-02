@@ -36,10 +36,10 @@ var Picking = {
 		if(!instance)
 			return null;
 
-		if(instance.constructor == LS.SceneNode)
+		if(instance.constructor == ONE.SceneNode)
 			return instance;
 
-		if(instance._root && instance._root.constructor == LS.SceneNode)
+		if(instance._root && instance._root.constructor == ONE.SceneNode)
 			return instance._root;
 
 		if(instance.node)
@@ -60,10 +60,10 @@ var Picking = {
 	*/
 	getInstanceAtCanvasPosition: function( x, y, camera, layers, scene )
 	{
-		scene = scene || LS.GlobalScene;
+		scene = scene || ONE.GlobalScene;
 
 		if(!camera)
-			camera = LS.Renderer.getCameraAtPosition( x, y, scene._cameras );
+			camera = ONE.Renderer.getCameraAtPosition( x, y, scene._cameras );
 
 		if(!camera)
 			return null;
@@ -109,11 +109,11 @@ var Picking = {
 		{
 			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
 			this._pickingFBO = new GL.FBO([this._pickingMap]);
-			//LS.ResourcesManager.textures[":picking"] = this._pickingMap; //debug the texture
+			//ONE.ResourcesManager.textures[":picking"] = this._pickingMap; //debug the texture
 		}
 
 		var small_area = this._use_scissor_test;
-		LS.Renderer._current_target = this._pickingMap;
+		ONE.Renderer._current_target = this._pickingMap;
 
 		this._pickingFBO.bind();
 
@@ -142,7 +142,7 @@ var Picking = {
 
 		this._pickingFBO.unbind();
 
-		LS.Renderer._current_target = null; //??? deprecated
+		ONE.Renderer._current_target = null; //??? deprecated
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
 		return this._picking_color;
@@ -155,13 +155,13 @@ var Picking = {
 			layers = 0xFFFF;
 		var picking_render_settings = this._picking_render_settings;
 
-		LS.Renderer.enableCamera( camera, this._picking_render_settings );
+		ONE.Renderer.enableCamera( camera, this._picking_render_settings );
 
 		gl.clearColor(0,0,0,0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 		this._picking_next_color_id = 0;
-		LS.Renderer.setRenderPass( PICKING_PASS );
+		ONE.Renderer.setRenderPass( PICKING_PASS );
 		picking_render_settings.layers = layers;
 
 		//check instances colliding with cursor using a ray against AABBs
@@ -169,7 +169,7 @@ var Picking = {
 		if( pos ) //not tested yet
 		{
 			var ray = camera.getRay( pos[0], pos[1] );
-			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { add_instances_without_aabb: true } );
+			var instances_collisions = ONE.Physics.raycastRenderInstances( ray.origin, ray.direction, { add_instances_without_aabb: true } );
 			if( instances_collisions )
 			{
 				instances = Array( instances_collisions.length );
@@ -181,7 +181,7 @@ var Picking = {
 		else
 			instances = scene._instances;
 
-		LS.Renderer.renderInstances( picking_render_settings, instances );
+		ONE.Renderer.renderInstances( picking_render_settings, instances );
 
 		//Nodes
 		/* done in EditorView
@@ -218,15 +218,15 @@ var Picking = {
 		*/
 
 		LEvent.trigger( scene, "renderPicking", pos );
-		LEvent.trigger( LS.Renderer, "renderPicking", pos );
+		LEvent.trigger( ONE.Renderer, "renderPicking", pos );
 
-		LS.Renderer.setRenderPass( COLOR_PASS );
+		ONE.Renderer.setRenderPass( COLOR_PASS );
 	},
 
 	addPickingPoint: function( position, size, info )
 	{
 		size = size || 5.0;
-		var color = LS.Picking.getNextPickingColor( info );
+		var color = ONE.Picking.getNextPickingColor( info );
 		this._picking_points.push([ position,color,size]);
 	},
 
@@ -244,10 +244,10 @@ var Picking = {
 				colors.set( this._picking_points[i][1], i*4 );
 				sizes[i] = this._picking_points[i][2];
 			}
-			LS.Draw.setPointSize(1);
-			LS.Draw.setColor([1,1,1,1]);
+			ONE.Draw.setPointSize(1);
+			ONE.Draw.setColor([1,1,1,1]);
 			gl.disable( gl.DEPTH_TEST ); //because nodes are show over meshes
-			LS.Draw.renderPointsWithSize( points, colors, sizes );
+			ONE.Draw.renderPointsWithSize( points, colors, sizes );
 			gl.enable( gl.DEPTH_TEST );
 			this._picking_points.length = 0;
 		}
@@ -256,14 +256,14 @@ var Picking = {
 	visualize: function(v)
 	{
 		//to visualize picking buffer
-		LS.Renderer.setRenderPass( v ? LS.PICKING_PASS : LS.COLOR_PASS );
-		LS.GlobalScene.requestFrame();
+		ONE.Renderer.setRenderPass( v ? ONE.PICKING_PASS : ONE.COLOR_PASS );
+		ONE.GlobalScene.requestFrame();
 	}
 };
 
 //Extra info
 // renderPicking is not called from LiteScene, only from WebGLStudio EditorView
 
-LS.Picking = Picking;
+ONE.Picking = Picking;
 
 

@@ -10,9 +10,9 @@
 */
 
 //passes
-var COLOR_PASS = LS.COLOR_PASS = { name: "color", id: 1 };
-var SHADOW_PASS = LS.SHADOW_PASS = { name: "shadow", id: 2 };
-var PICKING_PASS = LS.PICKING_PASS = { name: "picking", id: 3 };
+var COLOR_PASS = ONE.COLOR_PASS = { name: "color", id: 1 };
+var SHADOW_PASS = ONE.SHADOW_PASS = { name: "shadow", id: 2 };
+var PICKING_PASS = ONE.PICKING_PASS = { name: "picking", id: 3 };
 
 //render events
 EVENT.BEFORE_RENDER = "beforeRender";
@@ -27,6 +27,7 @@ EVENT.AFTER_RENDER = "afterRender";
 EVENT.BEFORE_RENDER_FRAME = "beforeRenderFrame";
 EVENT.BEFORE_RENDER_SCENE = "beforeRenderScene";
 EVENT.COMPUTE_VISIBILITY = "computeVisibility";
+EVENT.AFTER_RENDER_FRAME = "afterRenderFrame";
 EVENT.AFTER_RENDER_SCENE = "afterRenderScene";
 EVENT.RENDER_HELPERS = "renderHelpers";
 EVENT.RENDER_PICKING = "renderPicking";
@@ -44,8 +45,8 @@ EVENT.PREPARE_MATERIALS = "prepareMaterials";
 
 var Renderer = {
 
-	default_render_settings: new LS.RenderSettings(), //overwritten by the global info or the editor one
-	default_material: new LS.StandardMaterial(), //used for objects without material
+	default_render_settings: new ONE.RenderSettings(), //overwritten by the global info or the editor one
+	default_material: new ONE.StandardMaterial(), //used for objects without material
 
 	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
 	default_point_size: 1, //point size in pixels (could be overwritte by render instances)
@@ -98,6 +99,8 @@ var Renderer = {
 		gui: 0
 	},
 
+	//to measure performance
+	timer_queries_enabled: true,
 	_timer_queries: {},
 	_waiting_queries: false,
 
@@ -146,22 +149,23 @@ var Renderer = {
 		this._gray_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
 		this._white_texture = new GL.Texture(1,1, { pixel_data: [255,255,255,255] });
 		this._normal_texture = new GL.Texture(1,1, { pixel_data: [128,128,255,255] });
+		this._white_cubemap_texture = new GL.Texture(1,1, { texture_type: gl.TEXTURE_CUBE_MAP, pixel_data: (new Uint8Array(6*4)).fill(255) });
 		this._missing_texture = this._gray_texture;
 		var internal_textures = [ this._black_texture, this._gray_texture, this._white_texture, this._normal_texture, this._missing_texture ];
 		internal_textures.forEach(function(t){ t._is_internal = true; });
-		LS.ResourcesManager.textures[":black"] = this._black_texture;
-		LS.ResourcesManager.textures[":gray"] = this._gray_texture;
-		LS.ResourcesManager.textures[":white"] = this._white_texture;
-		LS.ResourcesManager.textures[":flatnormal"] = this._normal_texture;
+		ONE.ResourcesManager.textures[":black"] = this._black_texture;
+		ONE.ResourcesManager.textures[":gray"] = this._gray_texture;
+		ONE.ResourcesManager.textures[":white"] = this._white_texture;
+		ONE.ResourcesManager.textures[":flatnormal"] = this._normal_texture;
 
 		//some global meshes could be helpful: used for irradiance probes
 		this._sphere_mesh = GL.Mesh.sphere({ size:1, detail:32 });
 
 		//draw helps rendering debug stuff
-		if(LS.Draw)
+		if(ONE.Draw)
 		{
-			LS.Draw.init();
-			LS.Draw.onRequestFrame = function() { LS.GlobalScene.requestFrame(); }
+			ONE.Draw.init();
+			ONE.Draw.onRequestFrame = function() { ONE.GlobalScene.requestFrame(); }
 		}
 
 		//enable webglCanvas lib so it is easy to render in 2D
@@ -176,12 +180,12 @@ var Renderer = {
 		this.ENVIRONMENT_TEXTURE_SLOT = max_texture_units - 3;
 		this.IRRADIANCE_TEXTURE_SLOT = max_texture_units - 4;
 
-		this.LIGHTPROJECTOR_TEXTURE_SLOT = max_texture_units - 5;
-		this.LIGHTEXTRA_TEXTURE_SLOT = max_texture_units - 6;
+		this.BONES_TEXTURE_SLOT = max_texture_units - 5;
+		this.MORPHS_TEXTURE_SLOT = max_texture_units - 6;
+		this.MORPHS_TEXTURE2_SLOT = max_texture_units - 7;
 
-		this.BONES_TEXTURE_SLOT = max_texture_units - 7;
-		this.MORPHS_TEXTURE_SLOT = max_texture_units - 8;
-		this.MORPHS_TEXTURE2_SLOT = max_texture_units - 9;
+		this.LIGHTPROJECTOR_TEXTURE_SLOT = max_texture_units - 8;
+		this.LIGHTEXTRA_TEXTURE_SLOT = max_texture_units - 9;
 
 		this._active_samples.length = max_texture_units;
 
@@ -234,11 +238,11 @@ var Renderer = {
 	*/
 	render: function( scene, render_settings, cameras )
 	{
-		scene = scene || LS.GlobalScene;
+		scene = scene || ONE.GlobalScene;
 
 		if( this._is_rendering_frame )
 		{
-			console.error("Last frame didn't finish and a new one was issued. Remember that you cannot call LS.Renderer.render from an event dispatched during the render, this would cause a recursive loop. Call LS.Renderer.reset() to clear from an error.");
+			console.error("Last frame didn't finish and a new one was issued. Remember that you cannot call ONE.Renderer.render from an event dispatched during the render, this would cause a recursive loop. Call ONE.Renderer.reset() to clear from an error.");
 			//this._is_rendering_frame = false; //for safety, we setting to false 
 			return;
 		}
@@ -272,12 +276,12 @@ var Renderer = {
 
 		//to restore from a possible exception (not fully tested, remove if problem)
 		if(!render_settings.ignore_reset)
-			LS.RenderFrameContext.reset();
+			ONE.RenderFrameContext.reset();
 
 		if(gl.canvas.canvas2DtoWebGL_enabled)
 			gl.resetTransform(); //reset 
 
-		LS.GUI.ResetImmediateGUI(true);//just to let the GUI ready
+		ONE.GUI.ResetImmediateGUI(true);//just to let the GUI ready
 
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
@@ -330,8 +334,11 @@ var Renderer = {
 		if(render_settings.render_fx)
 			LEvent.trigger( scene, EVENT.ENABLE_FRAME_CONTEXT, render_settings );
 
-		//render all cameras
-		this.renderFrameCameras( cameras, render_settings );
+		//render what every camera can see
+		if(this.onCustomRenderFrameCameras)
+			this.onCustomRenderFrameCameras( cameras, render_settings );
+		else
+			this.renderFrameCameras( cameras, render_settings );
 
 		//keep original viewport
 		if( render_settings.keep_viewport )
@@ -352,15 +359,15 @@ var Renderer = {
 
 		//profiling must go here
 		this._frame_cpu_time = getTime() - start_time;
-		if( LS.Draw ) //developers may decide not to include LS.Draw
-			this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
+		if( ONE.Draw ) //developers may decide not to include ONE.Draw
+			this._rendercalls += ONE.Draw._rendercalls; ONE.Draw._rendercalls = 0; //stats are not centralized
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger( scene, EVENT.AFTER_RENDER, render_settings ); 
 		this._is_rendering_frame = false;
 
 		//coroutines
-		LS.triggerCoroutines("render");
+		ONE.triggerCoroutines("render");
 
 		if(this.render_profiler)
 			this.renderProfiler();
@@ -388,7 +395,10 @@ var Renderer = {
 
 			//main render
 			this.startGPUQuery("main");
-			this.renderFrame( current_camera, render_settings ); 
+			if(this.onCustomRenderFrame)
+				this.onCustomRenderFrame( current_camera, render_settings ); 
+			else
+				this.renderFrame( current_camera, render_settings ); 
 			this.endGPUQuery();
 
 			//show buffer on the screen
@@ -406,7 +416,7 @@ var Renderer = {
 	* @method renderFrame
 	* @param {Camera} camera 
 	* @param {Object} render_settings [optional]
-	* @param {Scene} scene [optional] this can be passed when we are rendering a different scene from LS.GlobalScene (used in renderMaterialPreview)
+	* @param {Scene} scene [optional] this can be passed when we are rendering a different scene from ONE.GlobalScene (used in renderMaterialPreview)
 	*/
 	renderFrame: function ( camera, render_settings, scene )
 	{
@@ -434,7 +444,10 @@ var Renderer = {
 		LEvent.trigger(this, EVENT.COMPUTE_VISIBILITY, this._visible_instances );
 
 		//here we render all the instances
-		this.renderInstances( render_settings, this._visible_instances );
+		if(this.onCustomRenderInstances)
+			this.onCustomRenderInstances( render_settings, this._visible_instances );
+		else
+			this.renderInstances( render_settings, this._visible_instances );
 
 		//send after events
 		LEvent.trigger( scene, EVENT.AFTER_RENDER_SCENE, camera );
@@ -464,7 +477,7 @@ var Renderer = {
 	},
 
 	/**
-	* Sets camera as the current camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw
+	* Sets camera as the current camera, sets the viewport according to camera info, updates matrices, and prepares ONE.Draw
 	*
 	* @method enableCamera
 	* @param {Camera} camera
@@ -472,7 +485,7 @@ var Renderer = {
 	*/
 	enableCamera: function(camera, render_settings, skip_viewport, scene )
 	{
-		scene = scene || this._current_scene || LS.GlobalScene;
+		scene = scene || this._current_scene || ONE.GlobalScene;
 
 		LEvent.trigger( camera, EVENT.BEFORE_CAMERA_ENABLED, render_settings );
 		LEvent.trigger( scene, EVENT.BEFORE_CAMERA_ENABLED, camera );
@@ -528,14 +541,14 @@ var Renderer = {
 
 		//set as the current camera
 		this._current_camera = camera;
-		LS.Camera.current = camera;
+		ONE.Camera.current = camera;
 		this._current_layers_filter = render_settings ? camera.layers & render_settings.layers : camera.layers;
 
 		//Draw allows to render debug info easily
-		if(LS.Draw)
+		if(ONE.Draw)
 		{
-			LS.Draw.reset(); //clear 
-			LS.Draw.setCamera( camera );
+			ONE.Draw.reset(); //clear 
+			ONE.Draw.setCamera( camera );
 		}
 
 		LEvent.trigger( camera, EVENT.AFTER_CAMERA_ENABLED, render_settings );
@@ -558,7 +571,7 @@ var Renderer = {
 	*
 	* @method clearBuffer
 	* @param {Camera} camera
-	* @param {LS.RenderSettings} render_settings
+	* @param {ONE.RenderSettings} render_settings
 	*/
 	clearBuffer: function( camera, render_settings )
 	{
@@ -589,7 +602,7 @@ var Renderer = {
 
 		//in case of multibuffer we want to clear with black the secondary buffers with black
 		if( GL.FBO.current )
-			GL.FBO.current.clearSecondary( LS.ZEROS4 );
+			GL.FBO.current.clearSecondary( ONE.ZEROS4 );
 		/*
 		if( fbo && fbo.color_textures.length > 1 && gl.extensions.WEBGL_draw_buffers )
 		{
@@ -613,11 +626,11 @@ var Renderer = {
 	{
 		this._queues.length = 0;
 
-		this._renderqueue_background = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.BACKGROUND, LS.RenderQueue.NO_SORT, { name: "BACKGROUND" } ));
-		this._renderqueue_geometry = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.GEOMETRY, LS.RenderQueue.SORT_NEAR_TO_FAR, { name: "GEOMETRY" } ));
-		this._renderqueue_transparent = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.TRANSPARENT, LS.RenderQueue.SORT_FAR_TO_NEAR, { name: "TRANSPARENT" } ));
-		this._renderqueue_readback = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.READBACK_COLOR, LS.RenderQueue.SORT_FAR_TO_NEAR , { must_clone_buffers: true, name: "READBACK" }));
-		this._renderqueue_overlay = this.addRenderQueue( new LS.RenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.SORT_BY_PRIORITY, { name: "OVERLAY" }));
+		this._renderqueue_background = this.addRenderQueue( new ONE.RenderQueue( ONE.RenderQueue.BACKGROUND, ONE.RenderQueue.NO_SORT, { name: "BACKGROUND" } ));
+		this._renderqueue_geometry = this.addRenderQueue( new ONE.RenderQueue( ONE.RenderQueue.GEOMETRY, ONE.RenderQueue.SORT_NEAR_TO_FAR, { name: "GEOMETRY" } ));
+		this._renderqueue_transparent = this.addRenderQueue( new ONE.RenderQueue( ONE.RenderQueue.TRANSPARENT, ONE.RenderQueue.SORT_FAR_TO_NEAR, { name: "TRANSPARENT" } ));
+		this._renderqueue_readback = this.addRenderQueue( new ONE.RenderQueue( ONE.RenderQueue.READBACK_COLOR, ONE.RenderQueue.SORT_FAR_TO_NEAR , { must_clone_buffers: true, name: "READBACK" }));
+		this._renderqueue_overlay = this.addRenderQueue( new ONE.RenderQueue( ONE.RenderQueue.OVERLAY, ONE.RenderQueue.SORT_BY_PRIORITY, { name: "OVERLAY" }));
 	},
 
 	addRenderQueue: function( queue )
@@ -689,7 +702,7 @@ var Renderer = {
 
 		if( !queue ) //create new queue
 		{
-			queue = new LS.RenderQueue( queue_index * 10 + 5, LS.RenderQueue.NO_SORT );
+			queue = new ONE.RenderQueue( queue_index * 10 + 5, ONE.RenderQueue.NO_SORT );
 			queues[ queue_index ] = queue;
 		}
 
@@ -709,7 +722,7 @@ var Renderer = {
 		render_settings = render_settings || this._current_render_settings;
 
 		//maybe we should use this function instead
-		//LS.RenderState.reset(); 
+		//ONE.RenderState.reset(); 
 
 		gl.enable( gl.CULL_FACE );
 		gl.frontFace(gl.CCW);
@@ -741,7 +754,7 @@ var Renderer = {
 		scene = scene || this._current_scene;
 		if(!scene)
 		{
-			console.warn("LS.Renderer.renderInstances: no scene found in LS.Renderer._current_scene");
+			console.warn("ONE.Renderer.renderInstances: no scene found in ONE.Renderer._current_scene");
 			return 0;
 		}
 
@@ -753,6 +766,9 @@ var Renderer = {
 		var apply_frustum_culling = render_settings.frustum_culling;
 		var frustum_planes = camera.updateFrustumPlanes();
 		var layers_filter = this._current_layers_filter = camera.layers & render_settings.layers;
+
+		//globals
+		this._uniforms.u_viewport = gl.viewport_data;
 
 		LEvent.trigger( scene, EVENT.BEFORE_RENDER_INSTANCES, render_settings );
 		//scene.triggerInNodes( EVENT.BEFORE_RENDER_INSTANCES, render_settings );
@@ -916,8 +932,8 @@ var Renderer = {
 		{
 			if( LEvent.hasBind( this._current_scene, EVENT.RENDER_GUI ) ) //to avoid forcing a redraw if no gui is set
 			{
-				if(LS.GUI)
-					LS.GUI.ResetImmediateGUI(); //mostly to change the cursor (warning, true to avoid forcing redraw)
+				if(ONE.GUI)
+					ONE.GUI.ResetImmediateGUI(); //mostly to change the cursor (warning, true to avoid forcing redraw)
 				LEvent.trigger( this._current_scene, EVENT.RENDER_GUI, gl );
 			}
 		}
@@ -934,7 +950,7 @@ var Renderer = {
 	* @method getNearLights
 	* @param {RenderInstance} instance the render instance
 	* @param {Array} result [optional] the output array
-	* @return {Array} array containing a list of LS.Light affecting this RenderInstance
+	* @return {Array} array containing a list of ONE.Light affecting this RenderInstance
 	*/
 	getNearLights: function( instance, result )
 	{
@@ -1022,9 +1038,9 @@ var Renderer = {
 
 		var allow_textures = this.allow_textures; //used for debug
 
-		for(var i = 0; i < samplers.length; ++i)
+		for(var slot = 0; slot < samplers.length; ++slot)
 		{
-			var sampler = samplers[i];
+			var sampler = samplers[slot];
 			if(!sampler) 
 				continue;
 
@@ -1043,7 +1059,7 @@ var Renderer = {
 			}
 
 			if( tex && tex.constructor === String)
-				tex = LS.ResourcesManager.textures[ tex ];
+				tex = ONE.ResourcesManager.textures[ tex ];
 			if(!allow_textures)
 				tex = null;
 
@@ -1057,7 +1073,12 @@ var Renderer = {
 						case "white": tex = this._white_texture; break;
 						case "gray": tex = this._gray_texture; break;
 						case "normal": tex = this._normal_texture; break;
-						default: tex = this._missing_texture;
+						case "cubemap": tex = this._white_cubemap_texture; break;
+						default: 
+							if(sampler.is_cubemap) //must be manually specified
+								tex = this._white_cubemap_texture;
+							else
+								tex = this._missing_texture;
 					}
 				}
 				else
@@ -1068,8 +1089,8 @@ var Renderer = {
 			if(tex._in_current_fbo) 
 				tex = this._missing_texture;
 
-			tex.bind( i );
-			this._active_samples[i] = tex;
+			tex.bind( slot );
+			this._active_samples[slot] = tex;
 
 			//texture properties
 			if(sampler)// && sampler._must_update ) //disabled because samplers ALWAYS must set to the value, in case the same texture is used in several places in the scene
@@ -1113,13 +1134,13 @@ var Renderer = {
 		if(scene.info)
 		for(var i in scene.info.textures)
 		{
-			var texture = LS.getTexture( scene.info.textures[i] );
+			var texture = ONE.getTexture( scene.info.textures[i] );
 			if(!texture)
 				continue;
 
 			var slot = 0;
 			if( i == "environment" )
-				slot = LS.Renderer.ENVIRONMENT_TEXTURE_SLOT;
+				slot = ONE.Renderer.ENVIRONMENT_TEXTURE_SLOT;
 			else
 				continue; 
 
@@ -1143,7 +1164,7 @@ var Renderer = {
 	/**
 	* Collects and process the rendering instances, cameras and lights that are visible
 	* Its a prepass shared among all rendering passes
-	* Called ONCE per frame from LS.Renderer.render before iterating cameras
+	* Called ONCE per frame from ONE.Renderer.render before iterating cameras
 	* Warning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)
 	*
 	* @method processVisibleData
@@ -1190,7 +1211,7 @@ var Renderer = {
 			camera.prepare();
 			if(camera.overwrite_material)
 			{
-				var material = camera.overwrite_material.constructor === String ? LS.ResourcesManager.resources[ camera.overwrite_material ] : camera.overwrite_material;
+				var material = camera.overwrite_material.constructor === String ? ONE.ResourcesManager.resources[ camera.overwrite_material ] : camera.overwrite_material;
 				if(material)
 				{
 					camera._overwrite_material = material;
@@ -1207,7 +1228,7 @@ var Renderer = {
 			if( cameras.length )
 				this._main_camera = cameras[0];
 			else
-				this._main_camera = new LS.Camera(); // ??
+				this._main_camera = new ONE.Camera(); // ??
 		}
 
 		//nearest reflection probe to camera
@@ -1311,7 +1332,7 @@ var Renderer = {
 	{
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
-		var scene = LS.Renderer._current_scene;
+		var scene = ONE.Renderer._current_scene;
 		texture._in_current_fbo = true;
 
 		if(texture.texture_type == gl.TEXTURE_2D)
@@ -1326,14 +1347,14 @@ var Renderer = {
 
 		function inner_draw_2d()
 		{
-			LS.Renderer.clearBuffer( cam, render_settings );
+			ONE.Renderer.clearBuffer( cam, render_settings );
 			/*
 			gl.clearColor(cam.background_color[0], cam.background_color[1], cam.background_color[2], cam.background_color[3] );
 			if(render_settings.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			*/
 			//render scene
-			LS.Renderer.renderInstances( render_settings, instances );
+			ONE.Renderer.renderInstances( render_settings, instances );
 		}
 	},
 
@@ -1355,8 +1376,8 @@ var Renderer = {
 		near = near || 1;
 		far = far || 1000;
 
-		if(render_settings && render_settings.constructor !== LS.RenderSettings)
-			throw("render_settings parameter must be LS.RenderSettings.");
+		if(render_settings && render_settings.constructor !== ONE.RenderSettings)
+			throw("render_settings parameter must be ONE.RenderSettings.");
 
 		var eye = position;
 		if( !texture || texture.constructor != GL.Texture)
@@ -1364,11 +1385,11 @@ var Renderer = {
 
 		var scene = this._current_scene;
 		if(!scene)
-			scene = this._current_scene = LS.GlobalScene;
+			scene = this._current_scene = ONE.GlobalScene;
 
 		var camera = this._cubemap_camera;
 		if(!camera)
-			camera = this._cubemap_camera = new LS.Camera();
+			camera = this._cubemap_camera = new ONE.Camera();
 		camera.configure({ fov: 90, aspect: 1.0, near: near, far: far });
 
 		texture = texture || new GL.Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
@@ -1377,7 +1398,7 @@ var Renderer = {
 
 		texture.drawTo( function(texture, side) {
 
-			var info = LS.Camera.cubemap_camera_parameters[side];
+			var info = ONE.Camera.cubemap_camera_parameters[side];
 			if(texture._is_shadowmap || !background_color )
 				gl.clearColor(0,0,0,0);
 			else
@@ -1385,8 +1406,8 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			camera.configure({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up });
 
-			LS.Renderer.enableCamera( camera, render_settings, true );
-			LS.Renderer.renderInstances( render_settings, instances, scene );
+			ONE.Renderer.enableCamera( camera, render_settings, true );
+			ONE.Renderer.renderInstances( render_settings, instances, scene );
 		});
 
 		this._current_target = null;
@@ -1459,7 +1480,7 @@ var Renderer = {
 	*/
 	enableFrameShaderBlock: function( shader_block_name, uniforms, samplers )
 	{
-		var shader_block = shader_block_name.constructor === LS.ShaderBlock ? shader_block_name : LS.Shaders.getShaderBlock( shader_block_name );
+		var shader_block = shader_block_name.constructor === ONE.ShaderBlock ? shader_block_name : ONE.Shaders.getShaderBlock( shader_block_name );
 
 		if( !shader_block || this._global_shader_blocks_flags & shader_block.flag_mask )
 			return; //already added
@@ -1487,7 +1508,7 @@ var Renderer = {
 	*/
 	disableFrameShaderBlock:  function( shader_block_name, uniforms, samplers )
 	{
-		var shader_block = shader_block_name.constructor === LS.ShaderBlock ? shader_block_name : LS.Shaders.getShaderBlock( shader_block_name );
+		var shader_block = shader_block_name.constructor === ONE.ShaderBlock ? shader_block_name : ONE.Shaders.getShaderBlock( shader_block_name );
 		if( !shader_block || !(this._global_shader_blocks_flags & shader_block.flag_mask) )
 			return; //not active
 
@@ -1502,7 +1523,7 @@ var Renderer = {
 
 	startGPUQuery: function( name )
 	{
-		if(!gl.extensions["disjoint_timer_query"]) //if not supported
+		if(!gl.extensions["disjoint_timer_query"] || !this.timer_queries_enabled) //if not supported
 			return;
 		if(this._waiting_queries)
 			return;
@@ -1516,7 +1537,7 @@ var Renderer = {
 
 	endGPUQuery: function()
 	{
-		if(!gl.extensions["disjoint_timer_query"]) //if not supported
+		if(!gl.extensions["disjoint_timer_query"] || !this.timer_queries_enabled) //if not supported
 			return;
 		if(this._waiting_queries)
 			return;
@@ -1527,7 +1548,7 @@ var Renderer = {
 
 	resolveQueries: function()
 	{
-		if(!gl.extensions["disjoint_timer_query"]) //if not supported
+		if(!gl.extensions["disjoint_timer_query"] || !this.timer_queries_enabled) //if not supported
 			return;
 
 		//var err = gl.getError();
@@ -1649,6 +1670,6 @@ var Renderer = {
 };
 
 //Add to global Scope
-LS.Renderer = Renderer;
+ONE.Renderer = Renderer;
 
 

@@ -2,7 +2,7 @@
 (function(){
 
 //Cannon.js physics in LiteScene
-LS.Network.requestScript("https://schteppe.github.io/cannon.js/build/cannon.js", function(){
+ONE.Network.requestScript("https://schteppe.github.io/cannon.js/build/cannon.js", function(){
 	fixCANNON(); //could be useful to change things in cannon
 });
 
@@ -92,7 +92,7 @@ PhysicsEngine.prototype.onUpdate = function(e,dt)
 	this._root.scene.refresh();
 }
 
-LS.registerComponent( PhysicsEngine );
+ONE.registerComponent( PhysicsEngine );
 
 
 function PhysicsRigidBody(o)
@@ -110,7 +110,7 @@ function PhysicsRigidBody(o)
 }
 
 PhysicsRigidBody["@shape"] = { widget: "combo", values: ["sphere","box","mesh"] };
-PhysicsRigidBody["@mesh"] = { type: LS.TYPES.MESH };
+PhysicsRigidBody["@mesh"] = { type: ONE.TYPES.MESH };
 
 PhysicsRigidBody.prototype.onAddedToScene = function(scene)
 {
@@ -125,7 +125,7 @@ PhysicsRigidBody.prototype.onRemovedFromScene = function(scene)
 
 PhysicsRigidBody.prototype.getWorld = function()
 {
-	var compo = LS.GlobalScene.root.getComponent( LS.Components.PhysicsEngine );
+	var compo = ONE.GlobalScene.root.getComponent( ONE.Components.PhysicsEngine );
 	if(!compo || !compo._world || !compo._is_running)
 		return null;
 	return compo._world;
@@ -207,7 +207,7 @@ PhysicsRigidBody.prototype.onPhysicsUpdate = function(e, world)
 	transform._must_update = true;
 }
 
-LS.registerComponent( PhysicsRigidBody );
+ONE.registerComponent( PhysicsRigidBody );
 
 // Collider ***************************************
 
@@ -315,7 +315,7 @@ PhysicsCollider.prototype.onPhysicsUpdate = function(e,world)
 	}
 }
 
-LS.registerComponent( PhysicsCollider );
+ONE.registerComponent( PhysicsCollider );
 
 
 

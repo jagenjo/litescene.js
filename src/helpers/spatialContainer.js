@@ -65,4 +65,4 @@ SpatialContainer.prototype.clear = function()
 	this.objects_cell_by_id = new WeakMap();
 }
 
-LS.SpatialContainer = SpatialContainer;
+ONE.SpatialContainer = SpatialContainer;

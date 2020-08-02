@@ -32,7 +32,7 @@ Object.defineProperty( Particle.prototype, 'vel', {
 /**
 * ParticlesEmissor allow to render a particle system, meant to render things like smoke or fire
 * @class ParticlesEmissor
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -48,6 +48,8 @@ function ParticleEmissor(o)
 	this.emissor_rate = 5; //particles per second
 	this.emissor_size = vec3.fromValues(10,10,10);
 	this.emissor_mesh = null;
+
+	this.emissor_node = null;
 
 	this.particle_life = 5;
 	this.particle_speed = 10;
@@ -118,9 +120,10 @@ function ParticleEmissor(o)
 ParticleEmissor.BOX_EMISSOR = 1;
 ParticleEmissor.SPHERE_EMISSOR = 2;
 ParticleEmissor.MESH_EMISSOR = 3;
+ParticleEmissor.NODE_EMISSOR = 4;
 ParticleEmissor.CUSTOM_EMISSOR = 10;
 
-ParticleEmissor["@emissor_type"] = { type:"enum", values:{ "Box":ParticleEmissor.BOX_EMISSOR, "Sphere":ParticleEmissor.SPHERE_EMISSOR, "Mesh":ParticleEmissor.MESH_EMISSOR, "Custom": ParticleEmissor.CUSTOM_EMISSOR }};
+ParticleEmissor["@emissor_type"] = { type:"enum", values:{ "Box":ParticleEmissor.BOX_EMISSOR, "Sphere":ParticleEmissor.SPHERE_EMISSOR, "Mesh":ParticleEmissor.MESH_EMISSOR, "Node":ParticleEmissor.NODE_EMISSOR, "Custom": ParticleEmissor.CUSTOM_EMISSOR }};
 ParticleEmissor.icon = "mini-icon-particles.png";
 
 Object.defineProperty( ParticleEmissor.prototype, 'particle_start_color', {
@@ -197,7 +200,7 @@ ParticleEmissor.prototype.createParticle = function(p)
 		case ParticleEmissor.MESH_EMISSOR: 
 			var mesh = this.emissor_mesh;
 			if(mesh && mesh.constructor === String)
-				mesh = LS.ResourcesManager.getMesh(this.emissor_mesh);
+				mesh = ONE.ResourcesManager.getMesh(this.emissor_mesh);
 			if(mesh && mesh.getBuffer("vertices") )
 			{
 				var vertices = mesh.getBuffer("vertices").data;				
@@ -206,6 +209,25 @@ ParticleEmissor.prototype.createParticle = function(p)
 			}
 			else
 				p._pos.set([0,0,0]);
+			break;
+		case ParticleEmissor.NODE_EMISSOR: 
+			var node = this.emissor_node;
+			if(node && node.constructor === String)
+				node = ONE.GlobalScene.getNode(node);
+			if(node)
+			{
+				var mesh = node.getMesh();
+				if(mesh && mesh.getBuffer("vertices") )
+				{
+					var vertices = mesh.getBuffer("vertices").data;				
+					var v = Math.floor(Math.random() * vertices.length / 3)*3;
+					p._pos.set( [vertices[v] + Math.random() * 0.001, vertices[v+1] + Math.random() * 0.001, vertices[v+2] + Math.random() * 0.001] );
+					if(node.transform)
+						node.transform.localToGlobal(p._pos,p._pos);
+					break;
+				}
+			}
+			p._pos.set([0,0,0]);
 			break;
 		case ParticleEmissor.CUSTOM_EMISSOR: //done after the rest
 		default: 
@@ -322,7 +344,7 @@ ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 	//compute mesh
 	if(!this.align_always && !do_not_updatemesh)
 	{
-		this.updateMesh( LS.Renderer._current_camera );
+		this.updateMesh( ONE.Renderer._current_camera );
 		this._root.scene.requestFrame();
 	}
 
@@ -450,8 +472,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	var dI = 1 / (this.particle_life * 60);
 	for(var i = 0; i < opacity_curve.length; i += 1)
 	{
-		opacity_curve[i] = LS.getCurveValueAt(this.particle_opacity_curve,0,1,0, i * dI );
-		size_curve[i] = LS.getCurveValueAt(this.particle_size_curve,0,1,0, i * dI );
+		opacity_curve[i] = ONE.getCurveValueAt(this.particle_opacity_curve,0,1,0, i * dI );
+		size_curve[i] = ONE.getCurveValueAt(this.particle_size_curve,0,1,0, i * dI );
 	}
 
 	//references
@@ -607,14 +629,14 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	if(!this._root || !this.enabled)
 		return;
 
-	var camera = LS.Renderer._current_camera;
+	var camera = ONE.Renderer._current_camera;
 
 	if(!this._material)
-		this._material = new LS.StandardMaterial();
+		this._material = new ONE.StandardMaterial();
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture( "color", this.texture );
-	this._material.blend_mode = this.additive_blending ? LS.Blend.ADD : LS.Blend.ALPHA;
+	this._material.blend_mode = this.additive_blending ? ONE.Blend.ADD : ONE.Blend.ALPHA;
 	this._material.constant_diffuse = true;
 	this._material.uvs_matrix[0] = this._material.uvs_matrix[4] = 1 / this.texture_grid_size;
 	this._material.flags.depth_write = false;
@@ -625,18 +647,18 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+		this._render_instance = RI = new ONE.RenderInstance(this._root, this);
 
 	if( this.point_particles )
 	{
 		//enable extra2
-		RI.addShaderBlock( LS.Shaders.extra2_block );
+		RI.addShaderBlock( ONE.Shaders.extra2_block );
 		//enable point particles 
 		RI.addShaderBlock( pointparticles_block );
 	}
 	else
 	{
-		RI.removeShaderBlock( LS.Shaders.extra2_block );
+		RI.removeShaderBlock( ONE.Shaders.extra2_block );
 		RI.removeShaderBlock( pointparticles_block );
 	}
 
@@ -671,8 +693,8 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	instances.push( RI );
 }
 
-LS.Particle = Particle;
-LS.registerComponent(ParticleEmissor);
+ONE.Particle = Particle;
+ONE.registerComponent(ParticleEmissor);
 
 
 

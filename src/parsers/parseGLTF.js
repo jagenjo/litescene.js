@@ -1,6 +1,6 @@
 ///@INFO: PARSER
-var parserDAE = {
-	extension: "dae",
+var parserGLTF = {
+	extension: "gltf",
 	type: "scene",
 	resource: "SceneNode",
 	format: "text",
@@ -24,7 +24,7 @@ var parserDAE = {
 			diffuse: "color"
 		}; //this is done to match LS specification
 
-		var clean_filename = ONE.RM.getFilename( filename );
+		var clean_filename = LS.RM.getFilename( filename );
 
 		//parser moved to Collada.js library
 		var scene = Collada.parse( data, options, clean_filename );
@@ -148,7 +148,7 @@ var parserDAE = {
 		for(var i in scene.resources)
 		{
 			var res = scene.resources[i];
-			var ext = ONE.ResourcesManager.getBasename( i );
+			var ext = LS.ResourcesManager.getBasename( i );
 			if(!ext)
 				console.warn("DAE contains resources without extension: " + i, res.constructor );
 			if(res.object_class == "Animation")
@@ -374,9 +374,9 @@ var parserDAE = {
 				if(this.convert_filenames_to_lowercase)
 					filename = filename.toLowerCase(); 
 				//we allow two sets of texture coordinates
-				var coords = ONE.Material.COORDS_UV0;
+				var coords = LS.Material.COORDS_UV0;
 				if( tex_info.uvs == "TEX1")
-					coords = ONE.Material.COORDS_UV1;
+					coords = LS.Material.COORDS_UV1;
 				tex_info = { 
 					texture: filename,
 					uvs: coords
@@ -388,4 +388,4 @@ var parserDAE = {
 	}
 };
 
-ONE.Formats.addSupportedFormat( "dae", parserDAE );
+LS.Formats.addSupportedFormat( "gltf", parserGLTF );

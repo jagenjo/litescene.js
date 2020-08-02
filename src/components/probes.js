@@ -2,7 +2,7 @@
 /**
 * Realtime Reflective probe
 * @class RealtimeReflector
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -67,7 +67,7 @@ Object.defineProperty( ReflectionProbe.prototype, "enabled", {
 		if(!this._registered)
 			this.register(scene);
 		this.onRenderReflection();
-		LS.GlobalScene.requestFrame();
+		ONE.GlobalScene.requestFrame();
 	},
 	get: function() { return this._enabled; },
 	enumerable: true
@@ -78,7 +78,7 @@ ReflectionProbe.prototype.onAddedToScene = function(scene)
 	LEvent.bind( scene,"start", this.onRenderReflection, this );
 	LEvent.bind( scene,"renderReflections", this.onRenderReflection, this );
 	//LEvent.bind( scene,"afterCameraEnabled", this.onCameraEnabled, this );
-	//LEvent.bind( LS.Renderer,"renderHelpers", this.onVisualizeProbe, this );
+	//LEvent.bind( ONE.Renderer,"renderHelpers", this.onVisualizeProbe, this );
 
 	this.register( scene );
 }
@@ -91,10 +91,10 @@ ReflectionProbe.prototype.getExtraProperties = function(properties)
 ReflectionProbe.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbindAll( scene, this );
-	//LEvent.unbindAll( LS.Renderer, this );
+	//LEvent.unbindAll( ONE.Renderer, this );
 	
 	if(this._texture)
-		LS.ResourcesManager.unregisterResource( this._tex_id );
+		ONE.ResourcesManager.unregisterResource( this._tex_id );
 
 	//TODO: USE POOL!!
 	this._texture = null;
@@ -123,7 +123,7 @@ ReflectionProbe.prototype.onRenderReflection = function( e )
 
 	if(!this._must_update)
 	{
-		if( LS.ResourcesManager.isLoading() )
+		if( ONE.ResourcesManager.isLoading() )
 			return;
 
 		this.refresh_rate = this.refresh_rate|0;
@@ -164,7 +164,7 @@ ReflectionProbe.use_float_for_high_precision = false; //by default it uses HALF_
 
 ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 {
-	render_settings = render_settings || LS.Renderer.default_render_settings;
+	render_settings = render_settings || ONE.Renderer.default_render_settings;
 
 	var scene = this._root.scene;
 	if(!scene)
@@ -176,7 +176,7 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 	var old_layers = render_settings.layers;
 	render_settings.layers = this.layers;
 
-	LS.Renderer.clearSamplers();
+	ONE.Renderer.clearSamplers();
 
 	var texture_type = gl.TEXTURE_CUBE_MAP;
 	var type = this.high_precision ? ( ReflectionProbe.use_float_for_high_precision ? gl.FLOAT : gl.HIGH_PRECISION_FORMAT ) : gl.UNSIGNED_BYTE;
@@ -198,21 +198,21 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 	texture._in_current_fbo = true; //block binding this texture during rendering of the reflection
 
 	//first render
-	if( !LS.Renderer._visible_instances )
+	if( !ONE.Renderer._visible_instances )
 	{
-		LS.Renderer.processVisibleData( scene, render_settings );
-		LS.Renderer.regenerateShadowmaps( scene, render_settings );
+		ONE.Renderer.processVisibleData( scene, render_settings );
+		ONE.Renderer.regenerateShadowmaps( scene, render_settings );
 	}
 
 	//avoid reusing same irradiance from previous pass
 
 	//fix: there was a problem because there was no texture bind in ENVIRONMENT_SLOT, this fix it
-	for(var i = 0; i < LS.Renderer._visible_instances.length; ++i)
-		if( LS.Renderer._visible_instances[i]._nearest_reflection_probe == this )
-			LS.Renderer._visible_instances[i]._nearest_reflection_probe = null;
+	for(var i = 0; i < ONE.Renderer._visible_instances.length; ++i)
+		if( ONE.Renderer._visible_instances[i]._nearest_reflection_probe == this )
+			ONE.Renderer._visible_instances[i]._nearest_reflection_probe = null;
 
 	//render all the scene inside the cubemap
-	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
+	ONE.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
 
 	texture._in_current_fbo = false;
 
@@ -223,13 +223,13 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 		texture.unbind();
 	}
 
-	for(var i = 0; i < LS.Renderer._visible_instances.length; ++i)
-		if( LS.Renderer._visible_instances[i]._nearest_reflection_probe == null )
-			LS.Renderer._visible_instances[i]._nearest_reflection_probe = this;
+	for(var i = 0; i < ONE.Renderer._visible_instances.length; ++i)
+		if( ONE.Renderer._visible_instances[i]._nearest_reflection_probe == null )
+			ONE.Renderer._visible_instances[i]._nearest_reflection_probe = this;
 
 	if(this.texture_name)
-		LS.ResourcesManager.registerResource( this.texture_name, texture );
-	LS.ResourcesManager.registerResource( this._tex_id, texture );
+		ONE.ResourcesManager.registerResource( this.texture_name, texture );
+	ONE.ResourcesManager.registerResource( this._tex_id, texture );
 
 	//remove flags
 	render_settings.layers = old_layers;
@@ -239,14 +239,14 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 ReflectionProbe.prototype.assignCubemaps = function( scene )
 {
 	if(this._texture)
-		LS.ResourcesManager.registerResource( this._tex_id, this._texture );
+		ONE.ResourcesManager.registerResource( this._tex_id, this._texture );
 }
 
 /**
 * Adds a reflection probe to the scene
 *
 * @method register
-* @param {LS.Scene} scene
+* @param {ONE.Scene} scene
 */
 ReflectionProbe.prototype.register = function( scene )
 {
@@ -291,9 +291,9 @@ ReflectionProbe.prototype.renderProbe = function( visualize_irradiance, picking_
 	if( !this._texture || !this._enabled )
 		return;
 
-	LS.Draw.push();
-	LS.Draw.translate( this._position );
-	LS.Draw.scale( ReflectionProbe.helper_size );
+	ONE.Draw.push();
+	ONE.Draw.translate( this._position );
+	ONE.Draw.scale( ReflectionProbe.helper_size );
 
 	if(!picking_color) //regular texture
 	{
@@ -305,46 +305,46 @@ ReflectionProbe.prototype.renderProbe = function( visualize_irradiance, picking_
 			    this._irradiance_texture.bind(0);
 			else if(this._irradiance_shs)
 			{
-				shader = LS.Components.ReflectionProbe.sh_shader;
+				shader = ONE.Components.ReflectionProbe.sh_shader;
 				if(!shader)
-					shader = LS.Components.ReflectionProbe.sh_shader = new GL.Shader( GL.Shader.DEFAULT_VERTEX_SHADER, LS.Components.IrradianceCache.fs_shader_code );
+					shader = ONE.Components.ReflectionProbe.sh_shader = new GL.Shader( GL.Shader.DEFAULT_VERTEX_SHADER, ONE.Components.IrradianceCache.fs_shader_code );
 				shader.uniforms({ u_sh_coeffs: this._irradiance_shs });
 			}
 		}
         else
 		    this._texture.bind(0);
             
-		LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES, shader );
+		ONE.Draw.renderMesh( ONE.Renderer._sphere_mesh, GL.TRIANGLES, shader );
         if(1) //contour
         {
-            LS.Draw.setColor( LS.WHITE );
-            LS.Draw.scale( 1.1 );
+            ONE.Draw.setColor( ONE.WHITE );
+            ONE.Draw.scale( 1.1 );
             gl.enable( gl.CULL_FACE );
             gl.frontFace( gl.CW );
-            LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES );
+            ONE.Draw.renderMesh( ONE.Renderer._sphere_mesh, GL.TRIANGLES );
             gl.frontFace( gl.CCW );
         }
 	}
 	else
 	{
-		LS.Draw.setColor( picking_color )
-		LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES );
+		ONE.Draw.setColor( picking_color )
+		ONE.Draw.renderMesh( ONE.Renderer._sphere_mesh, GL.TRIANGLES );
 	}
 
-	LS.Draw.pop();
+	ONE.Draw.pop();
 }
 
 /**
 * Static method to update all the reflection probes active in the scene
 *
 * @method ReflectionProbe.updateAll
-* @param {LS.Scene} scene the scene
-* @param {LS.RenderSettings} render_settings the render settings to use while rendering the cubemaps
+* @param {ONE.Scene} scene the scene
+* @param {ONE.RenderSettings} render_settings the render settings to use while rendering the cubemaps
 */
 
 ReflectionProbe.updateAll = function( scene, render_settings )
 {
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 
 	for(var i = 0; i < scene._reflection_probes.length; ++i)
 	{
@@ -357,13 +357,13 @@ ReflectionProbe.visualize_helpers = true;
 ReflectionProbe.visualize_irradiance = false;
 ReflectionProbe.helper_size = 1;
 
-LS.registerComponent( ReflectionProbe );
+ONE.registerComponent( ReflectionProbe );
 
 
 /**
 * Precomputed Irradiance probes
 * @class IrradianceCache
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -393,7 +393,7 @@ function IrradianceCache( o )
 	this._sh_texture = null;
 
 	this._uniforms = {
-		irradiance_texture: LS.Renderer.IRRADIANCE_TEXTURE_SLOT,
+		irradiance_texture: ONE.Renderer.IRRADIANCE_TEXTURE_SLOT,
 		u_irradiance_subdivisions: this._irradiance_subdivisions,
 		u_irradiance_color: this.intensity_color,
 		u_irradiance_imatrix: mat4.create(),
@@ -460,7 +460,7 @@ IrradianceCache.prototype.onConfigure = function(o)
 		return; //???
 
 	var that = this;
-	LS.ResourcesManager.load( this.cache_filename, function( res ){
+	ONE.ResourcesManager.load( this.cache_filename, function( res ){
 		if(!res)
 			return;
 		that._cache_resource = res;
@@ -469,14 +469,14 @@ IrradianceCache.prototype.onConfigure = function(o)
 		that.fromData( res.data );
 		that.encodeCacheInTexture();
 		res._sh_texture = that._sh_texture;
-		LS.GlobalScene.requestFrame();
+		ONE.GlobalScene.requestFrame();
 	});
 }
 
 IrradianceCache.prototype.getResources = function(res)
 {
 	if( this.cache_filename && this._cache_resource )
-		res[ this.cache_filename ] = LS.Resource;
+		res[ this.cache_filename ] = ONE.Resource;
 }
 
 
@@ -490,10 +490,10 @@ IrradianceCache.prototype.fillSceneUniforms = function()
 {
 	if(!this.enabled || !this._sh_texture)
 		return;
-	this._samplers[ LS.Renderer.IRRADIANCE_TEXTURE_SLOT ] = this._sh_texture;
+	this._samplers[ ONE.Renderer.IRRADIANCE_TEXTURE_SLOT ] = this._sh_texture;
 	this._uniforms.u_irradiance_distance = this.sampling_distance;
 	//this._uniforms.u_irradiance_debug = this.debug;
-	LS.Renderer.enableFrameShaderBlock( "applyIrradiance", this._uniforms, this._samplers );
+	ONE.Renderer.enableFrameShaderBlock( "applyIrradiance", this._uniforms, this._samplers );
 }
 
 IrradianceCache.prototype.recompute = function( camera )
@@ -511,10 +511,10 @@ IrradianceCache.prototype.recompute = function( camera )
 
 	//cubemap
 	var type = gl.FLOAT; //enforce floats even in low precision, they get better coefficients, I dont use gl.HIGH_PRECISION_FORMAT because I cant read them back
-	var render_settings = LS.Renderer.default_render_settings;
+	var render_settings = ONE.Renderer.default_render_settings;
 	var old_layers = render_settings.layers;
 	render_settings.layers = this.layers;
-	LS.GlobalScene.info.textures.irradiance = null;
+	ONE.GlobalScene.info.textures.irradiance = null;
 
 	var final_cubemap_size = IrradianceCache.final_cubemap_size;
 	var texture_size = IrradianceCache.capture_cubemap_size; //default is 64
@@ -527,13 +527,13 @@ IrradianceCache.prototype.recompute = function( camera )
 		this.onRecomputingIrradiance(size);
 
 	//first render
-	if( !LS.Renderer._visible_instances )
+	if( !ONE.Renderer._visible_instances )
 	{
 		var scene = this._root.scene;
 		if(!scene)
 			throw("cannot compute irradiance without scene");
-		LS.Renderer.processVisibleData( scene, render_settings );
-		LS.Renderer.regenerateShadowmaps( scene, render_settings );
+		ONE.Renderer.processVisibleData( scene, render_settings );
+		ONE.Renderer.regenerateShadowmaps( scene, render_settings );
 	}
 
 	//compute cache size
@@ -592,14 +592,14 @@ IrradianceCache.prototype.recompute = function( camera )
 	//store in file
 	if(!this.cache_filename)
 		this.cache_filename = "IR_cache_" + this.uid.substr(1) + ".bin";
-	var cache_res = this._cache_resource = LS.ResourcesManager.getResource( cache_res );
+	var cache_res = this._cache_resource = ONE.ResourcesManager.getResource( cache_res );
 	if(!cache_res)
 	{
-		this._cache_resource = cache_res = new LS.Resource();
-		LS.ResourcesManager.registerResource( this.cache_filename, cache_res );
+		this._cache_resource = cache_res = new ONE.Resource();
+		ONE.ResourcesManager.registerResource( this.cache_filename, cache_res );
 	}
 	cache_res.data = this.toData();
-	LS.RM.resourceModified( cache_res );
+	ONE.RM.resourceModified( cache_res );
 
 	//remove flags
 	render_settings.layers = old_layers;
@@ -610,16 +610,16 @@ IrradianceCache.captureIrradiance = function( position, output_cubemap, render_s
 {
 	temp_cubemap = temp_cubemap;
 
-	LS.Renderer.clearSamplers();
+	ONE.Renderer.clearSamplers();
 
 	//disable IR cache first
-	LS.Renderer.disableFrameShaderBlock("applyIrradiance");
+	ONE.Renderer.disableFrameShaderBlock("applyIrradiance");
 
 	if( force_two_sided )
 		render_settings.force_two_sided = true;
 
 	//render all the scene inside the cubemap
-	LS.Renderer.renderToCubemap( position, 0, temp_cubemap, render_settings, near, far, bg_color );
+	ONE.Renderer.renderToCubemap( position, 0, temp_cubemap, render_settings, near, far, bg_color );
 
 	if( force_two_sided )
 		render_settings.force_two_sided = false;
@@ -671,8 +671,10 @@ IrradianceCache.prototype.encodeCacheInTexture = function()
 	//create texture
 	if( !this._sh_texture || this._sh_texture.height != this._irradiance_shs.length || this._sh_texture.type != sh_texture_type )
 	{
-		this._sh_texture = new GL.Texture(9, this._irradiance_shs.length, { format: gl.RGB, type: sh_texture_type, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE });
-		LS.ResourcesManager.registerResource( ":IR_SHs", this._sh_texture ); //debug
+		var w = 9;
+		var h = this._irradiance_shs.length;
+		this._sh_texture = new GL.Texture(w, h, { format: gl.RGB, type: sh_texture_type, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE });
+		ONE.ResourcesManager.registerResource( ":IR_SHs", this._sh_texture ); //debug
 	}
 
 	///prepare data
@@ -752,7 +754,7 @@ IrradianceCache.prototype.fromData = function(data)
 
 	var uint8view = new Uint8Array( data );
 
-	var header_str = LS.typedArrayToString( uint8view.subarray(0,4) );
+	var header_str = ONE.typedArrayToString( uint8view.subarray(0,4) );
 	if( header_str != "IR_C" )
 	{
 		console.error("Irradiance data do not match");
@@ -785,7 +787,7 @@ IrradianceCache.prototype.toData = function()
 	var data = new ArrayBuffer( 16 + 16*4 + num_probes * 9 * 3 * 4); //16 bytes header + mat4x4 + probes(9,3 channels, float32)
 
 	var uint8view = new Uint8Array( data );
-	uint8view.set( LS.stringToTypedArray("IR_C"), 0 ); //from Irradiance Cache
+	uint8view.set( ONE.stringToTypedArray("IR_C"), 0 ); //from Irradiance Cache
 
 	var dv = new DataView(data);
 	dv.setUint8(4,subs[0]);
@@ -814,14 +816,14 @@ IrradianceCache.prototype.renderEditor = function( is_selected )
 	var shader = GL.Shader.getCubemapShowShader();
 	var sh_shader = IrradianceCache.sh_shader;
 	if(!sh_shader)
-		IrradianceCache.sh_shader = sh_shader = new GL.Shader( LS.Draw.vertex_shader_code, IrradianceCache.fs_shader_code );
+		IrradianceCache.sh_shader = sh_shader = new GL.Shader( ONE.Draw.vertex_shader_code, IrradianceCache.fs_shader_code );
 
-	var mesh = LS.Renderer._sphere_mesh;
+	var mesh = ONE.Renderer._sphere_mesh;
 	var subs = this.subdivisions;
 	var size = this.size;
 	var iscale = vec3.fromValues( size[0]/subs[0], size[1]/subs[1], size[2]/subs[2] );
 
-	var mesh = LS.Renderer._sphere_mesh;
+	var mesh = ONE.Renderer._sphere_mesh;
 
 	var default_cubemap = IrradianceCache.default_cubemap;
 	if(!default_cubemap)
@@ -835,7 +837,7 @@ IrradianceCache.prototype.renderEditor = function( is_selected )
 	mat4.scale( matrix, matrix, iscale );
 	var start = mat4.multiplyVec3(vec3.create(),matrix,[0,0,0]);
 	var end = mat4.multiplyVec3(vec3.create(),matrix,subs);
-	var camera = LS.Renderer._current_camera;
+	var camera = ONE.Renderer._current_camera;
 
 	var i = 0;
 	for(var y = 0; y < subs[1]; ++y)
@@ -853,34 +855,34 @@ IrradianceCache.prototype.renderEditor = function( is_selected )
 			continue;
 		}
 
-		LS.Draw.push();
-		LS.Draw.translate( position );
-		LS.Draw.scale( IrradianceCache.probes_size );
+		ONE.Draw.push();
+		ONE.Draw.translate( position );
+		ONE.Draw.scale( IrradianceCache.probes_size );
 
 		if(IrradianceCache.show_cubemaps )
 		{
 			var texture = this._irradiance_cubemaps[ i ] || default_cubemap;
 			texture.bind(0);
-			LS.Draw.renderMesh( mesh, GL.TRIANGLES, shader );
+			ONE.Draw.renderMesh( mesh, GL.TRIANGLES, shader );
 		}
 		else
 		{
 			var coeffs = this._irradiance_shs[i] || IrradianceCache.default_coeffs;
 			sh_shader.uniforms({ u_sh_coeffs: coeffs });
-			LS.Draw.renderMesh( mesh, GL.TRIANGLES, sh_shader );
+			ONE.Draw.renderMesh( mesh, GL.TRIANGLES, sh_shader );
 		}
 
-		LS.Draw.pop();
+		ONE.Draw.pop();
 		i++;
 	}
 
 	//gl.disable( gl.DEPTH_TEST );
-	//LS.Draw.renderLines([start,end],[[0,1,1,1],[1,1,1,1]]);
+	//ONE.Draw.renderLines([start,end],[[0,1,1,1],[1,1,1,1]]);
 	//gl.enable( gl.DEPTH_TEST );
 
 }
 
-LS.registerComponent( IrradianceCache );
+ONE.registerComponent( IrradianceCache );
 
 IrradianceCache.include_code = "\n\
 const float Pi = 3.141592654;\n\
@@ -982,6 +984,7 @@ var cubemapFaceNormals = [
 
 // give me a cubemap, its size and number of channels
 // and i'll give you spherical harmonics
+//from here: https://github.com/nicknikolov/cubemap-sh/blob/master/index.js
 function computeSH( faces, cubemapSize, ch) {
   var size = cubemapSize || 128
   var channels = ch || 4
@@ -1183,7 +1186,7 @@ var irradiance_code = "\n\
 	vec3 computeSHRadianceAtPosition( in vec3 pos, in vec3 normal )\n\
 	{\n\
 		vec3 local_pos = (u_irradiance_imatrix * vec4(pos + u_irradiance_distance * normal, 1.0)).xyz - vec3(0.5);\n\
-		local_pos = clamp( local_pos, vec3(0.0), u_irradiance_subdivisions - vec3(1.0));\n\
+		local_pos = clamp( local_pos + vec3(0.5), vec3(0.0), u_irradiance_subdivisions - vec3(1.0));\n\
 		return computeSHRadianceAtLocalPos( local_pos, normal );\n\
 		\n\
 	}\n\
@@ -1201,7 +1204,7 @@ var irradiance_disabled_code = "\n\
 ";
 
 //uniform grid
-var irradiance_block = new LS.ShaderBlock("applyIrradiance");
+var irradiance_block = new ONE.ShaderBlock("applyIrradiance");
 ShaderMaterial.irradiance_block = irradiance_block;
 irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
 irradiance_block.register( true );
@@ -1227,7 +1230,7 @@ var irradiance_single_code = "\n\
 	}\n\
 ";
 
-var irradiance_single_block = new LS.ShaderBlock("applyIrradianceSingle");
+var irradiance_single_block = new ONE.ShaderBlock("applyIrradianceSingle");
 ShaderMaterial.irradiance_single_block = irradiance_single_block;
 irradiance_single_block.addCode( GL.FRAGMENT_SHADER, irradiance_single_code, irradiance_disabled_code );
 irradiance_single_block.register( true );

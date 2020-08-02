@@ -19,7 +19,7 @@ function FollowNode(o)
 
 FollowNode.icon = "mini-icon-follow.png";
 
-FollowNode["@node_id"] = { type: LS.TYPES.SCENENODE_ID };
+FollowNode["@node_id"] = { type: ONE.TYPES.SCENENODE_ID };
 
 FollowNode.prototype.onAddedToScene = function(scene)
 {
@@ -41,7 +41,7 @@ FollowNode.prototype.updatePosition = function(e,info)
 
 	if( this.follow_camera )
 	{
-		var camera = LS.Renderer._main_camera; //main camera
+		var camera = ONE.Renderer._main_camera; //main camera
 		if(!camera)
 			return;
 		pos = camera.getEye();
@@ -62,4 +62,4 @@ FollowNode.prototype.updatePosition = function(e,info)
 	this._root.transform.position = pos;
 }
 
-LS.registerComponent( FollowNode );
+ONE.registerComponent( FollowNode );

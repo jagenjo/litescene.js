@@ -280,7 +280,7 @@ var parserOBJ = {
 	}
 };
 
-LS.Formats.addSupportedFormat( "obj", parserOBJ );
+ONE.Formats.addSupportedFormat( "obj", parserOBJ );
 
 
 //***** MTL parser *****************
@@ -350,7 +350,7 @@ var parserMTL = {
 					break;
 				case "map_d":
 					current_material.textures["opacity"] = this.clearPath( tokens[1] );
-					current_material.blend_mode = LS.Blend.ALPHA;
+					current_material.blend_mode = ONE.Blend.ALPHA;
 					break;
 				case "bump":
 				case "map_bump":
@@ -380,8 +380,8 @@ var parserMTL = {
 			//hack, ambient must be 1,1,1
 			material_info.ambient = [1,1,1];
 
-			var material = new LS.StandardMaterial(material_info);
-			LS.RM.registerResource( material_info.filename, material );
+			var material = new ONE.StandardMaterial(material_info);
+			ONE.RM.registerResource( material_info.filename, material );
 		}
 
 		return null;
@@ -397,11 +397,11 @@ var parserMTL = {
 		var pos = path.lastIndexOf("\\");
 		if(pos != -1)
 			path = path.substr(pos+1);
-		var filename = LS.RM.getFilename(path);
-		if( LS.RM.resources_renamed_recently[filename] )
-			filename = LS.RM.resources_renamed_recently[filename];
+		var filename = ONE.RM.getFilename(path);
+		if( ONE.RM.resources_renamed_recently[filename] )
+			filename = ONE.RM.resources_renamed_recently[filename];
 		return filename.toLowerCase();
 	}
 };
 
-LS.Formats.addSupportedFormat( "mtl", parserMTL );
+ONE.Formats.addSupportedFormat( "mtl", parserMTL );

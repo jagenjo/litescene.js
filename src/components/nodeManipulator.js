@@ -65,14 +65,14 @@ NodeManipulator.prototype.onMouse = function( e, mouse_event )
 	var camera = scene.getCamera();
 
 	//yaw
-	var up = this.use_global_up_for_yaw ? LS.Components.Transform.UP : camera.getLocalVector( LS.Components.Transform.UP );
+	var up = this.use_global_up_for_yaw ? ONE.Components.Transform.UP : camera.getLocalVector( ONE.Components.Transform.UP );
 	this._root.transform.rotateGlobal( mouse_event.deltax * this.rot_speed[0], up );
 
 	//pitch
-	var right = camera.getLocalVector( LS.Components.Transform.RIGHT );
+	var right = camera.getLocalVector( ONE.Components.Transform.RIGHT );
 	this._root.transform.rotateGlobal( mouse_event.deltay * this.rot_speed[1], right );
 
 	scene.requestFrame();
 }
 
-LS.registerComponent( NodeManipulator );
+ONE.registerComponent( NodeManipulator );

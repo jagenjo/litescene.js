@@ -51,13 +51,13 @@ FogFX.prototype.fillSceneUniforms = function( e, uniforms )
 	this._uniforms.u_fog_info[2] = this.density;
 	this._uniforms.u_fog_color = this.color;
 
-	LS.Renderer.enableFrameShaderBlock( "fog", this._uniforms );
+	ONE.Renderer.enableFrameShaderBlock( "fog", this._uniforms );
 }
 
-LS.registerComponent(FogFX);
+ONE.registerComponent(FogFX);
 
 //shaderblock
-var fog_block = new LS.ShaderBlock("fog");
+var fog_block = new ONE.ShaderBlock("fog");
 //fog_block.addInclude("computeFog");
 fog_block.bindEvent("fs_functions", "	uniform vec3 u_fog_info;\n	uniform vec3 u_fog_color;\n");
 fog_block.bindEvent("fs_final_pass", "	if(u_light_info.z == 0.0) { float cam_dist = length(u_camera_eye - v_pos);\n	float fog = 1. - 1.0 / exp(max(0.0,cam_dist - u_fog_info.x) * u_fog_info.z);\n	final_color.xyz = mix(final_color.xyz, u_fog_color, fog);\n}\n\n");

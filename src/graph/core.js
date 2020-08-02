@@ -20,7 +20,7 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphTween.prototype.onAction = function( action, param )
 	{
 		var in_node = this.getInputNode(2);
-		var scene = this.graph._scene || LS.GlobalScene; //subgraphs do not have an scene assigned
+		var scene = this.graph._scene || ONE.GlobalScene; //subgraphs do not have an scene assigned
 		var info = null;
 
 		if(in_node)
@@ -46,7 +46,7 @@ if(typeof(LiteGraph) != "undefined")
 		var that = this;
 
 		this.triggerSlot(0);
-		LS.Tween.easeProperty( info.target, info.name, target_value, this.properties.duration, null, inner_complete );
+		ONE.Tween.easeProperty( info.target, info.name, target_value, this.properties.duration, null, inner_complete );
 
 		function inner_complete()
 		{
@@ -95,7 +95,7 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphResource.prototype.onExecute = function() {
 		var res = null;
 		if(this.properties.filename)
-			res = LS.ResourcesManager.resources[this.properties.filename];
+			res = ONE.ResourcesManager.resources[this.properties.filename];
 
 		//wrong type
 		if( res && this.properties.type && res.constructor.name.toLowerCase() !== this.properties.type.toLowerCase() )
@@ -130,7 +130,7 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphGetMesh.prototype.onExecute = function() {
 		var mesh = null;
 		if(this.properties.name)
-			mesh = LS.ResourcesManager.meshes[this.properties.name];
+			mesh = ONE.ResourcesManager.meshes[this.properties.name];
 		if(mesh && (mesh.constructor !== GL.Mesh || mesh.ready === false) )
 			mesh = null;
 		this.setOutputData(0,mesh);
@@ -177,7 +177,7 @@ if(typeof(LiteGraph) != "undefined")
 
 		//as renderinstance
 		if(!this._RI)
-			this._RI = new LS.RenderInstance();
+			this._RI = new ONE.RenderInstance();
 
 		//root node
 		var node = this.graph._scenenode;
@@ -195,7 +195,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(!material && this.properties.use_node_material)
 			material = node.getMaterial();
 		if(!material)
-			material = LS.Renderer.default_material;
+			material = ONE.Renderer.default_material;
 		this._RI.setMaterial( material );
 
 		this._RI.primitive = this.properties.primitive;
@@ -207,7 +207,7 @@ if(typeof(LiteGraph) != "undefined")
 			if(this.properties.use_node_transform && node && node.transform )
 				model = node.transform.getGlobalMatrixRef();
 			else
-				model = LS.IDENTITY;
+				model = ONE.IDENTITY;
 		}
 			
 		this._RI.setMatrix( model );
@@ -216,14 +216,14 @@ if(typeof(LiteGraph) != "undefined")
 		var instances = this.getInputData(3);
 		if(instances)
 		{
-			//if(model == LS.IDENTITY) //if not multiply all by model?
+			//if(model == ONE.IDENTITY) //if not multiply all by model?
 				this._RI.instanced_models = instances;
 		}
 		else
 			this._RI.instanced_models = null;
 		this._RI.use_bounding = !instances;
 
-		LS.Renderer.addImmediateRenderInstance( this._RI );
+		ONE.Renderer.addImmediateRenderInstance( this._RI );
 	}
 
 	LiteGraph.registerNodeType( "geometry/render_mesh_in_scene", LGraphRenderMeshInScene );

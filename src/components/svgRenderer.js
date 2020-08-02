@@ -5,7 +5,7 @@
 /**
 * Renders one mesh, it allows to configure the rendering primitive, the submesh (range of mesh) and a level of detail mesh
 * @class SVGRenderer
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -17,7 +17,7 @@ function SVGRenderer(o)
 	if(o)
 		this.configure(o);
 
-	this._RI = new LS.RenderInstance( null, this );
+	this._RI = new ONE.RenderInstance( null, this );
 
 	this._mesh = null;
 	this._svg_data = null;
@@ -52,7 +52,7 @@ SVGRenderer.prototype.getMesh = function()
 	if(!this.svg)
 		return null;
 
-	var svg = LS.ResourcesManager.getResource( this.svg );
+	var svg = ONE.ResourcesManager.getResource( this.svg );
 	var mesh = null;
 
 	if(this._svg_data === svg )
@@ -83,7 +83,7 @@ SVGRenderer.prototype.onCollectInstances = function(e, instances)
 	var transform = this._root.transform;
 
 	RI.setMatrix( this._root.transform._global_matrix );
-	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+	mat4.multiplyVec3( RI.center, RI.matrix, ONE.ZEROS );
 
 	//material (after flags because it modifies the flags)
 	var material = this._root.getMaterial();
@@ -125,7 +125,7 @@ SVGRenderer.prototype.serialize = function()
 SVGRenderer.prototype.getResources = function(res)
 {
 	if(typeof(this.svg) == "string")
-		res[this.svg] = LS.Resource;
+		res[this.svg] = ONE.Resource;
 	return res;
 }
 
@@ -136,4 +136,4 @@ SVGRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource
 }
 
 
-//LS.registerComponent( SVGRenderer );
+//ONE.registerComponent( SVGRenderer );

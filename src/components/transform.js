@@ -3,7 +3,7 @@
 * Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * It uses lazy update to recompute the matrices.
 * @class Transform
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -264,7 +264,7 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 Object.defineProperty( Transform.prototype, 'forward', {
 	get: function() { 
 		this.updateGlobalMatrix();
-		return mat4.rotateVec3( vec3.create(), this._global_matrix, LS.FRONT );
+		return mat4.rotateVec3( vec3.create(), this._global_matrix, ONE.FRONT );
 	},
 	set: function(v) { 
 		throw("forward cannot be set");
@@ -375,7 +375,7 @@ Transform.prototype.serialize = function( simplified )
 Transform.prototype.isIdentity = function()
 {
 	for(var i = 0; i < this._local_matrix.length; ++i)
-		if( Math.abs( this._local_matrix[i] - LS.IDENTITY[i] ) > 0.001 )
+		if( Math.abs( this._local_matrix[i] - ONE.IDENTITY[i] ) > 0.001 )
 			return false;
 	return true;
 }
@@ -386,9 +386,9 @@ Transform.prototype.isIdentity = function()
 */
 Transform.prototype.identity = function()
 {
-	vec3.copy(this._position, LS.ZEROS );
+	vec3.copy(this._position, ONE.ZEROS );
 	quat.identity( this._rotation );
-	vec3.copy(this._scaling, LS.ONES );
+	vec3.copy(this._scaling, ONE.ONES );
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
 	this._version += 1;
@@ -415,7 +415,7 @@ Transform.prototype.resetRotation = function()
 */
 Transform.prototype.resetPosition = function()
 {
-	vec3.copy( this._position, LS.ZEROS );
+	vec3.copy( this._position, ONE.ZEROS );
 	this._version += 1;
 	this._must_update = true;
 	this._on_change(true);
@@ -427,7 +427,7 @@ Transform.prototype.resetPosition = function()
 */
 Transform.prototype.resetScale = function()
 {
-	vec3.copy( this._scaling, LS.ONES );
+	vec3.copy( this._scaling, ONE.ONES );
 	this._version += 1;
 	this._must_update = true;
 	this._on_change(true);
@@ -776,12 +776,12 @@ Transform.prototype.fromMatrix = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( this._position, M, LS.ZEROS );
+		mat4.multiplyVec3( this._position, M, ONE.ZEROS );
 
 		//compute scale
-		this._scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
-		this._scaling[1] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.TOP) );
-		this._scaling[2] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.BACK) );
+		this._scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, ONE.RIGHT) );
+		this._scaling[1] = vec3.length( mat4.rotateVec3( temp_vec3, M, ONE.TOP) );
+		this._scaling[2] = vec3.length( mat4.rotateVec3( temp_vec3, M, ONE.BACK) );
 
 		//apply scale, why the inverse? ??
 		//mat4.scale( scale_temp, M, [1/this._scaling[0], 1/this._scaling[1], 1/this._scaling[2]] );
@@ -839,12 +839,12 @@ Transform.fromMatrix4ToTransformData = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( position, M, LS.ZEROS );
+		mat4.multiplyVec3( position, M, ONE.ZEROS );
 
 		//extract scaling by 
-		scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
-		scaling[1] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.TOP) );
-		scaling[2] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.BACK) );
+		scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, ONE.RIGHT) );
+		scaling[1] = vec3.length( mat4.rotateVec3( temp_vec3, M, ONE.TOP) );
+		scaling[2] = vec3.length( mat4.rotateVec3( temp_vec3, M, ONE.BACK) );
 
 		//quat.fromMat4( rotation, M ); //doesnt work
 
@@ -1168,7 +1168,7 @@ Transform.prototype.orientTo = (function() {
 	//function
 	return function( pos, in_world, top, iterative_method )
 	{
-		top = top || LS.TOP;
+		top = top || ONE.TOP;
 		//convert to local space
 		/*
 		if(in_world && this._parent)
@@ -1193,7 +1193,7 @@ Transform.prototype.orientTo = (function() {
 		vec3.normalize( temp_front, temp_front );
 		if(iterative_method)
 		{
-			mat3.setColumn( temp, LS.RIGHT, 0 );
+			mat3.setColumn( temp, ONE.RIGHT, 0 );
 			mat3.setColumn( temp, top, 1 );
 			mat3.setColumn( temp, temp_front, 2 );
 			quat.fromMat3AndQuat( this._rotation, temp );
@@ -1234,7 +1234,7 @@ Transform.prototype.orientTo = (function() {
 * Orients the transform so the axis points in that direction
 * @method orientAxis
 * @param {vec3} vector the vector to use as axis
-* @param {number} axis a enum that could be LS.POSX, LS.POSY, LS.POSZ, LS.NEGX, LS.NEGY, LS.NEGZ
+* @param {number} axis a enum that could be ONE.POSX, ONE.POSY, ONE.POSZ, ONE.NEGX, ONE.NEGY, ONE.NEGZ
 */
 Transform.prototype.orientAxis = (function() { 
 	//avoid garbage
@@ -1245,34 +1245,34 @@ Transform.prototype.orientAxis = (function() {
 	{
 		switch(axis)
 		{
-			case LS.POSX: 
+			case ONE.POSX: 
 				mat3.setColumn( temp, vector, 0 ); //x
-				mat3.setColumn( temp, LS.TOP, 1 ); //y
-				mat3.setColumn( temp, LS.FRONT, 2 ); //z
+				mat3.setColumn( temp, ONE.TOP, 1 ); //y
+				mat3.setColumn( temp, ONE.FRONT, 2 ); //z
 				break;
-			case LS.POSY:
-				mat3.setColumn( temp, LS.RIGHT, 0 ); //x
+			case ONE.POSY:
+				mat3.setColumn( temp, ONE.RIGHT, 0 ); //x
 				mat3.setColumn( temp, vector, 1 ); //y
-				mat3.setColumn( temp, LS.FRONT, 2 ); //z
+				mat3.setColumn( temp, ONE.FRONT, 2 ); //z
 				break;
-			case LS.POSZ:
-				mat3.setColumn( temp, LS.RIGHT, 0 ); //x
-				mat3.setColumn( temp, LS.TOP, 1 ); //y
+			case ONE.POSZ:
+				mat3.setColumn( temp, ONE.RIGHT, 0 ); //x
+				mat3.setColumn( temp, ONE.TOP, 1 ); //y
 				mat3.setColumn( temp, vector, 2 ); //z
 				break;
-			case LS.NEGX: 
+			case ONE.NEGX: 
 				mat3.setColumn( temp, vector, 0 ); //x
-				mat3.setColumn( temp, LS.BOTTOM, 1 ); //y
-				mat3.setColumn( temp, LS.BACK, 2 ); //z
+				mat3.setColumn( temp, ONE.BOTTOM, 1 ); //y
+				mat3.setColumn( temp, ONE.BACK, 2 ); //z
 				break;
-			case LS.NEGY:
-				mat3.setColumn( temp, LS.LEFT, 0 ); //x
+			case ONE.NEGY:
+				mat3.setColumn( temp, ONE.LEFT, 0 ); //x
 				mat3.setColumn( temp, vector, 1 ); //y
-				mat3.setColumn( temp, LS.BACK, 2 ); //z
+				mat3.setColumn( temp, ONE.BACK, 2 ); //z
 				break;
-			case LS.NEGZ:
-				mat3.setColumn( temp, LS.LEFT, 0 ); //x
-				mat3.setColumn( temp, LS.BOTTOM, 1 ); //y
+			case ONE.NEGZ:
+				mat3.setColumn( temp, ONE.LEFT, 0 ); //x
+				mat3.setColumn( temp, ONE.BOTTOM, 1 ); //y
 				mat3.setColumn( temp, vector, 2 ); //z
 				break;
 			default:
@@ -1597,5 +1597,5 @@ Transform.prototype.updateDescendants = function()
 }
 
 
-LS.registerComponent( Transform );
-LS.Transform = Transform;
+ONE.registerComponent( Transform );
+ONE.Transform = Transform;

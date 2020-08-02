@@ -1335,6 +1335,7 @@ function enableWebGLCanvas( canvas, options )
 		var info = atlas.info;
 		var point_size = Math.ceil( this._font_size * 1.1 );
 		var textsize = 0;
+		var spacing = point_size * info.spacing / info.char_size - 1;
 		for(var i = 0; i < text.length; ++i)
 		{
 			var charinfo = info.kernings[ text[i] ];
@@ -1343,7 +1344,6 @@ function enableWebGLCanvas( canvas, options )
 			else
 				textsize += spacing / info.char_size;
 		}
-		//var spacing = point_size * info.spacing / info.char_size - 1;
 		//textsize = text.length * spacing;
 		textsize *= point_size;
 		return { width: textsize, height: point_size };

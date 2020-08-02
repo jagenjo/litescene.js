@@ -3,7 +3,7 @@
 /**
 * Light contains all the info about the light (type: SPOT, OMNI, DIRECTIONAL, attenuations, shadows, etc)
 * @class Light
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -137,9 +137,9 @@ function Light(o)
 	this.extra_texture = null;
 
 	//vectors in world space
-	this._front = vec3.clone( LS.FRONT );
-	this._right = vec3.clone( LS.RIGHT );
-	this._top = vec3.clone( LS.TOP );
+	this._front = vec3.clone( ONE.FRONT );
+	this._right = vec3.clone( ONE.RIGHT );
+	this._top = vec3.clone( ONE.TOP );
 
 	//for StandardMaterial
 	this._samplers = [];
@@ -172,9 +172,9 @@ Light.AttenuationTypes = {
 	"range": Light.RANGE_ATTENUATION
 };
 
-Light["@projective_texture"] = { type: LS.TYPES.TEXTURE };
-Light["@extra_texture"] = { type: LS.TYPES.TEXTURE };
-Light["@color"] = { type: LS.TYPES.COLOR };
+Light["@projective_texture"] = { type: ONE.TYPES.TEXTURE };
+Light["@extra_texture"] = { type: ONE.TYPES.TEXTURE };
+Light["@color"] = { type: ONE.TYPES.COLOR };
 Light["@attenuation_type"] = { type: "enum", values: Light.AttenuationTypes };
 
 Object.defineProperty( Light.prototype, 'type', {
@@ -232,7 +232,7 @@ Object.defineProperty( Light.prototype, 'cast_shadows', {
 	set: function(v) { 
 		this._cast_shadows = v;
 		if(!this._shadowmap && v)
-			this._shadowmap = new LS.Shadowmap(this);
+			this._shadowmap = new ONE.Shadowmap(this);
 	},
 	enumerable: true
 });
@@ -243,7 +243,7 @@ Object.defineProperty( Light.prototype, 'shadows', {
 	},
 	set: function(v) {
 		if(!this._shadowmap)
-			this._shadowmap = new LS.Shadowmap(this);
+			this._shadowmap = new ONE.Shadowmap(this);
 		this._shadowmap.configure(v);
 	},
 	enumerable: false
@@ -278,13 +278,13 @@ Light.prototype.onRemovedFromScene = function(scene)
 	LEvent.unbind( scene, "collectLights", this.onCollectLights, this );
 	LEvent.unbind( scene, "renderShadows", this.onGenerateShadowmap, this );
 
-	LS.ResourcesManager.unregisterResource( ":shadowmap_" + this.uid );
+	ONE.ResourcesManager.unregisterResource( ":shadowmap_" + this.uid );
 }
 
 Light.prototype.onSerialize = function(v)
 {
 	if(this._shadowmap)
-		v.shadows = LS.cloneObject(this._shadowmap);
+		v.shadows = ONE.cloneObject(this._shadowmap);
 }
 
 Light.prototype.onConfigure = function(v)
@@ -292,8 +292,8 @@ Light.prototype.onConfigure = function(v)
 	if(v.shadows)
 	{
 		if(!this._shadowmap)
-			this._shadowmap = new LS.Shadowmap(this);
-		LS.cloneObject(v.shadows, this._shadowmap);
+			this._shadowmap = new ONE.Shadowmap(this);
+		ONE.cloneObject(v.shadows, this._shadowmap);
 	}
 }
 
@@ -339,15 +339,15 @@ Light._temp_front = vec3.create();
 Light.prototype.updateLightCamera = function( face_index )
 {
 	if(!this._light_camera)
-		this._light_camera = new LS.Components.Camera();
+		this._light_camera = new ONE.Components.Camera();
 
 	var camera = this._light_camera;
-	camera.type = this.type == Light.DIRECTIONAL ? LS.Components.Camera.ORTHOGRAPHIC : LS.Components.Camera.PERSPECTIVE;
+	camera.type = this.type == Light.DIRECTIONAL ? ONE.Components.Camera.ORTHOGRAPHIC : ONE.Components.Camera.PERSPECTIVE;
 	camera.eye = this.getPosition( Light._temp_position );
 
 	if( this.type == Light.OMNI && face_index != null )
 	{
-		var info = LS.Camera.cubemap_camera_parameters[ face_index ];
+		var info = ONE.Camera.cubemap_camera_parameters[ face_index ];
 		var target = Light._temp_target;
 		vec3.add( target, Light._temp_position, info.dir );
 		camera.center = target;
@@ -430,13 +430,13 @@ Light.prototype.updateVectors = (function(){
 		mat4.getTranslation( this._position, mat);
 		//target
 		if (!this.use_target)
-			mat4.multiplyVec3( this._target, mat, LS.FRONT ); //right in front of the object
+			mat4.multiplyVec3( this._target, mat, ONE.FRONT ); //right in front of the object
 		//up
-		mat4.multiplyVec3( this._up, mat, LS.TOP ); //right in front of the object
+		mat4.multiplyVec3( this._up, mat, ONE.TOP ); //right in front of the object
 
 		//vectors
-		mat4.rotateVec3( this._front, mat, LS.FRONT ); 
-		mat4.rotateVec3( this._right, mat, LS.RIGHT ); 
+		mat4.rotateVec3( this._front, mat, ONE.FRONT ); 
+		mat4.rotateVec3( this._right, mat, ONE.RIGHT ); 
 		vec3.copy( this._top, this.up ); 
 	}
 })();
@@ -466,7 +466,7 @@ Light.prototype.getTarget = function( out )
 {
 	out = out || vec3.create();
 	if(this._root && this._root.transform && !this.use_target) 
-		return this._root.transform.localToGlobal( LS.FRONT , out );
+		return this._root.transform.localToGlobal( ONE.FRONT , out );
 	out.set( this._target );
 	return out;
 }
@@ -482,7 +482,7 @@ Light.prototype.getUp = function( out )
 	out = out || vec3.create();
 
 	if(this._root && this._root.transform) 
-		return this._root.transform.transformVector( LS.TOP , out );
+		return this._root.transform.transformVector( ONE.TOP , out );
 	out.set( this._up );
 	return out;
 }
@@ -539,7 +539,7 @@ Light.prototype.isInLayer = function(num)
 }
 
 /**
-* This method is called by the LS.Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)
+* This method is called by the ONE.Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)
 * @method prepare
 * @param {Object} render_settings info about how the scene will be rendered
 */
@@ -557,7 +557,7 @@ Light.prototype.prepare = function( render_settings )
 	{
 		//this._shadowmap = null; 
 		this._shadowmap.release();//I keep the shadowmap class but free the memory of the texture
-		delete LS.ResourcesManager.textures[":shadowmap_" + this.uid ];
+		delete ONE.ResourcesManager.textures[":shadowmap_" + this.uid ];
 	}
 
 	this.updateVectors();
@@ -585,15 +585,15 @@ Light.prototype.prepare = function( render_settings )
 	//projective texture
 	if(this.projective_texture)
 	{
-		var light_projective_texture = this.projective_texture.constructor === String ? LS.ResourcesManager.textures[ this.projective_texture ] : this.projective_texture;
+		var light_projective_texture = this.projective_texture.constructor === String ? ONE.ResourcesManager.textures[ this.projective_texture ] : this.projective_texture;
 		if(light_projective_texture)
 		{
 			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				uniforms.light_cubemap = LS.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT;
+				uniforms.light_cubemap = ONE.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT;
 			else
-				uniforms.light_texture = LS.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT;
+				uniforms.light_texture = ONE.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT;
 		}
-		samplers[ LS.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT ] = light_projective_texture;
+		samplers[ ONE.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT ] = light_projective_texture;
 	}
 	else
 	{
@@ -603,15 +603,15 @@ Light.prototype.prepare = function( render_settings )
 
 	if(this.extra_texture)
 	{
-		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
+		var extra_texture = this.extra_texture.constructor === String ? ONE.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
 		if(extra_texture)
 		{
 			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				uniforms.extra_light_cubemap = LS.Renderer.LIGHTEXTRA_TEXTURE_SLOT;
+				uniforms.extra_light_cubemap = ONE.Renderer.LIGHTEXTRA_TEXTURE_SLOT;
 			else
-				uniforms.extra_light_texture = LS.Renderer.LIGHTEXTRA_TEXTURE_SLOT;
+				uniforms.extra_light_texture = ONE.Renderer.LIGHTEXTRA_TEXTURE_SLOT;
 		}
-		samplers[ LS.Renderer.LIGHTEXTRA_TEXTURE_SLOT ] = extra_texture;
+		samplers[ ONE.Renderer.LIGHTEXTRA_TEXTURE_SLOT ] = extra_texture;
 	}
 	else
 	{
@@ -620,7 +620,7 @@ Light.prototype.prepare = function( render_settings )
 	}
 
 	//generate shadowmaps
-	var must_update_shadowmap = (render_settings.update_shadowmaps || (!this._shadowmap._texture && !LS.ResourcesManager.isLoading())) && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
+	var must_update_shadowmap = (render_settings.update_shadowmaps || (!this._shadowmap._texture && !ONE.ResourcesManager.isLoading())) && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
 	if(must_update_shadowmap)
 	{
 		var is_inside_one_frustum = false;
@@ -692,7 +692,7 @@ Light.prototype.getGlobalMatrix = function( mat )
 		return this._root.transform.getGlobalMatrix( mat ); //use the node transform
 
 	mat = mat || mat4.create();
-	mat4.lookAt( mat, this._position, this._target, LS.TOP );
+	mat4.lookAt( mat, this._position, this._target, ONE.TOP );
 	return mat;
 }
 
@@ -774,7 +774,7 @@ Light.prototype.isInsideVisibleFrustum = function()
 	if( this.type != Light.OMNI ) //TODO: detect cone inside frustum
 		return true;
 
-	var cameras = LS.Renderer._visible_cameras;
+	var cameras = ONE.Renderer._visible_cameras;
 	if(!cameras)
 		return true;
 
@@ -789,7 +789,7 @@ Light.prototype.isInsideVisibleFrustum = function()
 	return false;
 }
 
-LS.registerComponent( Light );
-LS.Light = Light;
+ONE.registerComponent( Light );
+ONE.Light = Light;
 
 //Shader blocks are moved to basePipeline.js

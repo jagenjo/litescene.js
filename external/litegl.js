@@ -89,10 +89,15 @@ GL.TYPE_LENGTH[ GL.FLOAT_VEC4 ] = GL.TYPE_LENGTH[ GL.INT_VEC4 ] = GL.TYPE_LENGTH
 GL.TYPE_LENGTH[ GL.FLOAT_MAT3 ] = 9;
 GL.TYPE_LENGTH[ GL.FLOAT_MAT4 ] = 16;
 
-
 GL.SAMPLER_2D = 35678;
 GL.SAMPLER_3D = 35679;
 GL.SAMPLER_CUBE = 35680;
+GL.INT_SAMPLER_2D = 36298;
+GL.INT_SAMPLER_3D = 36299;
+GL.INT_SAMPLER_CUBE = 36300;
+GL.UNSIGNED_INT_SAMPLER_2D = 36306;
+GL.UNSIGNED_INT_SAMPLER_3D = 36307;
+GL.UNSIGNED_INT_SAMPLER_CUBE = 36308;
 
 GL.DEPTH_COMPONENT = 6402;
 GL.ALPHA = 6406;
@@ -2621,7 +2626,7 @@ Mesh.prototype.addBuffers = function( vertexbuffers, indexbuffers, stream_type )
 		if(!data) 
 			continue;
 		
-		if( data.constructor == GL.Buffer )
+		if( data.constructor == GL.Buffer || data.data ) //allows to clone meshes
 		{
 			data = data.data;
 		}
@@ -5634,8 +5639,19 @@ global.Texture = GL.Texture = function Texture( width, height, options, gl ) {
 	}
 	else if(this.texture_type == GL.TEXTURE_CUBE_MAP)
 	{
+		var facesize = width*width*(this.format == GL.RGBA ? 4 : 3);
 		for(var i = 0; i < 6; ++i)
-			gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, this.internalFormat, this.width, this.height, 0, this.format, this.type, pixel_data ? pixel_data[i] : null );
+		{
+			var cubemap_data = pixel_data;
+			if(cubemap_data)
+			{
+				if(cubemap_data.constructor === Array) //six arrays
+					cubemap_data = cubemap_data[i];
+				else //all data mixed in a single array
+					cubemap_data.subarray(facesize*i, facesize*(i+1));
+			}
+			gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, this.internalFormat, this.width, this.height, 0, this.format, this.type, cubemap_data || null );
+		}
 	}
 	else if(this.texture_type == GL.TEXTURE_3D)
 	{
@@ -8051,15 +8067,16 @@ FBO.testSupport = function( type, format ) {
 	return true;
 }
 
-FBO.prototype.toSingle = function()
+FBO.prototype.toSingle = function(index)
 {
+	index = index || 0;
 	if( this.color_textures.length < 2 )
 		return; //nothing to do
 	var ext = gl.extensions.WEBGL_draw_buffers;
 	if( ext )
-		ext.drawBuffersWEBGL( [ this.order[0] ] );
+		ext.drawBuffersWEBGL( [ this.order[index] ] );
 	else
-		gl.drawBuffers( [ this.order[0] ] );
+		gl.drawBuffers( [ this.order[index] ] );
 }
 
 FBO.prototype.toMulti = function()
@@ -8291,7 +8308,9 @@ Shader.prototype.extractShaderInfo = function()
 		}
 
 		//store texture samplers
-		if(data.type == gl.SAMPLER_2D || data.type == gl.SAMPLER_CUBE || data.type == GL.SAMPLER_3D)
+		if(data.type == GL.SAMPLER_2D || data.type == GL.SAMPLER_CUBE || data.type == GL.SAMPLER_3D ||
+			data.type == GL.INT_SAMPLER_2D || data.type == GL.INT_SAMPLER_CUBE || data.type == GL.INT_SAMPLER_3D ||
+			data.type == GL.UNSIGNED_INT_SAMPLER_2D || data.type == GL.UNSIGNED_INT_SAMPLER_CUBE || data.type == GL.UNSIGNED_INT_SAMPLER_3D)
 			this.samplers[ uniformName ] = data.type;
 		
 		//get which function to call when uploading this uniform
@@ -8394,6 +8413,12 @@ Shader.getUniformFunc = function( data )
 		case GL.SAMPLER_2D:
 		case GL.SAMPLER_3D:
 		case GL.SAMPLER_CUBE:
+		case GL.INT_SAMPLER_2D:
+		case GL.INT_SAMPLER_3D:
+		case GL.INT_SAMPLER_CUBE:
+		case GL.UNSIGNED_INT_SAMPLER_2D:
+		case GL.UNSIGNED_INT_SAMPLER_3D:
+		case GL.UNSIGNED_INT_SAMPLER_CUBE:
 			func = gl.uniform1i; break;
 		default: func = gl.uniform1f; break;
 	}	
@@ -8700,6 +8725,7 @@ Shader.prototype.drawBuffers = function( vertexBuffers, indexBuffer, mode, range
 	  } else {
 		gl.drawArrays(mode, offset, length);
 	  }
+	  gl.draw_calls++;
 	}
 
 	return this;
@@ -8995,8 +9021,15 @@ Shader.validateValue = function( value, uniform_info )
 		//used to validate shaders
 		case GL.INT: 
 		case GL.FLOAT: 
-		case GL.SAMPLER_2D: 
-		case GL.SAMPLER_CUBE: 
+		case GL.SAMPLER_2D:
+		case GL.SAMPLER_3D:
+		case GL.SAMPLER_CUBE:
+		case GL.INT_SAMPLER_2D:
+		case GL.INT_SAMPLER_3D:
+		case GL.INT_SAMPLER_CUBE:
+		case GL.UNSIGNED_INT_SAMPLER_2D:
+		case GL.UNSIGNED_INT_SAMPLER_3D:
+		case GL.UNSIGNED_INT_SAMPLER_CUBE:
 			return isNumber(value);
 		case GL.INT_VEC2: 
 		case GL.FLOAT_VEC2:
@@ -9605,6 +9638,7 @@ Shader.getFlatShader = function(gl)
 	return gl.shaders[":flat"] = shader;
 }
 
+
 /**
 * The global scope that contains all the classes from LiteGL and also all the enums of WebGL so you dont need to create a context to use the values.
 * @class GL
@@ -9771,6 +9805,8 @@ GL.create = function(options) {
 	gl.shaders = {};
 	gl.textures = {};
 	gl.meshes = {};
+
+	gl.draw_calls = 0;
 
 	/**
 	* sets this context as the current global gl context (in case you have more than one)
@@ -10105,6 +10141,8 @@ GL.create = function(options) {
 		simulatedEvent.originalEvent = simulatedEvent;
 		simulatedEvent.is_touch = true;
 		first.target.dispatchEvent( simulatedEvent );
+
+		//if we block this touch (to avoid weird canvas draggings) then we are blocking the gestures
 		e.preventDefault();
 	}
 
@@ -10664,6 +10702,8 @@ GL.isMobile = function()
 	if( (navigator.userAgent.match(/iPhone/i)) || 
 		(navigator.userAgent.match(/iPod/i)) || 
 		(navigator.userAgent.match(/iPad/i)) || 
+		(navigator.userAgent.match(/SamsungBrowser/i)) || 
+		(navigator.userAgent.match(/Mobile\ VR/i)) || 
 		(navigator.userAgent.match(/Android/i))) {
 		return this.mobile = true;
 	}
@@ -13142,6 +13182,13 @@ Mesh.parseOBJ = function(text, options)
 	{
 		console.error("mesh without vertices");
 		return null;
+	}
+
+	if(options.flip_normals && normals_buffer_data.length)
+	{
+		var normals = normals_buffer_data;
+		for(var i = 0; i < normals.length; ++i)
+			normals[i] *= -1;
 	}
 
 	//create typed arrays

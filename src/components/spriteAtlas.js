@@ -154,13 +154,13 @@ SpriteAtlas.prototype.onCollectInstances = function(e, instances)
 	var RI = this._render_instance;
 	if(!RI)
 	{
-		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+		this._render_instance = RI = new ONE.RenderInstance(this._root, this);
 		RI.setMesh( mesh, gl.TRIANGLES );
 	}
 
 	//material
 	if(!this._material)
-		this._material = new LS.StandardMaterial({ shader_name: "lowglobal", flags: { two_sided: true } });
+		this._material = new ONE.StandardMaterial({ shader_name: "lowglobal", flags: { two_sided: true } });
 	this._material.setTexture( "COLOR", this.texture );
 	RI.setMaterial( this._material ); //sets material and blend modes in render instance
 
@@ -200,7 +200,7 @@ SpriteAtlas.prototype.onResourceRenamed = function( old_name, new_name, resource
 		this.texture = new_name;
 }
 
-LS.registerComponent( SpriteAtlas );
+ONE.registerComponent( SpriteAtlas );
 
 SpriteAtlas.Area = function SpriteAtlasArea()
 {

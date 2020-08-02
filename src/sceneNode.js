@@ -20,7 +20,7 @@ function SceneNode( name )
 
 	//Generic identifying info
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
-	this._uid = LS.generateUId("NODE-");
+	this._uid = ONE.generateUId("NODE-");
 	this._classList = {}; //to store classes
 	this.layers = 3|0; //32 bits for layers (force to int)
 	this.node_type = null; //used to store a string defining the node info
@@ -62,7 +62,7 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 	{
 		this.layers = 3|0; //32 bits for layers (force to int)
 		this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
-		this._uid = LS.generateUId("NODE-");
+		this._uid = ONE.generateUId("NODE-");
 		this._classList = {};
 
 		//material
@@ -84,13 +84,13 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		if( this._components && this._components.length )
 			console.warn("SceneNode.init() should not be called if it contains components, call clear instead");
 		this._components = []; //used for logic actions
-		this.addComponent( new LS.Transform() );
+		this.addComponent( new ONE.Transform() );
 	}
 }
 
 //get methods from other classes
-LS.extendClass( SceneNode, ComponentContainer ); //container methods
-LS.extendClass( SceneNode, CompositePattern ); //container methods
+ONE.extendClass( SceneNode, ComponentContainer ); //container methods
+ONE.extendClass( SceneNode, CompositePattern ); //container methods
 
 /**
 * changes the node name
@@ -122,7 +122,7 @@ Object.defineProperty( SceneNode.prototype, 'fullname', {
 });
 
 //Changing the UID  has lots of effects (because nodes are indexed by UID in the scene)
-//If you want to catch the event of the uid_change, remember, the previous uid is stored in LS.SceneNode._last_uid_changed (it is not passed in the event)
+//If you want to catch the event of the uid_change, remember, the previous uid is stored in ONE.SceneNode._last_uid_changed (it is not passed in the event)
 Object.defineProperty( SceneNode.prototype, 'uid', {
 	set: function(uid)
 	{
@@ -130,10 +130,10 @@ Object.defineProperty( SceneNode.prototype, 'uid', {
 			return;
 
 		//valid uid?
-		if(uid[0] != LS._uid_prefix)
+		if(uid[0] != ONE._uid_prefix)
 		{
 			console.warn("Invalid UID, renaming it to: " + uid );
-			uid = LS._uid_prefix + uid;
+			uid = ONE._uid_prefix + uid;
 		}
 
 		//no changes?
@@ -218,12 +218,12 @@ Object.defineProperty( SceneNode.prototype, 'prefab', {
 		this._prefab = name;
 		if(!this._prefab)
 			return;
-		var prefab = LS.RM.getResource(name);
+		var prefab = ONE.RM.getResource(name);
 		var that = this;
 		if(prefab)
 			this.reloadFromPrefab();
 		else 
-			LS.ResourcesManager.load( name, function(){
+			ONE.ResourcesManager.load( name, function(){
 				that.reloadFromPrefab();
 			});
 	},
@@ -246,7 +246,7 @@ SceneNode.prototype.setName = function(new_name)
 		return true; //no changes
 
 	//check that the name is valid (doesnt have invalid characters)
-	if(!LS.validateName(new_name))
+	if(!ONE.validateName(new_name))
 	{
 		console.warn("invalid name for node: " + new_name );
 		//new_name = new_name.replace(/[^a-z0-9\.\-]/gi,"_");
@@ -393,7 +393,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			return {
 				node: this,
 				target: target,
-				name: target ? LS.getObjectClassName( target ) : "",
+				name: target ? ONE.getObjectClassName( target ) : "",
 				type: "component",
 				value: target
 			};
@@ -404,7 +404,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			return {
 				node: this,
 				target: target,
-				name: target ? LS.getObjectClassName( target ) : "",
+				name: target ? ONE.getObjectClassName( target ) : "",
 				type: "material",
 				value: target
 			};
@@ -426,7 +426,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			return {
 				node: this,
 				target: target,
-				name: target ? LS.getObjectClassName( target ) : "",
+				name: target ? ONE.getObjectClassName( target ) : "",
 				type: "component",
 				value: target
 			};
@@ -730,7 +730,7 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 /**
 * Returns all the resources used by this node and its components (you can include the resources from the children too)
 * @method getResources
-* @param {Object} res object where to store the resources used (in "res_name":LS.TYPE format)
+* @param {Object} res object where to store the resources used (in "res_name":ONE.TYPE format)
 * @param {Boolean} include_children if you want to add also the resources used by the children nodes
 * @return {Object} the same object passed is returned 
 **/
@@ -753,8 +753,8 @@ SceneNode.prototype.getResources = function( res, include_children )
 				if(!propinfo)
 					continue;
 				var type = propinfo.type || propinfo.widget;
-				if(type && (type == LS.TYPES.RESOURCE || LS.ResourceClasses[ type ]) ) //is a resource
-					res[ comp[j] ] = LS.ResourceClasses[ type ];
+				if(type && (type == ONE.TYPES.RESOURCE || ONE.ResourceClasses[ type ]) ) //is a resource
+					res[ comp[j] ] = ONE.ResourceClasses[ type ];
 			}
 		}
 	}
@@ -766,7 +766,7 @@ SceneNode.prototype.getResources = function( res, include_children )
 		{
 			if(this.material[0] != ":") //not a local material, then its a reference
 			{
-				res[this.material] = LS.Material;
+				res[this.material] = ONE.Material;
 			}
 		}
 
@@ -777,7 +777,7 @@ SceneNode.prototype.getResources = function( res, include_children )
 
 	//prefab
 	if(this.prefab)
-		res[ this.prefab ] = LS.Prefab;
+		res[ this.prefab ] = ONE.Prefab;
 
 	//propagate
 	if(include_children)
@@ -795,7 +795,7 @@ SceneNode.prototype.getTransform = function() {
 
 SceneNode.prototype.getMesh = function( use_lod_mesh ) {
 	var mesh = this.mesh;
-	var mesh_renderer = this.getComponent( LS.Components.MeshRenderer );
+	var mesh_renderer = this.getComponent( ONE.Components.MeshRenderer );
 	if(!mesh && mesh_renderer)
 	{
 		if(use_lod_mesh)
@@ -806,7 +806,7 @@ SceneNode.prototype.getMesh = function( use_lod_mesh ) {
 	if(!mesh)
 		return null;
 	if(mesh.constructor === String)
-		return LS.ResourcesManager.meshes[mesh];
+		return ONE.ResourcesManager.meshes[mesh];
 	return mesh;
 }
 
@@ -830,7 +830,7 @@ SceneNode.prototype.getCamera = function() {
 SceneNode.prototype.load = function( url, on_complete )
 {
 	var that = this;
-	LS.ResourcesManager.load( url, inner );
+	ONE.ResourcesManager.load( url, inner );
 	function inner( resource )
 	{
 		if(!resource)
@@ -857,17 +857,17 @@ SceneNode.prototype.assign = function( item, extra )
 
 	//assume is the filename of a resource
 	if(item.constructor === String)
-		item = LS.ResourcesManager.getResource( item );
+		item = ONE.ResourcesManager.getResource( item );
 
 	if(!item)
 		return;
 
 	switch( item.constructor )
 	{
-		case LS.SceneNode: 
+		case ONE.SceneNode: 
 			this.addChild( item );
 			break;
-		case LS.Scene:
+		case ONE.Scene:
 			var node = this;
 			item.loadScripts( null, function(){
 				item.loadResources( function(){ 
@@ -875,29 +875,29 @@ SceneNode.prototype.assign = function( item, extra )
 				});
 			});
 			break;
-		case LS.Prefab: 
+		case ONE.Prefab: 
 			this.prefab = item.fullpath || item.filename; 
 			break;
 		case GL.Mesh: 
-			var component = this.getComponent( LS.Components.MeshRenderer );
+			var component = this.getComponent( ONE.Components.MeshRenderer );
 			if(component)
 				component.configure({ mesh: item.fullpath || item.filename });
 			else
-				this.addComponent( new LS.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
+				this.addComponent( new ONE.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
 			break;
-		case LS.Animation: 
-			var comp = this.getComponent( LS.Components.PlayAnimation );
+		case ONE.Animation: 
+			var comp = this.getComponent( ONE.Components.PlayAnimation );
 			if(!comp)
-				comp = this.addComponent( new LS.Components.PlayAnimation() );
+				comp = this.addComponent( new ONE.Components.PlayAnimation() );
 			comp.animation = item.fullpath || item.filename;
 			break;
-		case LS.Resource: //generic resource
-			var ext = LS.ResourcesManager.getExtension( item.filename );
+		case ONE.Resource: //generic resource
+			var ext = ONE.ResourcesManager.getExtension( item.filename );
 			if(ext == "js") //scripts
 			{
-				var comp = this.getComponent( LS.Components.ScriptFromFile );
+				var comp = this.getComponent( ONE.Components.ScriptFromFile );
 				if(!comp)
-					comp = this.addComponent( new LS.Components.ScriptFromFile() );
+					comp = this.addComponent( new ONE.Components.ScriptFromFile() );
 				comp.src = item.fullpath || item.filename;
 			}
 			break;
@@ -914,11 +914,11 @@ SceneNode.prototype.assign = function( item, extra )
 **/
 SceneNode.prototype.setMesh = function(mesh_name, submesh_id)
 {
-	var component = this.getComponent( LS.Components.MeshRenderer );
+	var component = this.getComponent( ONE.Components.MeshRenderer );
 	if(component)
 		component.configure({ mesh: mesh_name, submesh_id: submesh_id });
 	else
-		this.addComponent( new LS.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
+		this.addComponent( new ONE.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
 }
 
 SceneNode.prototype.getMaterial = function()
@@ -930,8 +930,8 @@ SceneNode.prototype.getMaterial = function()
 		if( !this._in_tree )
 			return null;
 		if( this.material[0] == "@" )//uid
-			return LS.ResourcesManager.materials_by_uid[ this.material ];
-		return LS.ResourcesManager.materials[ this.material ];
+			return ONE.ResourcesManager.materials_by_uid[ this.material ];
+		return ONE.ResourcesManager.materials[ this.material ];
 	}
 	return this.material;
 }
@@ -946,12 +946,12 @@ SceneNode.prototype.reloadFromPrefab = function()
 	if(!this.prefab)
 		return;
 
-	var prefab = LS.ResourcesManager.resources[ this.prefab ];
+	var prefab = ONE.ResourcesManager.resources[ this.prefab ];
 	if(!prefab)
 		return;
 
-	if( prefab.constructor !== LS.Prefab )
-		throw("prefab must be a LS.Prefab class");
+	if( prefab.constructor !== ONE.Prefab )
+		throw("prefab must be a ONE.Prefab class");
 
 	//apply info
 	this.removeAllChildren();
@@ -966,7 +966,7 @@ SceneNode.prototype.reloadFromPrefab = function()
 
 	//load secondary resources 
 	var resources = this.getResources( {}, true );
-	LS.ResourcesManager.loadResources( resources );
+	ONE.ResourcesManager.loadResources( resources );
 
 	LEvent.trigger( this, "prefabReady", prefab );
 }
@@ -987,7 +987,7 @@ SceneNode.prototype.setLayer = function( num_or_name, value )
 
 	if(num_or_name.constructor === String)
 	{
-		var scene = this.scene || LS.GlobalScene;
+		var scene = this.scene || ONE.GlobalScene;
 		var layer_num = scene.layer_names.indexOf( num_or_name );
 		if(layer_num == -1)
 		{
@@ -1020,7 +1020,7 @@ SceneNode.prototype.isInLayer = function( num_or_name )
 
 	if(num_or_name.constructor === String)
 	{
-		var scene = this.scene || LS.GlobalScene;
+		var scene = this.scene || ONE.GlobalScene;
 		var layer_num = scene.layer_names.indexOf( num_or_name );
 		if(layer_num == -1)
 		{
@@ -1076,13 +1076,13 @@ SceneNode.prototype.clone = function()
 	var scene = this._in_tree;
 
 	var new_name = scene ? scene.generateUniqueNodeName( this._name ) : this._name ;
-	var newnode = new LS.SceneNode( new_name );
+	var newnode = new ONE.SceneNode( new_name );
 	var info = this.serialize();
 
 	//remove all uids from nodes and components
-	LS.clearUIds( info );
+	ONE.clearUIds( info );
 
-	info.uid = LS.generateUId("NODE-");
+	info.uid = ONE.generateUId("NODE-");
 	newnode.configure( info );
 
 	return newnode;
@@ -1092,8 +1092,9 @@ SceneNode.prototype.clone = function()
 * Configure this node from an object containing the info
 * @method configure
 * @param {Object} info the object with all the info (comes from the serialize method)
+* @param {Array} components_aside array to store the data about components so they are configured after creating the scene has been created
 */
-SceneNode.prototype.configure = function(info)
+SceneNode.prototype.configure = function(info, components_aside)
 {
 	//identifiers parsing
 	if (info.name)
@@ -1118,10 +1119,10 @@ SceneNode.prototype.configure = function(info)
 
 	//some helpers (mostly for when loading from js object that come from importers or code)
 	if(info.camera)
-		this.addComponent( new LS.Camera( info.camera ) );
+		this.addComponent( new ONE.Camera( info.camera ) );
 
 	if(info.light)
-		this.addComponent( new LS.Light( info.light ) );
+		this.addComponent( new ONE.Light( info.light ) );
 
 	//in case more than one mesh in on e node
 	if(info.meshes)
@@ -1134,7 +1135,7 @@ SceneNode.prototype.configure = function(info)
 
 	//transform in matrix format could come from importers so we leave it
 	if((info.position || info.model || info.transform) && !this.transform)
-		this.addComponent( new LS.Transform() );
+		this.addComponent( new ONE.Transform() );
 	if(info.position) 
 		this.transform.position = info.position;
 	if(info.model) 
@@ -1150,7 +1151,7 @@ SceneNode.prototype.configure = function(info)
 		var mat_classname = info.material.material_class;
 		if(!mat_classname || mat_classname == "newStandardMaterial") //legacy
 			mat_classname = "StandardMaterial";
-		var constructor = LS.MaterialClasses[mat_classname];
+		var constructor = ONE.MaterialClasses[mat_classname];
 		if(constructor)
 			this.material = typeof(info.material) == "string" ? info.material : new constructor( info.material );
 		else
@@ -1165,7 +1166,7 @@ SceneNode.prototype.configure = function(info)
 	if(info.animation)
 	{
 		this.animation = info.animation;
-		this.addComponent( new LS.Components.PlayAnimation({ animation: this.animation }) );
+		this.addComponent( new ONE.Components.PlayAnimation({ animation: this.animation }) );
 	}
 
 	//extra user info
@@ -1179,14 +1180,19 @@ SceneNode.prototype.configure = function(info)
 	if(info.comments)
 		this.comments = info.comments;
 
-	//restore components
+	//configure components
 	if(info.components)
-		this.configureComponents( info );
+	{
+		if(components_aside)
+			components_aside.push( this, info );
+		else
+			this.configureComponents( info );
+	}
 
 	if(info.prefab && !this._is_root)  //is_root because in some weird situations the prefab was set to the root node
 		this.prefab = info.prefab; //assign and calls this.reloadFromPrefab();
 	else //configure children if it is not a prefab
-		this.configureChildren(info);
+		this.configureChildren(info, components_aside);
 
 	LEvent.trigger(this,"configure",info);
 }
@@ -1211,7 +1217,7 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 		}
 	}
 
-	var mesh = LS.ResourcesManager.meshes[ mesh_id ];
+	var mesh = ONE.ResourcesManager.meshes[ mesh_id ];
 
 	if(!mesh)
 	{
@@ -1228,7 +1234,7 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 	if(extra_info.material !== undefined)
 		mesh_render_config.material = extra_info.material;
 
-	var compo = new LS.Components.MeshRenderer( mesh_render_config );
+	var compo = new ONE.Components.MeshRenderer( mesh_render_config );
 
 	//parsed meshes have info about primitive
 	if( mesh.primitive )
@@ -1248,14 +1254,14 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 	//skinning
 	if(mesh && mesh.bones)
 	{
-		compo = new LS.Components.SkinDeformer({ search_bones_in_parent: false }); //search_bones_in_parent is false because usually DAEs come that way
+		compo = new ONE.Components.SkinDeformer({ search_bones_in_parent: false }); //search_bones_in_parent is false because usually DAEs come that way
 		this.addComponent( compo );
 	}
 
 	//morph targets
 	if( mesh && mesh.morph_targets )
 	{
-		var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
+		var compo = new ONE.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
 		this.addComponent( compo );
 	}
 
@@ -1297,7 +1303,7 @@ SceneNode.prototype.serialize = function( ignore_prefab, simplified )
 		o.prefab = this.prefab;
 
 	if(this.flags) 
-		o.flags = LS.cloneObject(this.flags);
+		o.flags = ONE.cloneObject(this.flags);
 
 	//extra user info
 	if(this.extra) 
@@ -1335,7 +1341,7 @@ SceneNode.prototype._onChildAdded = function( child_node, recompute_transform )
 	if(this.transform)
 	{
 		if(!child_node.transform)
-			child_node.transform.addComponent( new LS.Transform() );
+			child_node.transform.addComponent( new ONE.Transform() );
 		child_node.transform._parent = this.transform;
 	}
 }
@@ -1400,6 +1406,6 @@ SceneNode.prototype.getBoundingBox = function( bbox, only_instances )
 	return bbox;
 }
 
-LS.Scene.Node = SceneNode;
-LS.SceneNode = SceneNode;
-LS.Classes.SceneNode = SceneNode;
+ONE.Scene.Node = SceneNode;
+ONE.SceneNode = SceneNode;
+ONE.Classes.SceneNode = SceneNode;

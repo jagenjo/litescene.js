@@ -34,17 +34,17 @@ Helper["@type"] = { type: "enum", values: { circle: Helper.CIRCLE, square: Helpe
 
 Helper.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind( LS.Renderer, "renderHelpers", this.onRender, this );
+	LEvent.bind( ONE.Renderer, "renderHelpers", this.onRender, this );
 }
 
 Helper.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind( LS.Renderer, "renderHelpers", this.onRender, this );
+	LEvent.unbind( ONE.Renderer, "renderHelpers", this.onRender, this );
 }
 
 Helper.prototype.onRender = function( event, camera )
 {
-	if( !this.enabled || !((LS.Renderer._in_player && this.in_player) || (!LS.Renderer._in_player && this.in_editor)) )
+	if( !this.enabled || !((ONE.Renderer._in_player && this.in_player) || (!ONE.Renderer._in_player && this.in_editor)) || !camera.checkLayersVisibility( this._root.layers) )
 	{
 		this._is_visible = false;
 		return;
@@ -69,20 +69,20 @@ Helper.prototype.renderHelper = function( model, color, fill )
 		gl.disable( gl.DEPTH_TEST );
 
 	gl.disable( gl.CULL_FACE );
-	LS.Draw.push();
-	LS.Draw.setMatrix( model );
-	LS.Draw.setColor( color );
+	ONE.Draw.push();
+	ONE.Draw.setMatrix( model );
+	ONE.Draw.setColor( color );
 	if(this.type == Helper.CIRCLE )
-		LS.Draw.renderCircle( this.size, 32, !this.vertical, fill );
+		ONE.Draw.renderCircle( this.size, 32, !this.vertical, fill );
 	else if(this.type == Helper.SQUARE )
 	{
 		if(fill)
-			LS.Draw.renderRectangle( this.size, this.size, !this.vertical, true );
+			ONE.Draw.renderRectangle( this.size, this.size, !this.vertical, true );
 		else
-			LS.Draw.renderRectangle( this.size, this.size, !this.vertical );
-			//LS.Draw.renderSolidBox( this.size, this.vertical ? this.size : 0, this.vertical ? 0 : this.size );
+			ONE.Draw.renderRectangle( this.size, this.size, !this.vertical );
+			//ONE.Draw.renderSolidBox( this.size, this.vertical ? this.size : 0, this.vertical ? 0 : this.size );
 	}
-	LS.Draw.pop();
+	ONE.Draw.pop();
 	gl.enable( gl.CULL_FACE );
 	gl.enable( gl.DEPTH_TEST );
 }
@@ -93,10 +93,10 @@ Helper.prototype.renderPicking = function( ray )
 		return;
 
 	var model = this._root.transform.getGlobalMatrixRef(true);
-	var color = LS.Picking.getNextPickingColor( { instance: this } );
+	var color = ONE.Picking.getNextPickingColor( { instance: this } );
 	this.renderHelper( model, color, true );
 }
 
 
-LS.registerComponent( Helper );
+ONE.registerComponent( Helper );
 

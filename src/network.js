@@ -22,18 +22,18 @@ var Network = {
 	request: function(request)
 	{
 		if(typeof(request) === "string")
-			throw("LS.Network.request expects object, not string. Use LS.Network.requestText or LS.Network.requestJSON");
+			throw("ONE.Network.request expects object, not string. Use ONE.Network.requestText or ONE.Network.requestJSON");
 
 		//change protocol when working over https
 		var url = request.url;
 
 		//apply proxy
 		if(request.use_proxy)
-			url = LS.ResourcesManager.getFullURL(url);
+			url = ONE.ResourcesManager.getFullURL(url);
 
 		if( this.protocol === null )
-			this.protocol = LS.ResourcesManager.getProtocol( location.href );
-		var protocol = LS.ResourcesManager.getProtocol( url );
+			this.protocol = ONE.ResourcesManager.getProtocol( location.href );
+		var protocol = ONE.ResourcesManager.getProtocol( url );
 		if( this.protocol == "https" && protocol && protocol != "https" )
 			url = "https" + url.substr( url.indexOf(":") );
 
@@ -112,11 +112,11 @@ var Network = {
 			}
 			else if(request.dataType == "blob")
 			{
-				response.name = LS.ResourcesManager.getFilename(url);
+				response.name = ONE.ResourcesManager.getFilename(url);
 			}
 
 			//call callback
-			if(LS.catch_errors)
+			if(ONE.catch_errors)
 			{
 				try
 				{
@@ -180,7 +180,7 @@ var Network = {
 			callback = data;
 			data = null;
 		}
-		return LS.Network.request({url:url, dataType:"text", success: callback, error: callback_error});
+		return ONE.Network.request({url:url, dataType:"text", success: callback, error: callback_error});
 	},
 
 	/**
@@ -198,7 +198,7 @@ var Network = {
 			callback = data;
 			data = null;
 		}
-		return LS.Network.request({url:url, data:data, dataType:"json", success: callback, error: callback_error });
+		return ONE.Network.request({url:url, data:data, dataType:"json", success: callback, error: callback_error });
 	},
 
 	/**
@@ -216,7 +216,7 @@ var Network = {
 			callback = form_data;
 			form_data = null;
 		}
-		return LS.Network.request({ url:url, dataType: as_blob ? "blob" : "binary", data: form_data, success: callback, error: callback_error });
+		return ONE.Network.request({ url:url, dataType: as_blob ? "blob" : "binary", data: form_data, success: callback, error: callback_error });
 	},
 
 	/**
@@ -232,9 +232,9 @@ var Network = {
 		if( !url )
 			throw("No url");
 
-		if( LS._block_scripts )
+		if( ONE._block_scripts )
 		{
-			console.error("Safety: LS.block_scripts enabled, cannot request script");
+			console.error("Safety: ONE.block_scripts enabled, cannot request script");
 			return;
 		}
 
@@ -250,7 +250,7 @@ var Network = {
 			script.type = 'text/javascript';
 			var full_url = url[i].trim();
 			if(full_url.substr(0,5) != "blob:")
-				full_url += "?" + LS.RM.getNoCache(true);
+				full_url += "?" + ONE.RM.getNoCache(true);
 			script.src = full_url;
 			script.async = false;
 			//if( script.src.substr(0,5) == "blob:") //local scripts could contain utf-8
@@ -276,7 +276,7 @@ var Network = {
 
 		function inner_check_pending()
 		{
-			if( LS.Network.pending_scripts.length ) //scripts included from scripts
+			if( ONE.Network.pending_scripts.length ) //scripts included from scripts
 				setTimeout(inner_check_pending,1000); //wait one second
 			else if(on_complete)
 				on_complete();
@@ -294,16 +294,16 @@ var Network = {
 		script.async = false;
 		script.charset = "UTF-8";
 		script.onload = function(e) { 
-			var index = LS.Network.pending_scripts.indexOf( this );
+			var index = ONE.Network.pending_scripts.indexOf( this );
 			if(index != -1)
-				LS.Network.pending_scripts.splice(index);
+				ONE.Network.pending_scripts.splice(index);
 			if(on_complete)
 				on_complete();
 		};
 		script.onerror = function(err) { 
-			var index = LS.Network.pending_scripts.indexOf( this );
+			var index = ONE.Network.pending_scripts.indexOf( this );
 			if(index != -1)
-				LS.Network.pending_scripts.splice(index);
+				ONE.Network.pending_scripts.splice(index);
 			if(on_error)
 				on_error();
 		}
@@ -315,7 +315,7 @@ var Network = {
 	requestFont: function( name, url )
 	{
 		if(!name || !url)
-			throw("LS.Network.requestFont: Wrong font name or url");
+			throw("ONE.Network.requestFont: Wrong font name or url");
 
 		var fonts = this._loaded_fonts;
 		if(!fonts)
@@ -372,7 +372,7 @@ var Network = {
 
 			ResourcesManager._required_files[url] = true;
 
-			LS.Network.request({
+			ONE.Network.request({
 				url: url,
 				success: function(response)
 				{
@@ -390,4 +390,4 @@ var Network = {
 	*/
 };
 
-LS.Network = Network;
+ONE.Network = Network;

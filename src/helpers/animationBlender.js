@@ -1,5 +1,5 @@
 ///@INFO: UNCOMMON,ANIMATION
-
+//WORK IN PROGRESS, NOT FINISHED
 function AnimationBlender()
 {
 	this.active_entries = [];
@@ -7,13 +7,13 @@ function AnimationBlender()
 
 AnimationBlender.prototype.addEntry = function( animation, take, time )
 {
-	if(animation.constructor === LS.AnimationBlender.Entry)
+	if(animation.constructor === ONE.AnimationBlender.Entry)
 	{
 		this.active_entries.push(animation);
 		return;
 	}
 
-	var entry = new LS.AnimationBlender.Entry();
+	var entry = new ONE.AnimationBlender.Entry();
 	entry.animation_name = animation;
 	entry.take_name = take;
 	entry.time = time;
@@ -68,7 +68,7 @@ AnimationBlender.prototype.execute = function( root_node, scene )
 	}
 }
 
-LS.AnimationBlender = AnimationBlender;
+ONE.AnimationBlender = AnimationBlender;
 
 
 
@@ -150,7 +150,7 @@ Entry.prototype.execute = function( final_weight, ignore_interpolation, root_nod
 
 	if( this._must_update )
 	{
-		var animation = LS.ResourcesManager.get( this._animation_name );
+		var animation = ONE.ResourcesManager.get( this._animation_name );
 		if( !animation )
 			return false;
 

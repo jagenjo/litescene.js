@@ -87,18 +87,18 @@ CameraController["@mouse_wheel_action"] = { type:"enum", values: CameraControlle
 
 CameraController.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene, LS.EVENT.START,this.onStart,this);
-	LEvent.bind( scene, LS.EVENT.FINISH,this.onFinish,this);
-	LEvent.bind( scene, LS.EVENT.MOUSEDOWN,this.onMouse,this);
-	LEvent.bind( scene, LS.EVENT.MOUSEMOVE,this.onMouse,this);
-	LEvent.bind( scene, LS.EVENT.MOUSEWHEEL,this.onMouse,this);
-	LEvent.bind( scene, LS.EVENT.TOUCHSTART,this.onTouch,this);
-	LEvent.bind( scene, LS.EVENT.TOUCHMOVE,this.onTouch,this);
-	LEvent.bind( scene, LS.EVENT.TOUCHEND,this.onTouch,this);
-	LEvent.bind( scene, LS.EVENT.KEYDOWN,this.onKey,this);
-	LEvent.bind( scene, LS.EVENT.KEYUP,this.onKey,this);
-	LEvent.bind( scene, LS.EVENT.UPDATE,this.onUpdate,this);
-	LEvent.bind( scene, LS.EVENT.RENDERGUI,this.onRenderGUI,this);
+	LEvent.bind( scene, ONE.EVENT.START,this.onStart,this);
+	LEvent.bind( scene, ONE.EVENT.FINISH,this.onFinish,this);
+	LEvent.bind( scene, ONE.EVENT.MOUSEDOWN,this.onMouse,this);
+	LEvent.bind( scene, ONE.EVENT.MOUSEMOVE,this.onMouse,this);
+	LEvent.bind( scene, ONE.EVENT.MOUSEWHEEL,this.onMouse,this);
+	LEvent.bind( scene, ONE.EVENT.TOUCHSTART,this.onTouch,this);
+	LEvent.bind( scene, ONE.EVENT.TOUCHMOVE,this.onTouch,this);
+	LEvent.bind( scene, ONE.EVENT.TOUCHEND,this.onTouch,this);
+	LEvent.bind( scene, ONE.EVENT.KEYDOWN,this.onKey,this);
+	LEvent.bind( scene, ONE.EVENT.KEYUP,this.onKey,this);
+	LEvent.bind( scene, ONE.EVENT.UPDATE,this.onUpdate,this);
+	LEvent.bind( scene, ONE.EVENT.RENDERGUI,this.onRenderGUI,this);
 }
 
 CameraController.prototype.onRemovedFromScene = function( scene )
@@ -110,7 +110,7 @@ CameraController.prototype.onStart = function(e)
 {
 	if(this.lock_mouse)
 	{
-		LS.Input.lockMouse(true);
+		ONE.Input.lockMouse(true);
 	}
 }
 
@@ -118,7 +118,7 @@ CameraController.prototype.onFinish = function(e)
 {
 	if(this.lock_mouse)
 	{
-		LS.Input.lockMouse(false);
+		ONE.Input.lockMouse(false);
 	}
 }
 
@@ -282,13 +282,13 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 	}
 	else if(mode == CameraController.ROTATE || mode == CameraController.ROTATE_HORIZONTAL )
 	{
-		var top = LS.TOP; //cam.getLocalVector(LS.TOP);
+		var top = ONE.TOP; //cam.getLocalVector(ONE.TOP);
 		cam.rotate( -mouse_event.deltax * this.rot_speed * 0.2, top );
 		cam.updateMatrices();
 
 		if( mode == CameraController.ROTATE )
 		{
-			var right = cam.getLocalVector(LS.RIGHT);
+			var right = cam.getLocalVector(ONE.RIGHT);
 			if(is_global_camera)
 			{
 				cam.rotate(-mouse_event.deltay * this.rot_speed * 0.2,right);
@@ -296,7 +296,7 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
-				node.transform.rotate( -mouse_event.deltay * this.rot_speed * 0.2, LS.RIGHT );
+				node.transform.rotate( -mouse_event.deltay * this.rot_speed * 0.2, ONE.RIGHT );
 				cam.updateMatrices();
 			}
 		}
@@ -404,14 +404,14 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	if(mouse_event.eventType == "mousedown")
 	{
-		if(this.lock_mouse && !document.pointerLockElement && scene._state == LS.PLAYING)
-			LS.Input.lockMouse(true);
+		if(this.lock_mouse && !document.pointerLockElement && scene._state == ONE.PLAYING)
+			ONE.Input.lockMouse(true);
 
-		if( LS.Input.Mouse.isButtonPressed( GL.LEFT_MOUSE_BUTTON ) )
+		if( ONE.Input.Mouse.isButtonPressed( GL.LEFT_MOUSE_BUTTON ) )
 			changed |= this.processMouseButtonDownEvent( this.left_button_action, mouse_event, this._collision_left );
-		if( LS.Input.Mouse.isButtonPressed( GL.MIDDLE_MOUSE_BUTTON ) )
+		if( ONE.Input.Mouse.isButtonPressed( GL.MIDDLE_MOUSE_BUTTON ) )
 			changed |= this.processMouseButtonDownEvent( this.middle_button_action, mouse_event, this._collision_middle );
-		if( LS.Input.Mouse.isButtonPressed( GL.RIGHT_MOUSE_BUTTON ) )
+		if( ONE.Input.Mouse.isButtonPressed( GL.RIGHT_MOUSE_BUTTON ) )
 			changed |= this.processMouseButtonDownEvent( this.right_button_action, mouse_event, this._collision_right );
 		this._dragging = true;
 	}
@@ -426,11 +426,11 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	//regular mouse dragging
 	if( mouse_event.eventType == "mousemove" && mouse_event.dragging && this._dragging )
 	{
-		if( LS.Input.Mouse.isButtonPressed( GL.LEFT_MOUSE_BUTTON ) )
+		if( ONE.Input.Mouse.isButtonPressed( GL.LEFT_MOUSE_BUTTON ) )
 			changed |= this.processMouseButtonMoveEvent( this.left_button_action, mouse_event, this._collision_left  );
-		if( LS.Input.Mouse.isButtonPressed( GL.MIDDLE_MOUSE_BUTTON ) )
+		if( ONE.Input.Mouse.isButtonPressed( GL.MIDDLE_MOUSE_BUTTON ) )
 			changed |= this.processMouseButtonMoveEvent( this.middle_button_action, mouse_event, this._collision_middle  );
-		if( LS.Input.Mouse.isButtonPressed( GL.RIGHT_MOUSE_BUTTON ) )
+		if( ONE.Input.Mouse.isButtonPressed( GL.RIGHT_MOUSE_BUTTON ) )
 			changed |= this.processMouseButtonMoveEvent( this.right_button_action, mouse_event, this._collision_right  );
 	}
 
@@ -506,7 +506,7 @@ CameraController.prototype.testOriginPlane = function(x,y, result)
 	var result = result || vec3.create();
 
 	//test against plane at 0,0,0
-	if( geo.testRayPlane( ray.origin, ray.direction, LS.ZEROS, LS.TOP, result ) )
+	if( geo.testRayPlane( ray.origin, ray.direction, ONE.ZEROS, ONE.TOP, result ) )
 		return true;
 	return false;
 }
@@ -576,7 +576,7 @@ CameraController.prototype.onKey = function(e, key_event)
 
 CameraController.prototype.onRenderGUI = function()
 {
-	if(!this.render_crosshair || !this.enabled || !this._camera || !this._camera.enabled || !LS.Input.isMouseLocked() )
+	if(!this.render_crosshair || !this.enabled || !this._camera || !this._camera.enabled || !ONE.Input.isMouseLocked() )
 		return;
 	var ctx = gl;
 	gl.start2D();
@@ -587,4 +587,4 @@ CameraController.prototype.onRenderGUI = function()
 	gl.finish2D();
 }
 
-LS.registerComponent( CameraController );
+ONE.registerComponent( CameraController );

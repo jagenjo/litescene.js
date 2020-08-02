@@ -6,8 +6,8 @@ GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
 	if(!this.bones || !this.bones.length)
 		return 0;
 
-	root_node = root_node || LS.GlobalScene;
-	if( root_node.constructor == LS.Scene  )
+	root_node = root_node || ONE.GlobalScene;
+	if( root_node.constructor == ONE.Scene  )
 		root_node = root_node.root;
 	if(!root_node.findNode)
 	{
@@ -25,7 +25,7 @@ GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
 
 		if( !use_uids )
 		{
-			if( bone_name[0] != LS._uid_prefix)
+			if( bone_name[0] != ONE._uid_prefix)
 				continue; //already using a name, not a uid
 			var node = root_node.findNode( bone_name );
 			if(!node)
@@ -38,7 +38,7 @@ GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
 		}
 		else
 		{
-			if( bone_name[0] == LS._uid_prefix)
+			if( bone_name[0] == ONE._uid_prefix)
 				continue; //already using a uid
 			var node = root_node.findNode( bone_name );
 			if(!node)
@@ -53,5 +53,5 @@ GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
 
 	//flag it
 	if(modified)
-		LS.RM.resourceModified( this );
+		ONE.RM.resourceModified( this );
 }

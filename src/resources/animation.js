@@ -18,7 +18,7 @@ function Animation(o)
 		this.configure(o);
 }
 
-LS.Classes["Animation"] = LS.Animation = Animation;
+ONE.Classes["Animation"] = ONE.Animation = Animation;
 
 //Animation.KEYFRAME_ANIMATION = 0;
 //Animation.CLIP_ANIMATION = 1;
@@ -32,7 +32,7 @@ Animation.DEFAULT_DURATION = 10;
 * @method createTake
 * @param {String} name the name
 * @param {Number} duration
-* @return {LS.Animation.Take} the take
+* @return {ONE.Animation.Take} the take
 */
 Animation.prototype.createTake = function( name, duration )
 {
@@ -51,7 +51,7 @@ Animation.prototype.createTake = function( name, duration )
 /**
 * adds an existing take
 * @method addTake
-* @param {LS.Animation.Take} name the name
+* @param {ONE.Animation.Take} name the name
 */
 Animation.prototype.addTake = function(take)
 {
@@ -63,7 +63,7 @@ Animation.prototype.addTake = function(take)
 * returns the take with a given name
 * @method getTake
 * @param {String} name
-* @return {LS.Animation.Take} the take
+* @return {ONE.Animation.Take} the take
 */
 Animation.prototype.getTake = function( name )
 {
@@ -134,7 +134,7 @@ Animation.prototype.configure = function(data)
 		this.takes = {};
 		for(var i in data.takes)
 		{
-			var take = new LS.Animation.Take( data.takes[i] );
+			var take = new ONE.Animation.Take( data.takes[i] );
 			if(!take.name)
 				console.warn("Take without name");
 			else
@@ -145,13 +145,13 @@ Animation.prototype.configure = function(data)
 			num_takes++;
 		}
 		if(!num_takes)
-			this.createTake("default", LS.Animation.DEFAULT_DURATION );
+			this.createTake("default", ONE.Animation.DEFAULT_DURATION );
 	}
 }
 
 Animation.prototype.serialize = function()
 {
-	return LS.cloneObject(this, null, true);
+	return ONE.cloneObject(this, null, true);
 }
 
 Animation.fromBinary = function( data )
@@ -175,7 +175,7 @@ Animation.fromBinary = function( data )
 		}
 	}
 
-	return new LS.Animation( o );
+	return new ONE.Animation( o );
 }
 
 Animation.prototype.toBinary = function()
@@ -204,7 +204,7 @@ Animation.prototype.toBinary = function()
 	}
 
 	//create the binary
-	o["@json"] = LS.cloneObject(this, null, true);
+	o["@json"] = ONE.cloneObject(this, null, true);
 	var bin = WBin.create(o, "Animation");
 
 	//restore the bin data state in this instance
@@ -285,13 +285,13 @@ Animation.prototype.optimizeTracks = function()
 /**
 * It creates a PlayAnimation component to the node (or reuse and old existing one). Used when a resource is assigned to a node
 * @method assignToNode
-* @param {LS.SceneNode} node node where to assign this animation
+* @param {ONE.SceneNode} node node where to assign this animation
 */
 Animation.prototype.assignToNode = function(node)
 {
-	var component = node.getComponent( LS.Components.PlayAnimation );
+	var component = node.getComponent( ONE.Components.PlayAnimation );
 	if(!component)
-		component = node.addComponent( LS.Components.PlayAnimation );
+		component = node.addComponent( ONE.Components.PlayAnimation );
 	component.animation = this.fullpath || this.filename;
 }
 
@@ -301,7 +301,7 @@ Animation.prototype.assignToNode = function(node)
 * Represents a set of animations
 *
 * @class Take
-* @namespace LS.Animation
+* @namespace ONE.Animation
 * @constructor
 */
 function Take(o)
@@ -317,7 +317,7 @@ function Take(o)
 	/** 
 	* @property duration {Number} in seconds
 	**/
-	this.duration = LS.Animation.DEFAULT_DURATION;
+	this.duration = ONE.Animation.DEFAULT_DURATION;
 	
 	if(o)
 		this.configure(o);
@@ -338,7 +338,7 @@ Take.prototype.configure = function( o )
 		this.tracks = []; //clear
 		for(var i in o.tracks)
 		{
-			var track = new LS.Animation.Track( o.tracks[i] );
+			var track = new ONE.Animation.Track( o.tracks[i] );
 			this.addTrack( track );
 		}
 	}
@@ -348,14 +348,14 @@ Take.prototype.configure = function( o )
 
 Take.prototype.serialize = Take.prototype.toJSON = function()
 {
-	return LS.cloneObject(this, null, true);
+	return ONE.cloneObject(this, null, true);
 }
 
 /**
 * creates a new track from a given data
 * @method createTrack
 * @param {Object} data in serialized format
-* @return {LS.Animation.Track} the track
+* @return {ONE.Animation.Track} the track
 */
 Take.prototype.createTrack = function( data )
 {
@@ -366,7 +366,7 @@ Take.prototype.createTrack = function( data )
 	if( track )
 		return track;
 
-	var track = new LS.Animation.Track( data );
+	var track = new ONE.Animation.Track( data );
 	this.addTrack( track );
 	return track;
 }
@@ -387,7 +387,7 @@ Take.prototype.createTrack = function( data )
 */
 Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight, on_pre_apply, on_apply_sample )
 {
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 	if(weight === 0)
 		return;
 
@@ -440,7 +440,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			if(weight !== 1)
 			{
 				var current_value = scene.getPropertyValueFromPath( track._property_path, sample, root_node, 0 );
-				sample = LS.Animation.interpolateLinear( sample, current_value, weight, null, track._type, track.value_size, track );
+				sample = ONE.Animation.interpolateLinear( sample, current_value, weight, null, track._type, track.value_size, track );
 			}
 
 			//apply the value to the property specified by the locator
@@ -465,7 +465,7 @@ Take.prototype.addTrack = function( track )
 * returns a track given its index or the property string
 * @method getTrack
 * @param {Number|String} property could be index or property
-* @return {LS.Animation.Track} the track
+* @return {ONE.Animation.Track} the track
 */
 Take.prototype.getTrack = function( property )
 {
@@ -528,7 +528,7 @@ Take.prototype.loadResources = function()
 			{
 				var keyframe = track.getKeyframe(j);
 				if(keyframe && keyframe[1] && keyframe[1][0] != ":")
-					LS.ResourcesManager.load( keyframe[1] );
+					ONE.ResourcesManager.load( keyframe[1] );
 			}
 		}
 	}
@@ -642,9 +642,9 @@ function Track(o)
 	this._type = null; //type of data (number, vec2, color, texture, etc)
 	this._type_index = null; //type in number format (to optimize)
 	/** 
-	* @property interpolation {Number} type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.CUBIC, LS.SPLICE
+	* @property interpolation {Number} type of interpolation ONE.NONE, ONE.LINEAR, ONE.TRIGONOMETRIC, ONE.CUBIC, ONE.SPLICE
 	**/
-	this.interpolation = LS.NONE;
+	this.interpolation = ONE.NONE;
 	/** 
 	* @property looped {Boolean} if the last and the first keyframe should be connected
 	**/
@@ -681,9 +681,9 @@ Animation.Track = Track;
 Track.FRAMERATE = 30;
 
 //for optimization
-Track.QUAT = LS.TYPES_INDEX["quat"];
-Track.TRANS10 = LS.TYPES_INDEX["trans10"];
-Track.EVENT = LS.TYPES_INDEX["event"];
+Track.QUAT = ONE.TYPES_INDEX["quat"];
+Track.TRANS10 = ONE.TYPES_INDEX["trans10"];
+Track.EVENT = ONE.TYPES_INDEX["event"];
 
 /** 
 * @property property {String} the locator to the property this track should modify ( "node/component_uid/property" )
@@ -704,7 +704,7 @@ Object.defineProperty( Track.prototype, 'type', {
 	set: function( t )
 	{
 		this._type = t;
-		this._type_index = LS.TYPES_INDEX[t];
+		this._type_index = ONE.TYPES_INDEX[t];
 	},
 	get: function(){
 		return this._type;
@@ -725,7 +725,7 @@ Track.prototype.configure = function( o )
 	if(o.interpolation !== undefined)
 		this.interpolation = o.interpolation;
 	else
-		this.interpolation = LS.LINEAR;
+		this.interpolation = ONE.LINEAR;
 
 	if(o.data_table) this.data_table = o.data_table;
 
@@ -754,7 +754,7 @@ Track.prototype.configure = function( o )
 	}
 
 	if(o.interpolation && !this.value_size)
-		o.interpolation = LS.NONE;
+		o.interpolation = ONE.NONE;
 }
 
 Track.prototype.serialize = function()
@@ -815,7 +815,7 @@ Track.prototype.clear = function()
 * this is used when you want to apply the same animation to different nodes in the scene
 * @method getIDasName
 * @param {boolean} use_basename if you want to just use the node name, othewise it uses the fullname (name with path)
-* @param {LS.SceneNode} root
+* @param {ONE.SceneNode} root
 * @return {String} the result name
 */
 Track.prototype.getIDasName = function( use_basename, root )
@@ -823,14 +823,14 @@ Track.prototype.getIDasName = function( use_basename, root )
 	if( !this._property_path || !this._property_path.length )
 		return null;
 
-	return LS.convertLocatorFromUIDsToName( this._property,  use_basename, root );
+	return ONE.convertLocatorFromUIDsToName( this._property,  use_basename, root );
 }
 
 //used to change every track so instead of using node names for properties it uses node uids
 //this is used when you want to apply an animation to an specific node
 Track.prototype.convertNameToID = function( root )
 {
-	if(this._property_path[0][0] === LS._uid_prefix)
+	if(this._property_path[0][0] === ONE._uid_prefix)
 		return false; //is already using UIDs
 
 	var node = LSQ.get( this._property_path[0], root );
@@ -894,7 +894,7 @@ Track.prototype.convertToTrans10 = function()
 	for(var k = 0; k < num_samples; ++k)
 	{
 		var sample = data.subarray(k*17+1,(k*17)+17);
-		LS.Transform.fromMatrix4ToTransformData( sample, temp );
+		ONE.Transform.fromMatrix4ToTransformData( sample, temp );
 		data[k*11] = data[k*17]; //timestamp
 		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
 	}
@@ -907,11 +907,11 @@ Track.prototype.convertToTrans10 = function()
 * Adds a new keyframe from the current value of that property
 * @method addKeyframeFromCurrent
 * @param {Number} time time stamp in seconds
-* @param {LS.SceneTree} scene 
+* @param {ONE.SceneTree} scene 
 */
 Track.prototype.addKeyframeFromCurrent = function( time, scene )
 {
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 	var info = scene.getPropertyInfoFromPath( this._property_path );
 	if(!info)
 		return null;
@@ -1108,7 +1108,7 @@ Track.prototype.computeDuration = function()
 
 Track.prototype.isInterpolable = function()
 {
-	if( this.value_size > 0 || LS.Interpolators[ this._type ] )
+	if( this.value_size > 0 || ONE.Interpolators[ this._type ] )
 		return true;
 	return false;
 }
@@ -1263,7 +1263,7 @@ Track.prototype.findTimeIndex = function(time)
 * Warning: if no result container is provided the same container is reused between samples to avoid garbage, be careful.
 * @method getSample
 * @param {number} time
-* @param {number} interpolation [optional] the interpolation method could be LS.NONE, LS.LINEAR, LS.CUBIC
+* @param {number} interpolation [optional] the interpolation method could be ONE.NONE, ONE.LINEAR, ONE.CUBIC
 * @param {*} result [optional] the container where to store the data (in case is an array). IF NOT CONTAINER IS PROVIDED THE SAME ONE IS RETURNED EVERY TIME!
 * @return {*} data
 */
@@ -1291,7 +1291,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 	var data = this.data;
 	var value_size = this.value_size;
 
-	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this._type ] );
+	interpolate = interpolate && this.interpolation && (this.value_size > 0 || ONE.Interpolators[ this._type ] );
 
 	if(!interpolate || (data.length == 1) || index_b == data.length || (index_a == 0 && this.data[0][0] > time)) //(index_b == this.data.length && !this.looped)
 		return this.data[ index ][1];
@@ -1309,19 +1309,19 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 			result = this._result = new Float32Array( value_size );
 	}
 
-	if(this.interpolation === LS.LINEAR)
+	if(this.interpolation === ONE.LINEAR)
 	{
 		if( value_size == 1 )
 			return a[1] * t + b[1] * (1-t);
 
-		return LS.Animation.interpolateLinear( a[1], b[1], t, result, this._type, value_size, this );
+		return ONE.Animation.interpolateLinear( a[1], b[1], t, result, this._type, value_size, this );
 	}
-	else if(this.interpolation === LS.CUBIC)
+	else if(this.interpolation === ONE.CUBIC)
 	{
 		//cubic not implemented for interpolators
-		if(value_size === 0 && LS.Interpolators[ this._type ] )
+		if(value_size === 0 && ONE.Interpolators[ this._type ] )
 		{
-			var func = LS.Interpolators[ this._type ];
+			var func = ONE.Interpolators[ this._type ];
 			var r = func( a[1], b[1], t, this._last_value );
 			this._last_value = r;
 			return r;
@@ -1371,7 +1371,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 	var data = this.data;
 	var num_keyframes = data.length / offset;
 
-	interpolate = interpolate && this.interpolation && (value_size > 0 || LS.Interpolators[ this._type ] );
+	interpolate = interpolate && this.interpolation && (value_size > 0 || ONE.Interpolators[ this._type ] );
 
 	if( !interpolate || num_keyframes == 1 || index_b == num_keyframes || (index_a == 0 && this.data[0] > time)) //(index_b == this.data.length && !this.looped)
 		return this.getKeyframe( index )[1];
@@ -1389,16 +1389,16 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 	var t = (b[0] - time) / (b[0] - a[0]);
 
-	if(this.interpolation === LS.LINEAR)
+	if(this.interpolation === ONE.LINEAR)
 	{
 		if( value_size == 1 ) //simple case
 			return a[1] * t + b[1] * (1-t);
 
 		var a_data = a.subarray(1, value_size + 1 );
 		var b_data = b.subarray(1, value_size + 1 );
-		return LS.Animation.interpolateLinear( a_data, b_data, t, result, this._type, value_size, this );
+		return ONE.Animation.interpolateLinear( a_data, b_data, t, result, this._type, value_size, this );
 	}
-	else if(this.interpolation === LS.CUBIC)
+	else if(this.interpolation === ONE.CUBIC)
 	{
 		if( value_size === 0 ) //CUBIC not supported in interpolators
 			return a[1];
@@ -1438,12 +1438,12 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 * returns information about the object being affected by this track based on its locator
 * the object contains a reference to the object, the property name, the type of the data
 * @method getPropertyInfo
-* @param {LS.Scene} scene [optional]
+* @param {ONE.Scene} scene [optional]
 * @return {Object} an object with the info { target, name, type, value }
 */
 Track.prototype.getPropertyInfo = function( scene )
 {
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 
 	return scene.getPropertyInfo( this.property );
 }
@@ -1451,12 +1451,12 @@ Track.prototype.getPropertyInfo = function( scene )
 /**
 * returns the node to which this track is affecting (in case it is a node, if it is something else it returns null)
 * @method getPropertyNode
-* @param {LS.Scene} scene [optional]
-* @return {LS.SceneNode} the node being affected by the track
+* @param {ONE.Scene} scene [optional]
+* @return {ONE.SceneNode} the node being affected by the track
 */
 Track.prototype.getPropertyNode = function( scene )
 {
-	return (scene || LS.GlobalScene).getNode( this.property.split("/")[0] );
+	return (scene || ONE.GlobalScene).getNode( this.property.split("/")[0] );
 }
 
 
@@ -1492,9 +1492,9 @@ Animation.interpolateLinear = function( a, b, t, result, type, value_size, track
 	if(value_size == 1)
 		return a * t + b * (1-t);
 
-	if( LS.Interpolators[ type ] )
+	if( ONE.Interpolators[ type ] )
 	{
-		var func = LS.Interpolators[ type ];
+		var func = ONE.Interpolators[ type ];
 		var r = func( a, b, t, track._last_v );
 		track._last_v = r;
 		return r;
@@ -1505,7 +1505,7 @@ Animation.interpolateLinear = function( a, b, t, result, type, value_size, track
 	if(!result || result.length != value_size)
 		result = track._result = new Float32Array( value_size );
 
-	var type_index = LS.TYPES_INDEX[ type ];
+	var type_index = ONE.TYPES_INDEX[ type ];
 
 	switch( type_index )
 	{
@@ -1566,20 +1566,20 @@ Animation.EvaluateHermiteSplineVector = function( p0, p1, pre_p0, post_p1, s, re
 	return result;
 }
 
-LS.registerResourceClass( Animation );
+ONE.registerResourceClass( Animation );
 
 //extra interpolators ***********************************
-LS.Interpolators = {};
+ONE.Interpolators = {};
 
-LS.Interpolators["texture"] = function( a, b, t, last )
+ONE.Interpolators["texture"] = function( a, b, t, last )
 {
-	var texture_a = a ? LS.getTexture( a ) : null;
-	var texture_b = b ? LS.getTexture( b ) : null;
+	var texture_a = a ? ONE.getTexture( a ) : null;
+	var texture_b = b ? ONE.getTexture( b ) : null;
 
 	if(a && !texture_a && a[0] != ":" )
-		LS.ResourcesManager.load(a);
+		ONE.ResourcesManager.load(a);
 	if(b && !texture_b && b[0] != ":" )
-		LS.ResourcesManager.load(b);
+		ONE.ResourcesManager.load(b);
 
 	var texture = texture_a || texture_b;
 

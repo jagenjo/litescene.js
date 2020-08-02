@@ -82,7 +82,7 @@ if(typeof(LiteGraph) != "undefined")
 			var v = this.getInputData(i);
 			if(v === undefined)
 				continue;
-			LS.setObjectProperty( compo, input.name, v );
+			ONE.setObjectProperty( compo, input.name, v );
 		}
 
 		//write outputs (done in a function so it can be reused by other methods)
@@ -130,7 +130,7 @@ if(typeof(LiteGraph) != "undefined")
 				}
 			}
 
-			this.title = LS.getClassName( compo.constructor );
+			this.title = ONE.getClassName( compo.constructor );
 		}
 		else
 			this.boxcolor = "red";
@@ -151,7 +151,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphComponent.prototype.getComponent = function()
 	{
-		var scene = this.graph._scene || LS.GlobalScene;
+		var scene = this.graph._scene || ONE.GlobalScene;
 		//TODO: if no graph found, then crawl up in the graph hierarchy because probalby it is a subgraph
 
 		var node_id = this.properties.node_id;
@@ -180,8 +180,8 @@ if(typeof(LiteGraph) != "undefined")
 		var compo = null;
 		if(compo_id.charAt(0) == "@")
 			compo = node.getComponentByUId( compo_id );
-		else if( LS.Components[ compo_id ] )
-			compo = node.getComponent( LS.Components[ compo_id ] );
+		else if( ONE.Components[ compo_id ] )
+			compo = node.getComponent( ONE.Components[ compo_id ] );
 		else
 			return null;
 
@@ -232,7 +232,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(compo.getPropertiesInfo)
 			attrs = compo.getPropertiesInfo( get_inputs );
 		else
-			attrs = LS.getObjectProperties( compo );
+			attrs = ONE.getObjectProperties( compo );
 
 		result = result || [];
 		for(var i in attrs)
@@ -398,7 +398,7 @@ if(typeof(LiteGraph) != "undefined")
 
 		if(!transform)
 		{
-			var scene = this.graph.getScene ? this.graph.getScene() : LS.GlobalScene;
+			var scene = this.graph.getScene ? this.graph.getScene() : ONE.GlobalScene;
 
 			var node = this._node;
 			if(	this.properties.node_id )

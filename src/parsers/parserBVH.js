@@ -170,7 +170,7 @@ var parserBVH = {
 			var track = tracks[i];
 			track.duration = duration;
 		}
-		var basename = LS.ResourcesManager.getBasename( filename );
+		var basename = ONE.ResourcesManager.getBasename( filename );
 		var animation = { 
 			name: basename + "_animation.wbin",
 			object_class: "Animation",
@@ -261,4 +261,4 @@ var parserBVH = {
 	}
 };
 
-LS.Formats.addSupportedFormat( "bvh", parserBVH );
+ONE.Formats.addSupportedFormat( "bvh", parserBVH );

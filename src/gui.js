@@ -3,7 +3,7 @@
 * GUI is a static class used to create two kinds of GUIs: HTML GUIs on top of the 3D Canvas (in a safe way) or Immediate GUI using a Canvas2D (fast gui)
 * For HTML GUIs check the getHTMLRoot function.
 * For Immediate GUIs check the Box,Button,Toggle,Textfield,HorizontalSlider,VerticalSlider and Toolbar.
-* To change colors of the immediate GUI check the LS.GUI.GUIStyle
+* To change colors of the immediate GUI check the ONE.GUI.GUIStyle
 *
 * @class GUI
 * @namespace LS
@@ -57,7 +57,7 @@ var GUI = {
 			return this._root;
 		}
 
-		if(LS.GlobalScene._state != LS.PLAYING)
+		if(ONE.GlobalScene._state != ONE.PLAYING)
 			console.warn("GUI element created before the scene is playing will be deleted once the app starts. Only create the GUI elements from onStart or after, otherwise the GUI elements will be lost.");
 
 		var gui = document.createElement("div");
@@ -237,8 +237,8 @@ var GUI = {
 	*/
 	loadHTML: function( url, on_complete )
 	{
-		LS.ResourcesManager.load( url, function(res){
-			var gui_root = LS.GUI.getHTMLRoot();
+		ONE.ResourcesManager.load( url, function(res){
+			var gui_root = ONE.GUI.getHTMLRoot();
 			var html = res.getAsHTML();
 			if(!html)
 			{
@@ -250,7 +250,7 @@ var GUI = {
 			html.style.height = "100%";
 			gui_root.appendChild( html );
 
-			LS.GUI.replaceHTMLSources( gui_root );
+			ONE.GUI.replaceHTMLSources( gui_root );
 
 			if(on_complete)
 				on_complete( html, res );
@@ -273,11 +273,11 @@ var GUI = {
 
 			src = src.substr(1);
 			//replace that with a local URL to that resource in case is loaded
-			var resource = LS.ResourcesManager.getResource( src );
+			var resource = ONE.ResourcesManager.getResource( src );
 			if( resource && resource._local_url )
 				src = resource._local_url;
 			else
-				src = LS.ResourcesManager.getFullURL( src );
+				src = ONE.ResourcesManager.getFullURL( src );
 			element.setAttribute("src", src );
 		}
 
@@ -286,7 +286,7 @@ var GUI = {
 	//IMMEDIATE GUI STUFF
 
 	/**
-	* Called by the LS.Renderer to clear inmediate stuff
+	* Called by the ONE.Renderer to clear inmediate stuff
 	*
 	* @method ResetImmediateGUI
 	*/
@@ -302,7 +302,7 @@ var GUI = {
 		this.GUIStyle = this.defaultGUIStyle;
 		this._style_stack.length = 0;
 		if(!skip_redraw)
-			LS.GlobalScene.requestFrame(); //force redraws
+			ONE.GlobalScene.requestFrame(); //force redraws
 	},
 
 	//this is done so when clicking in the area where there is an immediate GUI widget the events are not send to the app
@@ -429,19 +429,19 @@ var GUI = {
 		if(!area)
 			throw("No area");
 		this.blockEventArea( area );
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
-				LS.Input.current_click = false; //consume event
+				ONE.Input.current_click = false; //consume event
 		}
 
 		return clicked;
@@ -463,19 +463,19 @@ var GUI = {
 		this.blockEventArea( area );
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
-				LS.Input.current_click = false; //consume event
+				ONE.Input.current_click = false; //consume event
 		}
 
 		if(content == null) //allows to create invisible buttons
@@ -524,13 +524,13 @@ var GUI = {
 		this.blockEventArea( area );
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var num = options.length;
 		var x = area[0];
 		var w = area[2];
@@ -545,12 +545,12 @@ var GUI = {
 
 			if( mouse )
 			{
-				clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+				clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 				if(clicked)
 				{
 					selected = i;
 					is_selected = true;
-					LS.Input.current_click = false; //consume event
+					ONE.Input.current_click = false; //consume event
 				}
 			}
 
@@ -607,20 +607,20 @@ var GUI = {
 		this.blockEventArea( area );
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				LS.Input.current_click = false; //consume event
+				ONE.Input.current_click = false; //consume event
 			}
 		}
 
@@ -672,9 +672,11 @@ var GUI = {
 	* @param {String} text the text to show in the textfield
 	* @param {Number} max_length to limit the text, otherwise leave blank
 	* @param {Boolean} is_password set to true to show as password
+	* @param {Function} on_intro callback executed when clicked intro/return key
+	* @param {Boolean} keep_focus_on_intro retains focus after intro
 	* @return {Boolean} the current state of the checkbox (will be different from value if it was pressed)
 	*/
-	TextField: function( area, text, max_length, is_password )
+	TextField: function( area, text, max_length, is_password, on_intro, keep_focus_on_intro )
 	{
 		if(!area)
 			throw("No area");
@@ -684,25 +686,25 @@ var GUI = {
 		max_length = max_length || 1024;
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				LS.Input.current_click = null; //consume event
-				LS.Input.last_click = mouse;
+				ONE.Input.current_click = null; //consume event
+				ONE.Input.last_click = mouse;
 			}
 		}
 		var is_selected = false;
-		if( LS.Input.last_click && LS.Input.isEventInRect( LS.Input.last_click, area, this._offset ) )
+		if( ONE.Input.last_click && ONE.Input.isEventInRect( ONE.Input.last_click, area, this._offset ) )
 		{
 			is_selected = true;
 		}
@@ -710,14 +712,24 @@ var GUI = {
 		this.pressed_enter = false;
 		if(is_selected)
 		{
-			var keys = LS.Input.keys_buffer;
+			var keys = ONE.Input.keys_buffer;
 			for( var i = 0; i < keys.length; ++i )
 			{
 				var key = keys[i];
 				switch(key.keyCode)
 				{
 					case 8: text = text.substr(0, text.length - 1 ); break; //backspace
-					case 13: this.pressed_enter = true; break; //return
+					case 13: 
+						this.pressed_enter = true;
+						if(!keep_focus_on_intro)
+							ONE.Input.last_click = null;
+						if(on_intro)
+						{
+							var r = on_intro(text);
+							if(r != null)
+								text = r;
+						}
+						break; //return
 					case 32: if(text.length < max_length) text += " "; break;
 					default:
 						if(text.length < max_length && key.key && key.key.length == 1) //length because control keys send a string like "Shift"
@@ -730,7 +742,7 @@ var GUI = {
 				//console.log(key.charCode, key.keyCode, key.character, key.which, key );
 			}
 			keys.length = 0; //consume them
-			LS.Input.current_key = null;
+			ONE.Input.current_key = null;
 		}
 
 		var line = (area[3]*0.02);
@@ -763,6 +775,11 @@ var GUI = {
 		return text;
 	},
 
+	isTextFieldSelected: function( area )
+	{
+		return ONE.Input.last_click && ONE.Input.isEventInRect( ONE.Input.last_click, area, this._offset );
+	},
+
 	/**
 	* Renders an horizontal slider widget, returns the current value
 	* Remember: you must pass as value the same value returned by this function in order to work propertly
@@ -790,13 +807,13 @@ var GUI = {
 		right_value = Number(right_value);
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		var range = right_value - left_value;
 		var norm_value = (value - left_value) / range;
@@ -807,10 +824,10 @@ var GUI = {
 
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				norm_value = ( (LS.Input.Mouse.x - this._offset[0]) - (area[0] + margin)) / (area[2] - margin*2);
+				norm_value = ( (ONE.Input.Mouse.x - this._offset[0]) - (area[0] + margin)) / (area[2] - margin*2);
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;
 				value = norm_value * range + left_value;
@@ -862,13 +879,13 @@ var GUI = {
 		top_value = Number(top_value);
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		var range = top_value - bottom_value;
 		var norm_value = (value - bottom_value) / range;
@@ -879,10 +896,10 @@ var GUI = {
 
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				norm_value = ( (LS.Input.Mouse.y - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
+				norm_value = ( (ONE.Input.Mouse.y - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;
 				norm_value = 1 - norm_value; //reverse slider
@@ -930,13 +947,13 @@ var GUI = {
 		top_value = Number(top_value);
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		var range = top_value - bottom_value;
 		var norm_value = (value - bottom_value) / range;
@@ -949,15 +966,15 @@ var GUI = {
 
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				var dx = LS.Input.Mouse.x - (area[0] + area[2] * 0.5) - this._offset[0];
-				var dy = LS.Input.Mouse.y - (area[1] + area[3] * 0.5) - this._offset[1];
+				var dx = ONE.Input.Mouse.x - (area[0] + area[2] * 0.5) - this._offset[0];
+				var dy = ONE.Input.Mouse.y - (area[1] + area[3] * 0.5) - this._offset[1];
 				//var angle = Math.atan2( dx, -dy ) / Math.PI;
 				var angle = ( Math.atan2( dx, -dy ) - start_angle ) / total_angle;
 				norm_value = angle;
-				//norm_value = ( (LS.Input.Mouse.y - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
+				//norm_value = ( (ONE.Input.Mouse.y - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
 				//norm_value = 1 - norm_value; //reverse slider
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;
@@ -1020,8 +1037,37 @@ var GUI = {
 		return value;
 	},
 
+	Pad: function( area, value, background )
+	{
+		this.DragArea( area, value );
+		var ctx = this._ctx;
+
+		if( background && ( background.constructor === GL.Texture || background.constructor === HTMLImageElement || background.constructor === HTMLCanvasElement) )
+		{
+			ctx.drawImage( background, area[0], area[1], area[2], area[3] );
+		}
+		else
+		{
+			ctx.globalAlpha = 1;
+			ctx.fillStyle = this.GUIStyle.backgroundColor;
+			ctx.fillRect( area[0]-2, area[1]-2, area[2]+4, area[3]+4 );
+			ctx.fillStyle = "black";
+			ctx.fillRect( area[0], area[1], area[2], area[3] );
+		}
+
+		//ball
+		ctx.fillStyle = "white";
+		ctx.globalAlpha = 1;
+		var x = area[0] + value[0] * area[2];
+		var y = area[1] + value[1] * area[3];
+		//ctx.fillRect( x-5, y-5, 10,10 );
+		ctx.beginPath();
+		ctx.arc( x, y, 5, 0, 2 * Math.PI, false );
+		ctx.fill();
+	},
+
 	//*
-	DragArea: function( area, value )
+	DragArea: function( area, value, only_delta )
 	{
 		if(!area)
 			throw("No area");
@@ -1030,41 +1076,52 @@ var GUI = {
 		this.blockEventArea( area );
 
 		var ctx = this._ctx;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		var is_over = ONE.Input.isEventInRect( ONE.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
 			this.setCursor("pointer");
 		}
-		var mouse = LS.Input.current_click;
+		var mouse = ONE.Input.current_click;
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			clicked = ONE.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				LS.Input.current_click = null; //consume event
-				LS.Input.last_click = mouse;
+				ONE.Input.current_click = null; //consume event
+				ONE.Input.last_click = mouse;
 			}
 		}
 		var is_selected = false;
-		if( LS.Input.last_click && LS.Input.isEventInRect( LS.Input.last_click, area, this._offset ) )
+		if( ONE.Input.last_click && ONE.Input.isEventInRect( ONE.Input.last_click, area, this._offset ) )
 		{
 			is_selected = true;
-			if( LS.Input.Mouse.dragging )
+			if( ONE.Input.Mouse.dragging )
 			{
-				value[0] += LS.Input.Mouse.deltax || 0;
-				value[1] += LS.Input.Mouse.deltay || 0;
+				if(only_delta)
+				{
+					value[0] += ONE.Input.Mouse.deltax || 0;
+					value[1] += ONE.Input.Mouse.deltay || 0;
+				}
+				else
+				{
+					var x = (ONE.Input.Mouse.x - area[0]) / area[2];
+					var y = (ONE.Input.Mouse.y - area[1]) / area[3];
+					value[0] = Math.clamp(x,0,1);
+					value[1] = Math.clamp(y,0,1);
+				}
 			}
 		}
 
 		return value;
 	},
+
 	//*/
 
 	pushStyle: function()
 	{
-		var new_style = LS.cloneObject( this.GUIStyle );
+		var new_style = ONE.cloneObject( this.GUIStyle );
 		this._style_stack.push(this.GUIStyle);
 		this.GUIStyle = new_style;
 	},
@@ -1104,8 +1161,8 @@ GUI.load = GUI.loadHTML;
 
 GUI.getRoot = function()
 {
-	console.warn("LS.GUI.getRoot() deprecated, use LS.GUI.getHTMLRoot() instead.");
-	return LS.GUI.getHTMLRoot();
+	console.warn("ONE.GUI.getRoot() deprecated, use ONE.GUI.getHTMLRoot() instead.");
+	return ONE.GUI.getHTMLRoot();
 }
 
-LS.GUI = GUI;
+ONE.GUI = GUI;

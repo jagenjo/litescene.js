@@ -46,16 +46,16 @@ InteractiveController.prototype.getNodeUnderMouse = function( e )
 	var layers = this.layers;
 
 	if(this.mode == InteractiveController.PICKING)
-		return LS.Picking.getNodeAtCanvasPosition( e.canvasx, e.canvasy, null, layers );
+		return ONE.Picking.getNodeAtCanvasPosition( e.canvasx, e.canvasy, null, layers );
 
-	var camera = LS.Renderer.getCameraAtPosition( e.canvasx, e.canvasy );
+	var camera = ONE.Renderer.getCameraAtPosition( e.canvasx, e.canvasy );
 	if(!camera)
 		return null;
 	var ray = camera.getRay( e.canvasx, e.canvasy );
 
 	if(this.mode == InteractiveController.BOUNDING)
 	{
-		var collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { layers: layers } );
+		var collisions = ONE.Physics.raycastRenderInstances( ray.origin, ray.direction, { layers: layers } );
 		if(!collisions || !collisions.length)
 			return null;
 		this._last_collision = collisions[0];
@@ -64,7 +64,7 @@ InteractiveController.prototype.getNodeUnderMouse = function( e )
 
 	if(this.mode == InteractiveController.RENDER_INSTANCES)
 	{
-		var collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { layers: layers, triangle_collision: true } );
+		var collisions = ONE.Physics.raycastRenderInstances( ray.origin, ray.direction, { layers: layers, triangle_collision: true } );
 		if(!collisions || !collisions.length)
 			return null;
 		this._last_collision = collisions[0];
@@ -73,7 +73,7 @@ InteractiveController.prototype.getNodeUnderMouse = function( e )
 
 	if(this.mode == InteractiveController.COLLIDERS)
 	{
-		var collisions = LS.Physics.raycast( ray.origin, ray.direction, { layers: layers } );
+		var collisions = ONE.Physics.raycast( ray.origin, ray.direction, { layers: layers } );
 		if(!collisions || !collisions.length)
 			return null;
 		this._last_collision = collisions[0];
@@ -122,4 +122,4 @@ InteractiveController.prototype._onMouse = function(type, e)
 }
 
 
-LS.registerComponent( InteractiveController );
+ONE.registerComponent( InteractiveController );

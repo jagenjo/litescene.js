@@ -31,7 +31,7 @@ Prefab.EXTENSION = "wbin";
 **/
 Prefab.prototype.setData = function(data)
 {
-	if( data && data.constructor === LS.SceneNode )
+	if( data && data.constructor === ONE.SceneNode )
 		data = data.serialize();
 	data.object_class = "SceneNode";
 	this.prefab_data = data;
@@ -94,7 +94,7 @@ Prefab.fromBinary = function( data, filename )
 	if(data.constructor == ArrayBuffer)
 		data = WBin.load(data, true);
 
-	return new LS.Prefab( data, filename );
+	return new ONE.Prefab( data, filename );
 }
 
 //given a list of resources that come from a Prefab (usually a wbin) it extracts, process and register them 
@@ -111,15 +111,15 @@ Prefab.prototype.processResources = function()
 	//another one contained in this Prefab
 	for(var resname in resources)
 	{
-		if( LS.ResourcesManager.resources[ resname ] )
+		if( ONE.ResourcesManager.resources[ resname ] )
 			continue; //already loaded
-		LS.ResourcesManager.resources_being_processed[ resname ] = true;
+		ONE.ResourcesManager.resources_being_processed[ resname ] = true;
 	}
 
 	//process and store in ResourcesManager
 	for(var resname in resources)
 	{
-		if( LS.ResourcesManager.resources[resname] )
+		if( ONE.ResourcesManager.resources[resname] )
 			continue; //already loaded
 
 		var resdata = resources[resname];
@@ -128,7 +128,7 @@ Prefab.prototype.processResources = function()
 			console.warn( "resource data in prefab is undefined, skipping it:" + resname );
 			continue;
 		}
-		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: pack_filename } );
+		var resource = ONE.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: pack_filename } );
 	}
 }
 
@@ -151,9 +151,9 @@ Prefab.prototype.createObject = function()
 		return null;
 	}
 
-	var node = new LS.SceneNode();
+	var node = new ONE.SceneNode();
 	node.configure( conf_data );
-	LS.ResourcesManager.loadResources( node.getResources({},true) );
+	ONE.ResourcesManager.loadResources( node.getResources({},true) );
 
 	if(this.fullpath)
 		node.prefab = this.fullpath;
@@ -168,7 +168,7 @@ Prefab.prototype.createObject = function()
 **/
 Prefab.prototype.addResource = function( filename )
 {
-	filename = LS.ResourcesManager.cleanFullpath( filename );
+	filename = ONE.ResourcesManager.cleanFullpath( filename );
 	var index = this.resource_names.indexOf(filename);
 	if(index == -1)
 		this.resource_names.push( filename );
@@ -181,7 +181,7 @@ Prefab.prototype.addResource = function( filename )
 **/
 Prefab.prototype.removeResource = function(filename)
 {
-	filename = LS.ResourcesManager.cleanFullpath( filename );
+	filename = ONE.ResourcesManager.cleanFullpath( filename );
 	var index = this.resource_names.indexOf(filename);
 	if(index != -1)
 		this.resource_names.splice( index, 1 );
@@ -207,8 +207,8 @@ Prefab.createPrefab = function( filename, node_data, resource_names_list )
 	filename = filename.replace(/ /gi,"_");
 	resource_names_list = resource_names_list || [];
 
-	var prefab = new LS.Prefab();
-	var ext = LS.ResourcesManager.getExtension(filename);
+	var prefab = new ONE.Prefab();
+	var ext = ONE.ResourcesManager.getExtension(filename);
 	if( ext != "wbin" )
 		filename += ".wbin";
 
@@ -220,7 +220,7 @@ Prefab.createPrefab = function( filename, node_data, resource_names_list )
 	prefab.setData( node_data );
 
 	//get all the resources and store them in a WBin
-	var bindata = LS.Prefab.packResources( resource_names_list, { "@json": prefab.prefab_json, "@version": Prefab.version }, this );
+	var bindata = ONE.Prefab.packResources( resource_names_list, { "@json": prefab.prefab_json, "@version": Prefab.version }, this );
 	prefab._original_data = bindata;
 
 	return prefab;
@@ -237,7 +237,7 @@ Prefab.packResources = function( resource_names_list, base_data, from_prefab )
 		for(var i = 0; i < resource_names_list.length; ++i)
 		{
 			var res_name = resource_names_list[i];
-			var resource = LS.ResourcesManager.resources[ res_name ];
+			var resource = ONE.ResourcesManager.resources[ res_name ];
 			if(!resource)
 				continue;
 
@@ -246,21 +246,21 @@ Prefab.packResources = function( resource_names_list, base_data, from_prefab )
 				data = resource._original_data;
 			else
 			{
-				var data_info = LS.Resource.getDataToStore( resource );
+				var data_info = ONE.Resource.getDataToStore( resource );
 				if(!data_info)
 				{
 					console.warn("Data to store from resource is null, skipping: ", res_name );
 					continue;
 				}
 				//HACK: resource could be renamed to extract the binary info (this happens in jpg textures that are converted to png) or meshes that add wbin
-				if(data_info.extension && data_info.extension != LS.ResourcesManager.getExtension( res_name ))
+				if(data_info.extension && data_info.extension != ONE.ResourcesManager.getExtension( res_name ))
 				{
 					console.warn("The resource extension has changed while saving, this could lead to problems: ", res_name, data_info.extension );
 					//after this change all the references will be wrong
 					var old_name = res_name;
 					res_name = res_name + "." + data_info.extension;
 					resource_names_list[i] = res_name;
-					LS.GlobalScene.sendResourceRenamedEvent( old_name, res_name, resource ); //force change
+					ONE.GlobalScene.sendResourceRenamedEvent( old_name, res_name, resource ); //force change
 				}
 				data = data_info.data;
 			}
@@ -290,7 +290,7 @@ Prefab.prototype.updateFromNode = function( node, clear_uids )
 {
 	var data = node.serialize(true);
 	if(clear_uids)
-		LS.clearUIds(data); //remove UIDs
+		ONE.clearUIds(data); //remove UIDs
 	this.prefab_data = data;
 	this.prefab_json = JSON.stringify( data );
 }
@@ -303,7 +303,7 @@ Prefab.prototype.flagResources = function()
 	for(var i = 0; i < this.resource_names.length; ++i)
 	{
 		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 
@@ -319,7 +319,7 @@ Prefab.prototype.setResourcesLink = function( value )
 	for(var i = 0; i < this.resource_names.length; ++i)
 	{
 		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 		if(value)
@@ -332,7 +332,7 @@ Prefab.prototype.setResourcesLink = function( value )
 //search for nodes using this prefab and creates the nodes
 Prefab.prototype.applyToNodes = function( scene )
 {
-	scene = scene || LS.GlobalScene;	
+	scene = scene || ONE.GlobalScene;	
 	var name = this.fullpath || this.filename;
 
 	for(var i = 0; i < scene._nodes.length; ++i)
@@ -350,16 +350,16 @@ Prefab.prototype.getDataToStore = function()
 	var filename = this.fullpath || this.filename;
 
 	//prefab in json format
-	if( !(this.resource_names && this.resource_names.length) && filename && LS.RM.getExtension(filename) == "json" )
-		return JSON.stringify( { object_class: LS.getObjectClassName( this ), "@json": this.prefab_json } );
+	if( !(this.resource_names && this.resource_names.length) && filename && ONE.RM.getExtension(filename) == "json" )
+		return JSON.stringify( { object_class: ONE.getObjectClassName( this ), "@json": this.prefab_json } );
 
 	//return the binary data of the wbin
-	return LS.Prefab.packResources( this.resource_names, this.getBaseData(), this );
+	return ONE.Prefab.packResources( this.resource_names, this.getBaseData(), this );
 }
 
 Prefab.prototype.getBaseData = function()
 {
-	return { "@json": this.prefab_json, "@version": LS.Prefab.version };
+	return { "@json": this.prefab_json, "@version": ONE.Prefab.version };
 }
 
 Prefab.prototype.recomputeData = function()
@@ -376,5 +376,5 @@ Prefab.prototype.checkResourceNames = Pack.prototype.checkResourceNames;
 Prefab.prototype.setResources = Pack.prototype.setResources;
 Prefab.prototype.getSizeInBytes = Pack.prototype.getSizeInBytes;
 
-LS.Prefab = Prefab;
-LS.registerResourceClass( Prefab );
+ONE.Prefab = Prefab;
+ONE.registerResourceClass( Prefab );

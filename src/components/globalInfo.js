@@ -39,7 +39,7 @@ Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 		if(typeof(v) != "object")
 			return;
 		if(!this._render_settings)
-			this._render_settings = new LS.RenderSettings();
+			this._render_settings = new ONE.RenderSettings();
 		if(v.constructor === Array && v[3] == "RenderSettings") //encoded object ["@ENC","object",data,"RenderSettings"]
 			this._render_settings.configure( v[2] );
 		else
@@ -54,17 +54,17 @@ Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 //called when updating the coefficients from the editor
 GlobalInfo.prototype.computeIrradiance = function( position, near, far, background_color )
 {
-	if(!LS.Components.IrradianceCache)
-		throw("cannot compute, no LS.Components.IrradianceCache component found");
+	if(!ONE.Components.IrradianceCache)
+		throw("cannot compute, no ONE.Components.IrradianceCache component found");
 
 	position = position || vec3.create();
-	var texture_size = LS.Components.IrradianceCache.capture_cubemap_size; //default is 64
+	var texture_size = ONE.Components.IrradianceCache.capture_cubemap_size; //default is 64
 	var texture_settings = { type: gl.FLOAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
-	var cubemap = new GL.Texture( LS.Components.IrradianceCache.final_cubemap_size, LS.Components.IrradianceCache.final_cubemap_size, texture_settings );
+	var cubemap = new GL.Texture( ONE.Components.IrradianceCache.final_cubemap_size, ONE.Components.IrradianceCache.final_cubemap_size, texture_settings );
 	var temp_cubemap = new GL.Texture( texture_size, texture_size, texture_settings );
 	//renders scene to cubemap
-	LS.Components.IrradianceCache.captureIrradiance( position, cubemap, render_settings, near || 0.1, far || 1000, background_color || [0,0,0,1], true, temp_cubemap );
-	this.irradiance = LS.Components.IrradianceCache.computeSH( cubemap );
+	ONE.Components.IrradianceCache.captureIrradiance( position, cubemap, render_settings, near || 0.1, far || 1000, background_color || [0,0,0,1], true, temp_cubemap );
+	this.irradiance = ONE.Components.IrradianceCache.computeSH( cubemap );
 	console.log( "IR factor", this.irradiance );
 }
 
@@ -98,7 +98,7 @@ GlobalInfo.prototype.fillSceneUniforms = function()
 			this._irradiance_final[i] = this.irradiance[i] * this._irradiance_color[i%3];
 
 		this._uniforms.u_sh_coeffs = this._irradiance_final;
-		LS.Renderer.enableFrameShaderBlock( "applyIrradiance", this._uniforms );
+		ONE.Renderer.enableFrameShaderBlock( "applyIrradiance", this._uniforms );
 	}
 }
 
@@ -178,5 +178,5 @@ GlobalInfo.prototype.onResourceRenamed = function (old_name, new_name, resource)
 	}
 }
 
-LS.registerComponent( GlobalInfo );
-LS.GlobalInfo = GlobalInfo;
+ONE.registerComponent( GlobalInfo );
+ONE.GlobalInfo = GlobalInfo;

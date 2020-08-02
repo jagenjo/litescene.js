@@ -120,5 +120,5 @@ CustomDeformer.prototype.setPropertyValueFromPath = function( path, value )
 	this.morph_targets[num][ varname ] = value;
 }
 
-LS.registerComponent( CustomDeformer );
-LS.CustomDeformer = CustomDeformer;
+ONE.registerComponent( CustomDeformer );
+ONE.CustomDeformer = CustomDeformer;

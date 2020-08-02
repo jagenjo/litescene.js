@@ -56,17 +56,17 @@ ComponentContainer.prototype.configureComponents = function( info )
 		else
 		{
 			//search for the class
-			var classObject = LS.Components[ comp_class ];
+			var classObject = ONE.Components[ comp_class ];
 			if(!classObject){
 				console.error("Unknown component found: " + comp_class);
-				classObject = LS.MissingComponent;
+				classObject = ONE.MissingComponent;
 			}
 			//create component
 			comp = new classObject();
 			//attach to node
 			this.addComponent( comp );
 
-			if( comp.constructor === LS.MissingComponent )
+			if( comp.constructor === ONE.MissingComponent )
 				comp._comp_class = comp_class;
 		}
 
@@ -75,7 +75,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 		to_configure.push( comp, comp_info[1] );
 
 		//HACK very special case: due to requireScript
-		if( comp.constructor === LS.Components.ScriptFromFile )
+		if( comp.constructor === ONE.Components.ScriptFromFile )
 			comp._filename = comp_info[1].filename;
 
 		//editor stuff
@@ -93,7 +93,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 	{
 		var comp = to_configure[i];
 		var data = to_configure[i+1];
-		if(LS.catch_exceptions)
+		if(ONE.catch_exceptions)
 		{
 			try
 			{
@@ -101,7 +101,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 			}
 			catch (err)
 			{
-				console.error("Error found when configuring node of type ", LS.getObjectClassName(comp),", skipping. All data for this component is lost.");
+				console.error("Error found when configuring node of type ", ONE.getObjectClassName(comp),", skipping. All data for this component is lost.");
 				console.error(err);
 			}
 		}
@@ -137,7 +137,7 @@ ComponentContainer.prototype.serializeComponents = function( o, simplified )
 			var v = obj[j];
 			if( !v || v.constructor === Number || v.constructor === String || v.constructor === Boolean || v.constructor === Object || v.constructor === Array ) //regular data
 				continue;
-			obj[j] = LS.encodeObject(v);
+			obj[j] = ONE.encodeObject(v);
 		}
 		*/
 
@@ -149,12 +149,12 @@ ComponentContainer.prototype.serializeComponents = function( o, simplified )
 			obj.uid = comp.uid;
 
 		var object_class = null;
-		if( comp.constructor === LS.MissingComponent )
+		if( comp.constructor === ONE.MissingComponent )
 			object_class = comp._comp_class;
 		else
-			object_class = LS.getObjectClassName( comp );
+			object_class = ONE.getObjectClassName( comp );
 
-		if( LS.debug && object_class != obj.object_class )
+		if( ONE.debug && object_class != obj.object_class )
 			console.warn("Component serialize without object_class: ", object_class );
 		if(!obj.object_class)
 			obj.object_class = object_class; //enforce
@@ -174,7 +174,7 @@ ComponentContainer.prototype.getComponents = function( class_type )
 	{
 		var result = [];
 		if(class_type.constructor === String)
-			class_type = LS.Components[class_type];
+			class_type = ONE.Components[class_type];
 		for(var i = 0, l = this._components.length; i < l; ++i)
 		{
 			var compo = this._components[i];
@@ -201,7 +201,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	//you may pass a component class instead of an instance
 	if(component.constructor === String)
 	{
-		component = LS.Components[ component ];
+		component = ONE.Components[ component ];
 		if(!component)
 			throw("component class not found: " + arguments[0] );
 	}
@@ -213,9 +213,9 @@ ComponentContainer.prototype.addComponent = function( component, index )
 
 	//must have uid
 	if( !component.uid )
-		component.uid = LS.generateUId("COMP-");
+		component.uid = ONE.generateUId("COMP-");
 
-	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
+	//not very clean, ComponetContainer shouldnt know about ONE.SceneNode, but this is more simple
 	if( component.onAddedToNode)
 		component.onAddedToNode(this);
 
@@ -226,7 +226,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 		else
 			console.warn("component without uid?", component);
 		if(	component.onAddedToScene )
-			component.onAddedToScene( this.constructor == LS.Scene ? this : this._in_tree );
+			component.onAddedToScene( this.constructor == ONE.Scene ? this : this._in_tree );
 	}
 
 	//link node with component
@@ -258,7 +258,7 @@ ComponentContainer.prototype.removeComponent = function(component)
 	//unlink component with container
 	component._root = null;
 
-	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
+	//not very clean, ComponetContainer shouldnt know about ONE.SceneNode, but this is more simple
 	if( component.onRemovedFromNode )
 		component.onRemovedFromNode(this);
 
@@ -307,7 +307,7 @@ ComponentContainer.prototype.hasComponent = function( component_class )
 	//string
 	if( component_class.constructor === String )
 	{
-		component_class = LS.Components[ component_class ];
+		component_class = ONE.Components[ component_class ];
 		if(!component_class)
 			return false;
 	}
@@ -355,7 +355,7 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 		}
 
 		//otherwise the string represents the class name
-		component_class = LS.Components[ component_class ];
+		component_class = ONE.Components[ component_class ];
 		if(!component_class)
 			return;
 	}
@@ -428,7 +428,7 @@ ComponentContainer.prototype.findComponents = function( comp_name, out )
 	if(!comp_name)
 		return out;
 	if( comp_name.constructor === String )
-		comp_name = LS.Components[ comp_name ];
+		comp_name = ONE.Components[ comp_name ];
 	if(!comp_name)
 		return out;
 
@@ -489,7 +489,7 @@ ComponentContainer.prototype.requireComponent = function( component_class, data 
 	//convert string to class
 	if( component_class.constructor === String )
 	{
-		component_class = LS.Components[ component_class ];
+		component_class = ONE.Components[ component_class ];
 		if(!component_class)
 		{
 			console.error("component class not found:", arguments[0] );
@@ -523,8 +523,8 @@ ComponentContainer.prototype.requireScript = function( url )
 	if(!url)
 		throw("no url specified");
 
-	var component_class = LS.Components.ScriptFromFile;
-	url = LS.ResourcesManager.cleanFullpath( url ); //remove double slashes or spaces
+	var component_class = ONE.Components.ScriptFromFile;
+	url = ONE.ResourcesManager.cleanFullpath( url ); //remove double slashes or spaces
 
 	//search component
 	var l = this._components.length;

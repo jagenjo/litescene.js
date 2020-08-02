@@ -28,7 +28,7 @@ Pack.EXTENSION = "wbin";
 **/
 Pack.prototype.configure = function( data )
 {
-	this._data = LS.cloneObject( data );
+	this._data = ONE.cloneObject( data );
 
 	//extract resource names
 	this.resource_names = data["@resource_names"];
@@ -43,7 +43,7 @@ Pack.prototype.configure = function( data )
 		}
 	}
 
-	//store resources in LS.ResourcesManager
+	//store resources in ONE.ResourcesManager
 	this.processResources();
 }
 
@@ -54,7 +54,7 @@ Object.defineProperty( Pack.prototype, 'bindata', {
 	},
 	get: function(){
 		if(!this._original_data)
-			this._original_data = LS.Pack.packResources( this.resource_names, this._data );
+			this._original_data = ONE.Pack.packResources( this.resource_names, this._data );
 		return this._original_data;
 	},
 	enumerable: true
@@ -65,7 +65,7 @@ Pack.fromBinary = function(data)
 {
 	if(data.constructor == ArrayBuffer)
 		data = WBin.load(data, true);
-	return new LS.Pack(data);
+	return new ONE.Pack(data);
 }
 
 //given a list of resources that come from the Pack (usually a wbin) it extracts, process and register them 
@@ -81,16 +81,16 @@ Pack.prototype.processResources = function()
 	for(var i = 0; i < this.resource_names.length; ++i)
 	{
 		var resname = this.resource_names[i];
-		if( LS.ResourcesManager.resources[ resname ] )
+		if( ONE.ResourcesManager.resources[ resname ] )
 			continue; //already loaded
-		LS.ResourcesManager.resources_being_processed[ resname ] = true;
+		ONE.ResourcesManager.resources_being_processed[ resname ] = true;
 	}
 
-	//process and store in LS.ResourcesManager
+	//process and store in ONE.ResourcesManager
 	for(var i = 0; i < this.resource_names.length; ++i)
 	{
 		var resname = this.resource_names[i];
-		if( LS.ResourcesManager.resources[resname] )
+		if( ONE.ResourcesManager.resources[resname] )
 			continue; //already loaded
 
 		var resdata = this._resources_data[ resname ];
@@ -99,7 +99,7 @@ Pack.prototype.processResources = function()
 			console.warn("resource data in Pack is undefined, skipping it:" + resname);
 			continue;
 		}
-		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_pack: pack_filename } );
+		var resource = ONE.ResourcesManager.processResource( resname, resdata, { is_local: true, from_pack: pack_filename } );
 	}
 }
 
@@ -116,7 +116,7 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 		var res_name = resource_names[i];
 		if(this.resource_names.indexOf(res_name) != -1)
 			continue;
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 		if(mark_them)
@@ -125,13 +125,13 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 	}
 
 	//repack the pack info
-	this._original_data = LS.Pack.packResources( resource_names, this.getBaseData() );
+	this._original_data = ONE.Pack.packResources( resource_names, this.getBaseData() );
 	this._modified = true;
 }
 
 Pack.prototype.getBaseData = function()
 {
-	return { "@metadata": this.metadata, "@version": LS.Pack.version };
+	return { "@metadata": this.metadata, "@version": ONE.Pack.version };
 }
 
 //adds to every resource in this pack info about where it came from (the pack)
@@ -140,7 +140,7 @@ Pack.prototype.setResourcesLink = function( value )
 	for(var i = 0; i < this.resource_names.length; ++i)
 	{
 		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 		if(value)
@@ -167,7 +167,7 @@ Pack.prototype.addResources = function( resource_names, mark_them )
 **/
 Pack.prototype.addResource = function( filename )
 {
-	filename = LS.ResourcesManager.cleanFullpath( filename );
+	filename = ONE.ResourcesManager.cleanFullpath( filename );
 	var index = this.resource_names.indexOf(filename);
 	if(index == -1)
 		this.resource_names.push( filename );
@@ -180,7 +180,7 @@ Pack.prototype.addResource = function( filename )
 **/
 Pack.prototype.removeResource = function(filename)
 {
-	filename = LS.ResourcesManager.cleanFullpath( filename );
+	filename = ONE.ResourcesManager.cleanFullpath( filename );
 	var index = this.resource_names.indexOf(filename);
 	if(index != -1)
 		this.resource_names.splice( index, 1 );
@@ -207,7 +207,7 @@ Pack.createPack = function( filename, resource_names, extra_data, mark_them )
 
 	filename = filename.replace(/ /gi,"_");
 
-	var pack = new LS.Pack();
+	var pack = new ONE.Pack();
 	filename += ".wbin";
 	pack.filename = filename;
 	if(extra_data)
@@ -217,7 +217,7 @@ Pack.createPack = function( filename, resource_names, extra_data, mark_them )
 	for(var i = 0; i < resource_names.length; ++i)
 	{
 		var res_name = resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 		if(mark_them)
@@ -226,7 +226,7 @@ Pack.createPack = function( filename, resource_names, extra_data, mark_them )
 
 	//create the WBIN in case this pack gets stored
 	this.metadata = extra_data;
-	var bindata = LS.Pack.packResources( resource_names, pack.getBaseData() );
+	var bindata = ONE.Pack.packResources( resource_names, pack.getBaseData() );
 	pack._original_data = bindata;
 
 	return pack;
@@ -241,7 +241,7 @@ Pack.packResources = function( resource_names, base_object )
 	for(var i = 0; i < resource_names.length; ++i)
 	{
 		var res_name = resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 
@@ -250,7 +250,7 @@ Pack.packResources = function( resource_names, base_object )
 			data = resource._original_data;
 		else
 		{
-			var data_info = LS.Resource.getDataToStore( resource );
+			var data_info = ONE.Resource.getDataToStore( resource );
 			data = data_info.data;
 		}
 
@@ -288,7 +288,7 @@ Pack.prototype.flagResources = function()
 	for(var i = 0; i < this.resource_names.length; ++i)
 	{
 		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 
@@ -298,7 +298,7 @@ Pack.prototype.flagResources = function()
 
 Pack.prototype.getDataToStore = function()
 {
-	return LS.Pack.packResources( this.resource_names, this.getBaseData() );
+	return ONE.Pack.packResources( this.resource_names, this.getBaseData() );
 }
 
 Pack.prototype.checkResourceNames = function()
@@ -312,19 +312,19 @@ Pack.prototype.checkResourceNames = function()
 	{
 		var res_name = this.resource_names[i];
 		var old_name = res_name;
-		var resource = LS.ResourcesManager.resources[ res_name ];
+		var resource = ONE.ResourcesManager.resources[ res_name ];
 		if(!resource)
 			continue;
 
 		//avoid problematic symbols
-		if( LS.ResourcesManager.valid_resource_name_reg.test( res_name ) == false )
+		if( ONE.ResourcesManager.valid_resource_name_reg.test( res_name ) == false )
 		{
 			console.warn("Invalid filename in pack/prefab: ", res_name  );
 			res_name = res_name.replace( /[^a-zA-Z0-9-_\.\/]/g, '_' );
 		}
 
 		//ensure extensions
-		var extension = LS.ResourcesManager.getExtension( res_name );
+		var extension = ONE.ResourcesManager.getExtension( res_name );
 		if(!extension)
 		{
 			extension = resource.constructor.EXTENSION;
@@ -338,12 +338,12 @@ Pack.prototype.checkResourceNames = function()
 			continue;
 
 		this.resource_names[i] = res_name;
-		LS.ResourcesManager.renameResource( old_name, res_name ); //force change
+		ONE.ResourcesManager.renameResource( old_name, res_name ); //force change
 		changed++;
 	}
 
 	if(changed)
-		LS.ResourcesManager.resourceModified( this );
+		ONE.ResourcesManager.resourceModified( this );
 
 	return changed;
 }
@@ -356,7 +356,7 @@ Pack.prototype.onResourceRenamed = function( old_name, new_name, resource )
 	if( index == -1 )
 		return;
 	this.resource_names[ index ] = new_name;
-	LS.ResourcesManager.resourceModified( this );
+	ONE.ResourcesManager.resourceModified( this );
 }
 
 Pack.prototype.containsResources = function()
@@ -371,6 +371,6 @@ Pack.prototype.getSizeInBytes = function()
 	return 0;
 }
 
-LS.Pack = Pack;
-LS.registerResourceClass( Pack );
+ONE.Pack = Pack;
+ONE.registerResourceClass( Pack );
 

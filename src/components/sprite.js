@@ -5,7 +5,7 @@ function Sprite(o)
 {
 	this.enabled = true;
 	this.texture = null;
-	this.blend_mode = LS.Blend.ALPHA;
+	this.blend_mode = ONE.Blend.ALPHA;
 
 	this._size = vec2.fromValues(100,100);
 	this.frame = null; //string
@@ -24,7 +24,7 @@ function Sprite(o)
 Sprite.icon = "mini-icon-teapot.png";
 
 Sprite["@texture"] = { type:"texture" };
-Sprite["@blend_mode"] = { type: "enum", values: LS.Blend };
+Sprite["@blend_mode"] = { type: "enum", values: ONE.Blend };
 Sprite["@atlas"] = { type: "component", filter: "SpriteAtlas" };
 Sprite["@area"] = { type: "vec4", step: 0.001 };
 
@@ -46,9 +46,9 @@ Object.defineProperty( Sprite.prototype, "atlas", {
 		if(v && v.constructor === String) //find it by uid
 		{
 			this._atlas = v;
-			var scene = this._root.scene || LS.GlobalScene;
+			var scene = this._root.scene || ONE.GlobalScene;
 			compo = scene.findComponentByUId( v );
-			if(compo && compo.constructor != LS.Components.SpriteAtlas)
+			if(compo && compo.constructor != ONE.Components.SpriteAtlas)
 			{
 				console.warn("Atlas must be of type SpriteAtlas");
 				compo = null;
@@ -113,22 +113,22 @@ Sprite.prototype.onCollectInstances = function(e, instances)
 		return;
 
 	//Mesh
-	var mesh = LS.Components.Sprite._mesh;
+	var mesh = ONE.Components.Sprite._mesh;
 	if(!mesh)
-		mesh = LS.Components.Sprite._mesh = GL.Mesh.plane();
+		mesh = ONE.Components.Sprite._mesh = GL.Mesh.plane();
 
 	//RI
 	var RI = this._render_instance;
 	if(!RI)
 	{
-		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+		this._render_instance = RI = new ONE.RenderInstance(this._root, this);
 		RI.setMesh( mesh, gl.TRIANGLES );
 	}
 
 	//material
 	if(!this._material)
-		this._material = new LS.StandardMaterial({ shader_name: "lowglobal", flags: { two_sided: true } });
-	this._material.setTexture( "color", this.texture, { uvs: LS.Material.COORDS_UV_TRANSFORMED, magFilter: this.filtering ? gl.LINEAR : gl.NEAREST } );
+		this._material = new ONE.StandardMaterial({ shader_name: "lowglobal", flags: { two_sided: true } });
+	this._material.setTexture( "color", this.texture, { uvs: ONE.Material.COORDS_UV_TRANSFORMED, magFilter: this.filtering ? gl.LINEAR : gl.NEAREST } );
 	this._material.blend_mode = this.blend_mode;
 	RI.setMaterial( this._material ); //sets material and blend modes in render instance
 
@@ -164,4 +164,4 @@ Sprite.prototype.onResourceRenamed = function( old_name, new_name, resource )
 		this.texture = new_name;
 }
 
-LS.registerComponent( Sprite );
+ONE.registerComponent( Sprite );

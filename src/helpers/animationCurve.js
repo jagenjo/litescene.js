@@ -77,6 +77,6 @@ AnimationCurve.prototype.resampleCurve = function(minx,maxx,defaulty, samples)
 	result.length = samples;
 	var delta = (maxx - minx) / samples;
 	for(var i = 0; i < samples; i++)
-		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
+		result[i] = ONE.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
 	return result;
 }

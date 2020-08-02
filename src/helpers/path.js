@@ -8,7 +8,7 @@ function Path()
 {
 	this.points = [];
 	this.closed = false;
-	this.type = LS.LINEAR;
+	this.type = ONE.LINEAR;
 }
 
 Path.prototype.clear = function()
@@ -33,16 +33,16 @@ Path.prototype.getSegments = function()
 
 	switch(this.type)
 	{
-		case LS.LINEAR: 
+		case ONE.LINEAR: 
 			if(l < 2) 
 				return 0;
 			return l - 1 + (this.closed ? 1 : 0); 
 			break;
-		case LS.HERMITE:
+		case ONE.HERMITE:
 			if(l < 2) 
 				return 0;
 			return l - 1 + (this.closed ? 1 : 0); 
-		case LS.BEZIER:
+		case ONE.BEZIER:
 			if(l < 3) 
 				return 0;
 			return (((l-1)/3)|0) + (this.closed ? 1 : 0);
@@ -60,7 +60,7 @@ Path.prototype.movePoint = function( index, pos, preserve_tangents )
 	var total_diff = vec3.sub( vec3.create(), pos, p );
 	vec3.copy(p, pos);
 
-	if( !preserve_tangents || this.type != LS.BEZIER )
+	if( !preserve_tangents || this.type != ONE.BEZIER )
 		return;
 
 	if(index % 3 == 2 && this.points.length > index + 2 )
@@ -96,9 +96,9 @@ Path.prototype.computePoint = function(f, out)
 {
 	switch(this.type)
 	{
-		case LS.HERMITE: return this.getHermitePoint(f,out); break;
-		case LS.BEZIER: return this.getBezierPoint(f,out); break;
-		case LS.LINEAR: 
+		case ONE.HERMITE: return this.getHermitePoint(f,out); break;
+		case ONE.BEZIER: return this.getBezierPoint(f,out); break;
+		case ONE.LINEAR: 
 		default:
 			return this.getLinearPoint(f,out);
 			break;
@@ -267,7 +267,7 @@ Path.prototype.samplePoints = function( n, out )
 	if(n <= 0)
 	{
 		var segments = this.getSegments();
-		if(this.type == LS.LINEAR)
+		if(this.type == ONE.LINEAR)
 			n = segments + 1;
 		else
 			n = segments * 20;
@@ -289,7 +289,7 @@ Path.prototype.samplePointsTyped = function( n, out )
 	if(n <= 0)
 	{
 		var segments = this.getSegments();
-		if(this.type == LS.LINEAR)
+		if(this.type == ONE.LINEAR)
 			n = segments + 1;
 		else
 			n = segments * 20;
@@ -335,4 +335,4 @@ Path.prototype.configure = function(o)
 }
 
 
-LS.Path = Path;
+ONE.Path = Path;

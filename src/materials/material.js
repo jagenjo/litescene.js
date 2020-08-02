@@ -13,7 +13,7 @@
 
 function Material( o )
 {
-	this.uid = LS.generateUId("MAT-");
+	this.uid = ONE.generateUId("MAT-");
 	this._must_update = true;
 
 	//used locally during rendering
@@ -33,20 +33,24 @@ function Material( o )
 	* render queue: which order should this be rendered
 	* @property queue
 	* @type {Number}
-	* @default LS.RenderQueue.AUTO
+	* @default ONE.RenderQueue.AUTO
 	*/
-	this._queue = LS.RenderQueue.AUTO;
+	this._queue = ONE.RenderQueue.AUTO;
 
 	/**
 	* render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
 	* TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like cellshading outline render
 	* @property render_state
-	* @type {LS.RenderState}
+	* @type {ONE.RenderState}
 	*/
-	this._render_state = new LS.RenderState();
+	this._render_state = new ONE.RenderState();
 
-
-	this._light_mode = LS.Material.NO_LIGHTS;
+	/**
+	* Tells if this material allows multipass forward rendering
+	* @property light_mode
+	* @type {number}
+	*/
+	this._light_mode = ONE.Material.NO_LIGHTS;
 
 	/**
 	* matrix used to define texture tiling in the shader (passed as u_texture_matrix)
@@ -65,12 +69,12 @@ function Material( o )
 	this.textures = {};
 
 	/**
-	* used internally by LS.StandardMaterial
+	* used internally by ONE.StandardMaterial
 	* This will be gone in the future in order to use the new ShaderMaterial rendering system
 	* @property query
-	* @type {LS.ShaderQuery}
+	* @type {ONE.ShaderQuery}
 	*/
-	//this._query = new LS.ShaderQuery();
+	//this._query = new ONE.ShaderQuery();
 
 	/**
 	* flags to control cast_shadows, receive_shadows or ignore_frustum
@@ -106,7 +110,7 @@ function Material( o )
 	/**
 	* the render queue id where this instance belongs
 	* @property queue
-	* @default LS.RenderQueue.DEFAULT;
+	* @default ONE.RenderQueue.DEFAULT;
 	**/
 	Object.defineProperty( this, 'queue', {
 		get: function() { return this._queue; },
@@ -129,6 +133,18 @@ function Material( o )
 				return;
 			for(var i in v) //copy from JSON object
 				this._render_state[i] = v[i];
+		},
+		enumerable: true
+	});
+
+	/**
+	* the render state flags to control how the GPU behaves
+	* @property render_state
+	**/
+	Object.defineProperty( this, 'light_mode', {
+		get: function() { return this._light_mode; },
+		set: function(v) { 
+			this._light_mode = v;
 		},
 		enumerable: true
 	});
@@ -199,7 +215,7 @@ Material.prototype.fillUniforms = function( scene, options )
 	var samplers = [];
 
 	uniforms.u_material_color = this._color;
-	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : LS.ONES;
+	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : ONE.ONES;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	uniforms.u_specular = vec2.create([1,50]);
@@ -242,7 +258,7 @@ Material.prototype.configure = function(o)
 	{
 		if(typeof (o[i]) === "function")
 			continue;
-		if(!this.setProperty( i, o[i] ) && LS.debug)
+		if(!this.setProperty( i, o[i] ) && ONE.debug)
 			console.warn("Material property not assigned: " + i );
 	}
 }
@@ -259,11 +275,11 @@ Material.prototype.serialize = function( simplified )
 		if (this.textures[i] && this.textures[i].constructor === GL.Texture)
 			this.textures[i] = null;
 
-	var o = LS.cloneObject(this);
+	var o = ONE.cloneObject(this);
 	delete o.filename;
 	delete o.fullpath;
 	delete o.remotepath;
-	o.material_class = LS.getObjectClassName(this);
+	o.material_class = ONE.getObjectClassName(this);
 
 	if( simplified )
 	{
@@ -304,7 +320,7 @@ Material.prototype.loadAndSetTexture = function( channel, texture_or_filename, o
 	if( texture_or_filename && texture_or_filename.constructor === String ) //it could be the url or the internal texture name 
 	{
 		if(texture_or_filename[0] != ":")//load if it is not an internal texture
-			LS.ResourcesManager.load(texture_or_filename,options, function(texture) {
+			ONE.ResourcesManager.load(texture_or_filename,options, function(texture) {
 				that.setTexture(channel, texture);
 				if(options.on_complete)
 					options.on_complete();
@@ -402,13 +418,18 @@ Material.prototype.setProperty = function( name, value )
 				}
 				if( tex.constructor === String )
 					tex = { texture: tex, uvs: 0, wrap: 0, minFilter: 0, magFilter: 0 };
+				if( tex.constructor !== GL.Texture && tex.constructor != Object )
+				{
+					console.warn("invalid value for texture:",tex);
+					break;
+				}
 				tex._must_update = true;
 				this.textures[i] = tex;
 				if( tex.uvs != null && tex.uvs.constructor === String )
 					tex.uvs = 0;
 				//this is to ensure there are no wrong characters in the texture name
 				if( this.textures[i] && this.textures[i].texture )
-					this.textures[i].texture = LS.ResourcesManager.cleanFullpath( this.textures[i].texture );
+					this.textures[i].texture = ONE.ResourcesManager.cleanFullpath( this.textures[i].texture );
 			}
 			//this.textures = cloneObject(value);
 			break;
@@ -522,7 +543,7 @@ Material.prototype.setTexture = function( channel, texture, sampler_options ) {
 
 	//clean to avoid names with double slashes
 	if( texture.constructor === String )
-		texture = LS.ResourcesManager.cleanFullpath( texture );
+		texture = ONE.ResourcesManager.cleanFullpath( texture );
 
 	//get current info
 	var sampler = this.textures[ channel ];
@@ -546,7 +567,7 @@ Material.prototype.setTexture = function( channel, texture, sampler_options ) {
 	sampler._must_update = true;
 
 	if(texture.constructor === String && texture[0] != ":")
-		LS.ResourcesManager.load( texture );
+		ONE.ResourcesManager.load( texture );
 
 	return sampler;
 }
@@ -586,13 +607,13 @@ Material.prototype.getTexture = function( channel ) {
 		return null;
 
 	if(v.constructor === String)
-		return LS.ResourcesManager.textures[v];
+		return ONE.ResourcesManager.textures[v];
 
 	var tex = v.texture;
 	if(!tex)
 		return null;
 	if(tex.constructor === String)
-		return LS.ResourcesManager.textures[tex];
+		return ONE.ResourcesManager.textures[tex];
 	else if(tex.constructor == Texture)
 		return tex;
 	return null;
@@ -616,7 +637,7 @@ Material.getTextureFromSampler = function(sampler)
 
 	//fetch
 	if(texture.constructor === String)
-		texture = LS.ResourcesManager.textures[ texture ];
+		texture = ONE.ResourcesManager.textures[ texture ];
 	
 	if (!texture || texture.constructor != GL.Texture)
 		return null;
@@ -690,7 +711,7 @@ Material.prototype.loadTextures = function ()
 {
 	var res = this.getResources({});
 	for(var i in res)
-		LS.ResourcesManager.load( i );
+		ONE.ResourcesManager.load( i );
 }
 
 /**
@@ -701,7 +722,7 @@ Material.prototype.loadTextures = function ()
 Material.prototype.registerMaterial = function(name)
 {
 	this.name = name;
-	LS.ResourcesManager.registerResource(name, this);
+	ONE.ResourcesManager.registerResource(name, this);
 	this.material = name;
 }
 
@@ -712,6 +733,9 @@ Material.prototype.getCategory = function()
 
 Material.prototype.getLocator = function()
 {
+	if(this.filename)
+		return ONE.ResourcesManager.convertFilenameToLocator(this.fullpath || this.filename);
+
 	if(this._root)
 		return this._root.uid + "/material";
 	return this.uid;
@@ -738,7 +762,7 @@ Material.prototype.createProperty = function( name, value, type, options )
 {
 	if(type)
 	{
-		LS.validatePropertyType(type);
+		ONE.validatePropertyType(type);
 		this.constructor[ "@" + name ] = { type: type };
 	}
 
@@ -746,7 +770,7 @@ Material.prototype.createProperty = function( name, value, type, options )
 	{
 		if(!this.constructor[ "@" + name ])
 			this.constructor[ "@" + name ] = {};
-		LS.cloneObject( options, this.constructor[ "@" + name ] );
+		ONE.cloneObject( options, this.constructor[ "@" + name ] );
 	}
 
 	if(value == null)
@@ -794,7 +818,7 @@ Material.prototype.getShader = function( pass_name )
 {
 	var shader = Material._shader_color;
 	if(!shader)
-		shader = Material._shader_color = new GL.Shader( LS.Shaders.common_vscode + "void main(){ vec4 vertex = u_model * a_vertex;\ngl_Position = u_viewprojection * vertex;\n }", LS.Shaders.common_vscode + "uniform vec4 u_color;\n\void main(){ gl_FragColor = u_color;\n }");
+		shader = Material._shader_color = new GL.Shader( ONE.Shaders.common_vscode + "void main(){ vec4 vertex = u_model * a_vertex;\ngl_Position = u_viewprojection * vertex;\n }", ONE.Shaders.common_vscode + "uniform vec4 u_color;\n\void main(){ gl_FragColor = u_color;\n }");
 	return shader;
 }
 
@@ -802,15 +826,15 @@ Material.prototype.getShader = function( pass_name )
 Material.prototype.renderInstance = function( instance, render_settings, pass )
 {
 	//some globals
-	var renderer = LS.Renderer;
-	var camera = LS.Renderer._current_camera;
-	var scene = LS.Renderer._current_scene;
+	var renderer = ONE.Renderer;
+	var camera = ONE.Renderer._current_camera;
+	var scene = ONE.Renderer._current_scene;
 	var model = instance.matrix;
 
 	//node matrix info
 	var instance_final_query = instance._final_query;
 	var instance_final_samplers = instance._final_samplers;
-	var render_uniforms = LS.Renderer._render_uniforms;
+	var render_uniforms = ONE.Renderer._render_uniforms;
 
 	//maybe this two should be somewhere else
 	render_uniforms.u_model = model; 
@@ -818,7 +842,7 @@ Material.prototype.renderInstance = function( instance, render_settings, pass )
 
 	//global stuff
 	this._render_state.enable();
-	LS.Renderer.bindSamplers( this._samplers );
+	ONE.Renderer.bindSamplers( this._samplers );
 	var global_flags = 0;
 
 	if(this.onRenderInstance)
@@ -840,6 +864,6 @@ Material.prototype.renderInstance = function( instance, render_settings, pass )
 }
 
 
-//LS.registerMaterialClass( Material );
-LS.registerResourceClass( Material );
-LS.Material = Material;
+//ONE.registerMaterialClass( Material );
+ONE.registerResourceClass( Material );
+ONE.Material = Material;

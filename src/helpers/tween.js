@@ -7,7 +7,7 @@
 * @constructor
 */
 
-LS.Tween = {
+ONE.Tween = {
 	MAX_EASINGS: 256, //to avoid problems
 
 	EASE_IN_QUAD: 1,
@@ -50,13 +50,6 @@ LS.Tween = {
 		this._alife = [];
 	},
 
-	/*
-	ease: function()
-	{
-		this.easeProperty(
-	},
-	*/
-
 	easeProperty: function( object, property, target, time, easing_function, on_complete, on_progress )
 	{
 		if( !object )
@@ -85,10 +78,10 @@ LS.Tween = {
 		var origin = null;
 		
 		if(property)
-			origin = LS.cloneObject( object[ property ] );
+			origin = ONE.cloneObject( object[ property ] );
 		else
-			origin = LS.cloneObject( object );
-		target = LS.cloneObject( target );
+			origin = ONE.cloneObject( object );
+		target = ONE.cloneObject( target );
 
 		//precompute target value size
 		var size = 0;
@@ -144,8 +137,8 @@ LS.Tween = {
 		easing_function = easing_function || this.EASE_IN_OUT_QUAD;
 
 		//clone to avoid problems
-		var origin = LS.cloneObject( object );
-		target = LS.cloneObject( target );
+		var origin = ONE.cloneObject( object );
+		target = ONE.cloneObject( target );
 
 		//precompute size
 		var size = 0;
@@ -172,6 +165,23 @@ LS.Tween = {
 		return data;
 	},
 
+	cancelEaseObject: function( object, property )
+	{
+		if( !this.current_easings.length )
+			return;
+		
+		var easings = this.current_easings;
+		for(var i = 0, l = easings.length; i < l; ++i)
+		{
+			var item = easings[i];
+			if( item.object != object)
+				continue;
+			if( property && item.property != property)
+				continue;
+			item.cancel = true;
+		}
+	},
+
 	//updates all the active tweens
 	update: function( dt )
 	{
@@ -191,6 +201,10 @@ LS.Tween = {
 			var item = easings[i];
 			item.current += dt;
 			var t = 1;
+
+			if(item.cancel) //wont be added to the alive list
+				continue;
+
 			if(item.current < item.time)
 			{
 				t = item.current / item.time;

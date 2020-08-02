@@ -80,9 +80,9 @@ var parserSTL = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//extra info
-		mesh.bounding = LS.Formats.computeMeshBounding( mesh.vertices );
+		mesh.bounding = ONE.Formats.computeMeshBounding( mesh.vertices );
 		return mesh;
 	}
 };
 
-LS.Formats.addSupportedFormat( "stl", parserSTL );
+ONE.Formats.addSupportedFormat( "stl", parserSTL );

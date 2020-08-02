@@ -26,7 +26,7 @@ function PointCloud(o)
 	if(o)
 		this.configure(o);
 
-	this._render_instance = new LS.RenderInstance(null, this);
+	this._render_instance = new ONE.RenderInstance(null, this);
 	this._min = vec3.create();
 	this._max = vec3.create();
 
@@ -269,20 +269,20 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	if(this._points.length == 0 || !this.enabled)
 		return;
 
-	var camera = LS.Renderer._current_camera;
+	var camera = ONE.Renderer._current_camera;
 
 	if(this._must_update)
 		this.updateMesh( camera );
 
 	if(!this._material)
-		this._material = new LS.StandardMaterial();
+		this._material = new ONE.StandardMaterial();
 
 	var material = this._material;
 
 	material.color.set(this.color);
 	material.opacity = this.global_opacity;
-	material.setTexture( LS.Material.COLOR, this.texture, { uvs: Material.COORDS_UV_POINTCOORD } );
-	material.blend_mode = this.additive_blending ? LS.Blend.ADD : LS.Blend.ALPHA;
+	material.setTexture( ONE.Material.COLOR, this.texture, { uvs: Material.COORDS_UV_POINTCOORD } );
+	material.blend_mode = this.additive_blending ? ONE.Blend.ADD : ONE.Blend.ALPHA;
 	material.flags.depth_write = !this.additive_blending;
 	material.translucency = 1;
 	material.flags.ignore_lights = false;
@@ -306,13 +306,13 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	if( this.use_perspective )
 	{
 		//enable extra2
-		RI.addShaderBlock( LS.Shaders.extra2_block );
+		RI.addShaderBlock( ONE.Shaders.extra2_block );
 		//enable point particles 
 		RI.addShaderBlock( pointparticles_block );
 	}
 	else
 	{
-		RI.removeShaderBlock( LS.Shaders.extra2_block );
+		RI.removeShaderBlock( ONE.Shaders.extra2_block );
 		RI.removeShaderBlock( pointparticles_block );
 	}
 
@@ -330,7 +330,7 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 
 PointCloud.prototype.serialize = function()
 {
-	var o = LS.cloneObject(this);
+	var o = ONE.cloneObject(this);
 	o.object_class = "PointCloud";
 
 	if(this.uid) //special case, not enumerable
@@ -361,8 +361,8 @@ PointCloud.prototype.configure = function(o)
 			this._points[i] = new Float32Array( o.points[i] );
 		o.points = null;
 	}
-	LS.cloneObject( o, this );
+	ONE.cloneObject( o, this );
 }
 
 
-LS.registerComponent( PointCloud );
+ONE.registerComponent( PointCloud );

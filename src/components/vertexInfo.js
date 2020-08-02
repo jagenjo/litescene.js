@@ -106,4 +106,4 @@ VertexInfo.prototype.serialize = function(o)
 }
 
 
-LS.registerComponent( VertexInfo );
+ONE.registerComponent( VertexInfo );

@@ -71,7 +71,7 @@ function Shadowmap( light )
 	this._shadow_extra_params = vec4.create(); //custom params in case the user wants to tweak the shadowmap with a cusstom shader
 }
 
-LS.Shadowmap = Shadowmap;
+ONE.Shadowmap = Shadowmap;
 
 Shadowmap.use_shadowmap_depth_texture = true;
 
@@ -120,7 +120,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	//shadowmap size
 	var shadowmap_width = shadowmap_resolution;
 	var shadowmap_height = shadowmap_resolution;
-	if( light.type == LS.Light.OMNI)
+	if( light.type == ONE.Light.OMNI)
 		shadowmap_height *= 6; //for every face
 	var magFilter = this.linear_filter ? gl.LINEAR : gl.NEAREST;
 
@@ -146,7 +146,7 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 
 		//index, for debug
 		this._texture.filename = ":shadowmap_" + light.uid;
-		LS.ResourcesManager.textures[ this._texture.filename ] = this._texture; 
+		ONE.ResourcesManager.textures[ this._texture.filename ] = this._texture; 
 
 		if( this._texture.texture_type == gl.TEXTURE_2D )
 		{
@@ -157,10 +157,10 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 		}
 	}
 
-	var prev_pass = LS.Renderer._current_pass;
+	var prev_pass = ONE.Renderer._current_pass;
 
-	LS.Renderer.setRenderPass( SHADOW_PASS );
-	LS.Renderer._current_light = light;
+	ONE.Renderer.setRenderPass( SHADOW_PASS );
+	ONE.Renderer._current_light = light;
 	var tmp_layer = render_settings.layers;
 	render_settings.layers = this.layers;
 
@@ -168,13 +168,13 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 	// Render the object viewed from the light using a shader that returns the fragment depth.
 	this._texture.unbind(); 
 
-	LS.Renderer._current_target = this._texture;
+	ONE.Renderer._current_target = this._texture;
 	this._fbo.bind();
 
 	var sides = 1;
 	var viewport_width = this._texture.width;
 	var viewport_height = this._texture.height;
-	if( light.type == LS.Light.OMNI )
+	if( light.type == ONE.Light.OMNI )
 	{
 		sides = 6;
 		viewport_height /= 6;
@@ -192,29 +192,29 @@ Shadowmap.prototype.generate = function( instances, render_settings, precompute_
 			this._texture.near_far_planes = vec2.create();
 		this._shadow_params[2] = this._texture.near_far_planes[0] = shadow_camera.near;
 		this._shadow_params[3] = this._texture.near_far_planes[1] = shadow_camera.far;
-		LS.Renderer.enableCamera( shadow_camera, render_settings, true );
+		ONE.Renderer.enableCamera( shadow_camera, render_settings, true );
 
 		var viewport_y = 0;
-		if( light.type == LS.Light.OMNI )
+		if( light.type == ONE.Light.OMNI )
 			viewport_y = i * viewport_height;
 		gl.viewport(0,viewport_y,viewport_width,viewport_height);
 
 		if(this.reverse_faces) //used to avoid leaking in some situations
-			LS.Renderer._reverse_faces = true;
+			ONE.Renderer._reverse_faces = true;
 
 		//RENDER INSTANCES in the shadowmap
-		LS.Renderer.renderInstances( render_settings, instances );
+		ONE.Renderer.renderInstances( render_settings, instances );
 
-		LS.Renderer._reverse_faces = false;
+		ONE.Renderer._reverse_faces = false;
 	}
 
 	this._fbo.unbind();
-	LS.Renderer._current_target = null;
+	ONE.Renderer._current_target = null;
 	gl.colorMask(true,true,true,true);
 
 	render_settings.layers = tmp_layer;
-	LS.Renderer.setRenderPass( prev_pass );
-	LS.Renderer._current_light = null;
+	ONE.Renderer.setRenderPass( prev_pass );
+	ONE.Renderer._current_light = null;
 	
 	if(this.onPostProcessShadowMap)
 		this.onPostProcessShadowMap( this._texture );
@@ -237,9 +237,9 @@ Shadowmap.prototype.prepare = function( uniforms, samplers )
 	uniforms.u_shadow_extra = this._shadow_extra_params;
 	//2 and 3 are set when rendering the shadowmap
 
-	uniforms.shadowmap = LS.Renderer.SHADOWMAP_TEXTURE_SLOT;
+	uniforms.shadowmap = ONE.Renderer.SHADOWMAP_TEXTURE_SLOT;
 
-	samplers[ LS.Renderer.SHADOWMAP_TEXTURE_SLOT ] = this._texture;
+	samplers[ ONE.Renderer.SHADOWMAP_TEXTURE_SLOT ] = this._texture;
 }
 
 //called when we no longer need this shadowmap
@@ -370,11 +370,11 @@ Shadowmap._enabled_fragment_code = "\n\
 
 Shadowmap._disabled_fragment_code = "\nfloat testShadow( Light LIGHT ) { return 1.0; }\n";
 
-var shadowmapping_depth_in_color_block = new LS.ShaderBlock("depth_in_color");
+var shadowmapping_depth_in_color_block = new ONE.ShaderBlock("depth_in_color");
 shadowmapping_depth_in_color_block.register();
 Shadowmap.depth_in_color_block = shadowmapping_depth_in_color_block;
 
-var shadowmapping_block = new LS.ShaderBlock("testShadow");
+var shadowmapping_block = new ONE.ShaderBlock("testShadow");
 shadowmapping_block.addCode( GL.VERTEX_SHADER, Shadowmap._enabled_vertex_code, Shadowmap._disabled_vertex_code);
 shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Shadowmap._enabled_fragment_code, Shadowmap._disabled_fragment_code );
 //shadowmapping_block.defineContextMacros({"SHADOWBLOCK":"testShadow"});

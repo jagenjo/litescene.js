@@ -9,7 +9,7 @@
 
 function Project(o)
 {
-	this.uid = LS.generateUId("PROJ-");
+	this.uid = ONE.generateUId("PROJ-");
 	
 	this.includes = []; //files to include before launching this project
 	this.settings = {};
@@ -42,4 +42,4 @@ Project.prototype.load = function(url, on_complete)
 		// on_complete
 }
 
-LS.extendClass( Project, ComponentContainer ); //container methods
+ONE.extendClass( Project, ComponentContainer ); //container methods

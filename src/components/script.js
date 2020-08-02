@@ -4,7 +4,7 @@
 * Scripts are executed inside their own context, the context is local to the script so any variable defined in the context that is not attached to the context wont be accessible from other parts of the engine.
 * To interact with the engine Scripts must bind callback to events so the callbacks will be called when those events are triggered, however, there are some generic methods that will be called
 * @class Script
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -27,12 +27,12 @@ function Script(o)
 			return this._root.getComponent(type,index)
 			}).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
-		createProperty: LS.BaseComponent.prototype.createProperty,
-		createAction: LS.BaseComponent.prototype.createAction,
-		bind: LS.BaseComponent.prototype.bind,
-		unbind: LS.BaseComponent.prototype.unbind,
+		createProperty: ONE.BaseComponent.prototype.createProperty,
+		createAction: ONE.BaseComponent.prototype.createAction,
+		bind: ONE.BaseComponent.prototype.bind,
+		unbind: ONE.BaseComponent.prototype.unbind,
 		trigger: (function(event,param) { return LEvent.trigger( this, event, param); }).bind(this),
-		unbindAll: LS.BaseComponent.prototype.unbindAll
+		unbindAll: ONE.BaseComponent.prototype.unbindAll
 	};
 
 	this._script.onerror = this.onError.bind(this);
@@ -76,25 +76,25 @@ Script.defineAPIFunction = function( func_name, target, event, info ) {
 }
 
 //init
-Script.defineAPIFunction( "onStart", Script.BIND_TO_SCENE, LS.EVENT.START );
-Script.defineAPIFunction( "onAwake", Script.BIND_TO_SCENE, LS.EVENT.AWAKE );
-Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, LS.EVENT.FINISH );
+Script.defineAPIFunction( "onStart", Script.BIND_TO_SCENE, ONE.EVENT.START );
+Script.defineAPIFunction( "onAwake", Script.BIND_TO_SCENE, ONE.EVENT.AWAKE );
+Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, ONE.EVENT.FINISH );
 Script.defineAPIFunction( "onPrefabReady", Script.BIND_TO_NODE, "prefabReady" );
 //behaviour
-Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, LS.EVENT.UPDATE );
-Script.defineAPIFunction( "onFixedUpdate", Script.BIND_TO_SCENE, LS.EVENT.FIXED_UPDATE );
+Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, ONE.EVENT.UPDATE );
+Script.defineAPIFunction( "onFixedUpdate", Script.BIND_TO_SCENE, ONE.EVENT.FIXED_UPDATE );
 Script.defineAPIFunction( "onNodeClicked", Script.BIND_TO_NODE, "node_clicked" );
 Script.defineAPIFunction( "onClicked", Script.BIND_TO_NODE, "clicked" );
 //rendering
-Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, LS.EVENT.BEFORE_RENDER );
-Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, LS.EVENT.COLLECT_RENDER_INSTANCES ); //TODO: move to SCENE
-Script.defineAPIFunction( "onRender", Script.BIND_TO_SCENE, LS.EVENT.BEFORE_RENDER_INSTANCES );
-Script.defineAPIFunction( "onAfterRender", Script.BIND_TO_SCENE, LS.EVENT.AFTER_RENDER_INSTANCES );
-Script.defineAPIFunction( "onAfterSceneRender", Script.BIND_TO_SCENE, LS.EVENT.AFTER_RENDER );
-Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, LS.EVENT.RENDER_HELPERS );
-Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, LS.EVENT.RENDER_GUI );
-Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, LS.EVENT.ENABLE_FRAME_CONTEXT );
-Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, LS.EVENT.SHOW_FRAME_CONTEXT );
+Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, ONE.EVENT.BEFORE_RENDER );
+Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, ONE.EVENT.COLLECT_RENDER_INSTANCES ); //TODO: move to SCENE
+Script.defineAPIFunction( "onRender", Script.BIND_TO_SCENE, ONE.EVENT.BEFORE_RENDER_INSTANCES );
+Script.defineAPIFunction( "onAfterRender", Script.BIND_TO_SCENE, ONE.EVENT.AFTER_RENDER_INSTANCES );
+Script.defineAPIFunction( "onAfterSceneRender", Script.BIND_TO_SCENE, ONE.EVENT.AFTER_RENDER );
+Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, ONE.EVENT.RENDER_HELPERS );
+Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, ONE.EVENT.RENDER_GUI );
+Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, ONE.EVENT.ENABLE_FRAME_CONTEXT );
+Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, ONE.EVENT.SHOW_FRAME_CONTEXT );
 //input
 Script.defineAPIFunction( "onMouseDown", Script.BIND_TO_SCENE, "mousedown" );
 Script.defineAPIFunction( "onMouseMove", Script.BIND_TO_SCENE, "mousemove" );
@@ -165,7 +165,7 @@ Script.prototype.serialize = function()
 		uid: this.uid,
 		enabled: this.enabled,
 		code: this.code,
-		properties: LS.cloneObject( this.getContextProperties() )
+		properties: ONE.cloneObject( this.getContextProperties() )
 	};
 }
 
@@ -259,7 +259,7 @@ Script.prototype.processCode = function( skip_events, reset_state )
 		}
 	}
 
-	if( !this._root || LS.Script.block_execution || !LS.allow_scripts )
+	if( !this._root || ONE.Script.block_execution || !ONE.allow_scripts )
 		return true;
 
 	//unbind old stuff
@@ -270,7 +270,7 @@ Script.prototype.processCode = function( skip_events, reset_state )
 	var old = this._stored_properties || this.getContextProperties();
 
 	//compiles and executes the context
-	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: ONE.Globals });
 	if(!skip_events)
 		this.hookEvents();
 
@@ -293,7 +293,7 @@ Script.prototype.processCode = function( skip_events, reset_state )
 			if( this._script._context.onBind )
 				this._script._context.onBind( this._root.scene );
 
-			if( this._root.scene._state === LS.PLAYING && this._script._context.start )
+			if( this._root.scene._state === ONE.PLAYING && this._script._context.start )
 				this._script._context.start();
 		}
 
@@ -301,7 +301,7 @@ Script.prototype.processCode = function( skip_events, reset_state )
 	}
 
 	if( this._name && this._root && this._root.scene )
-		LS.Script.active_scripts[ this._name ] = this;
+		ONE.Script.active_scripts[ this._name ] = this;
 
 	console.log(" + Script: " + this._name + " CTX: ", this._script._context );
 
@@ -316,7 +316,7 @@ Script.prototype.getContextProperties = function()
 
 	if(this.onSerialize)
 		return this.onSerialize();
-	return LS.cloneObject( ctx, null, false, false, true );
+	return ONE.cloneObject( ctx, null, false, false, true );
 }
 
 Script.prototype.setContextProperties = function( properties )
@@ -331,7 +331,7 @@ Script.prototype.setContextProperties = function( properties )
 	}
 
 	//to copy we use the clone in target method
-	LS.cloneObject( properties, ctx, false, true, true );
+	ONE.cloneObject( properties, ctx, false, true, true );
 
 	if(ctx.onConfigure)
 		ctx.onConfigure( properties );
@@ -361,7 +361,7 @@ Script.prototype.getPropertiesInfo = function()
 	if(!ctx)
 		return {enabled:"boolean"};
 
-	var attrs = LS.getObjectProperties( ctx );
+	var attrs = ONE.getObjectProperties( ctx );
 	attrs.enabled = "boolean";
 	return attrs;
 }
@@ -527,7 +527,7 @@ Script.prototype.hookEvents = function()
 	var node = this._root;
 	if(!node)
 		throw("hooking events of a Script without a node");
-	var scene = node.scene || LS.GlobalScene; //hack
+	var scene = node.scene || ONE.GlobalScene; //hack
 
 	//script context
 	var context = this.getContext();
@@ -535,10 +535,10 @@ Script.prototype.hookEvents = function()
 		return;
 
 	//hook events
-	for(var i in LS.Script.API_functions)
+	for(var i in ONE.Script.API_functions)
 	{
 		var func_name = i;
-		var event_info = LS.Script.API_functions[ func_name ];
+		var event_info = ONE.Script.API_functions[ func_name ];
 
 		var target = null;
 		switch( event_info.target )
@@ -546,7 +546,7 @@ Script.prototype.hookEvents = function()
 			case Script.BIND_TO_COMPONENT: target = this; break;
 			case Script.BIND_TO_NODE: target = node; break;
 			case Script.BIND_TO_SCENE: target = scene; break;
-			case Script.BIND_TO_RENDERER: target = LS.Renderer; break;
+			case Script.BIND_TO_RENDERER: target = ONE.Renderer; break;
 		}
 		if(!target)
 			throw("Script event without target?");
@@ -576,7 +576,7 @@ Script.prototype.onScriptEvent = function( event_type, params )
 	if(!type)
 		throw("Event without type");
 
-	var event_info = LS.Script.API_events_to_function[ type ];
+	var event_info = ONE.Script.API_events_to_function[ type ];
 	if(!event_info)
 		return; //????
 
@@ -631,7 +631,7 @@ Script.prototype.onRemovedFromNode = function( node )
 Script.prototype.onAddedToScene = function( scene )
 {
 	if( this._name )
-		LS.Script.active_scripts[ this._name ] = this;
+		ONE.Script.active_scripts[ this._name ] = this;
 
 	//avoid to parse it again
 	if(this._script && this._script._context && this._script._context._initialized )
@@ -664,8 +664,8 @@ Script.prototype.onAddedToScene = function( scene )
 
 Script.prototype.onRemovedFromScene = function(scene)
 {
-	if( this._name && LS.Script.active_scripts[ this._name ] == this )
-		delete LS.Script.active_scripts[ this._name ];
+	if( this._name && ONE.Script.active_scripts[ this._name ] == this )
+		delete ONE.Script.active_scripts[ this._name ];
 
 	//ensures no binded events
 	LEvent.unbindAll( scene, this );
@@ -688,8 +688,8 @@ Script.prototype.getComponentTitle = function()
 Script.prototype.toInfoString = function()
 {
 	if(!this._root)
-		return LS.getObjectClassName( this );
-	return LS.getObjectClassName( this ) + " in node " + this._root.name;
+		return ONE.getObjectClassName( this );
+	return ONE.getObjectClassName( this ) + " in node " + this._root.name;
 }
 
 
@@ -759,11 +759,11 @@ Script.prototype.getResources = function(res)
 			continue;
 
 		//for basic resource types
-		if( LS.RESOURCE_TYPES[ info.type ] )
+		if( ONE.RESOURCE_TYPES[ info.type ] )
 			res[ value ] = true;
 
 		//for arrays
-		if( info.type == LS.TYPES.ARRAY && value.length && info.data_type && info.data_type.constructor === String && LS.RESOURCE_TYPES[ (info.data_type).toLowerCase() ] )
+		if( info.type == ONE.TYPES.ARRAY && value.length && info.data_type && info.data_type.constructor === String && ONE.RESOURCE_TYPES[ (info.data_type).toLowerCase() ] )
 		{
 			for(var j = 0; j < value.length; ++j)
 				res[ value[j] ] = true;
@@ -781,8 +781,8 @@ Script.prototype.onResourceRenamed = function( old_name, new_name, resource )
 		ctx.onResourceRenamed( old_name, new_name, resource );
 }
 
-LS.registerComponent( Script );
-LS.Script = Script;
+ONE.registerComponent( Script );
+ONE.Script = Script;
 
 //*****************
 
@@ -798,11 +798,11 @@ function ScriptFromFile(o)
 	this._script.extra_methods = {
 		getComponent: (function() { return this; }).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
-		createProperty: LS.BaseComponent.prototype.createProperty,
-		createAction: LS.BaseComponent.prototype.createAction,
-		bind: LS.BaseComponent.prototype.bind,
-		unbind: LS.BaseComponent.prototype.unbind,
-		unbindAll: LS.BaseComponent.prototype.unbindAll
+		createProperty: ONE.BaseComponent.prototype.createProperty,
+		createAction: ONE.BaseComponent.prototype.createAction,
+		bind: ONE.BaseComponent.prototype.bind,
+		unbind: ONE.BaseComponent.prototype.unbind,
+		unbindAll: ONE.BaseComponent.prototype.unbindAll
 	};
 
 	this._script.onerror = this.onError.bind(this);
@@ -818,7 +818,7 @@ ScriptFromFile.coding_help = Script.coding_help;
 Object.defineProperty( ScriptFromFile.prototype, "filename", {
 	set: function(v){ 
 		if(v) //to avoid double slashes
-			v = LS.ResourcesManager.cleanFullpath( v );
+			v = ONE.ResourcesManager.cleanFullpath( v );
 		this._filename = v;
 		this.processCode();
 	},
@@ -891,7 +891,7 @@ ScriptFromFile.prototype.reload = function( on_complete )
 	if(!this.filename)
 		return;
 	var that = this;
-	LS.ResourcesManager.load( this.filename, null, function( res, url ){
+	ONE.ResourcesManager.load( this.filename, null, function( res, url ){
 		if( url != that.filename )
 			return;
 		that.processCode();
@@ -907,10 +907,10 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset
 	if(!this.filename)
 		return;
 
-	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	var script_resource = ONE.ResourcesManager.getResource( this.filename );
 	if(!script_resource)
 	{
-		LS.ResourcesManager.load( this.filename, null, function( res, url ){
+		ONE.ResourcesManager.load( this.filename, null, function( res, url ){
 			if( url != that.filename )
 				return;
 			that.processCode( skip_events );
@@ -946,7 +946,7 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset
 		}
 	}
 
-	if(!this._root || LS.Script.block_execution )
+	if(!this._root || ONE.Script.block_execution )
 		return true;
 
 	//assigned inside because otherwise if it gets modified before it is attached to the scene tree then it wont be compiled
@@ -958,7 +958,7 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset
 
 	//compiles and executes the context
 	var old = this._stored_properties || this.getContextProperties();
-	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: ONE.Globals });
 	if(!skip_events)
 		this.hookEvents();
 	if(!reset_state)
@@ -979,7 +979,7 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset
 			if( this._script._context.onBind )
 				this._script._context.onBind( this._root.scene );
 
-			if( this._root.scene._state === LS.PLAYING && this._script._context.start )
+			if( this._root.scene._state === ONE.PLAYING && this._script._context.start )
 				this._script._context.start();
 		}
 
@@ -987,7 +987,7 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset
 	}
 
 	if( this._name && this._root && this._root.scene )
-		LS.Script.active_scripts[ this._name ] = this;
+		ONE.Script.active_scripts[ this._name ] = this;
 
 	if(on_complete)
 		on_complete(this);
@@ -1019,7 +1019,7 @@ ScriptFromFile.prototype.serialize = function()
 		uid: this.uid,
 		enabled: this.enabled,
 		filename: this.filename,
-		properties: LS.cloneObject( this.getContextProperties() )
+		properties: ONE.cloneObject( this.getContextProperties() )
 	};
 }
 
@@ -1036,7 +1036,7 @@ ScriptFromFile.prototype.getEvents = Script.prototype.getEvents();
 ScriptFromFile.prototype.getResources = function(res)
 {
 	if(this.filename)
-		res[this.filename] = LS.Resource;
+		res[this.filename] = ONE.Resource;
 
 	//script resources
 	var ctx = this.getContext();
@@ -1053,13 +1053,13 @@ ScriptFromFile.prototype.onResourceRenamed = function (old_name, new_name, resou
 
 ScriptFromFile.prototype.getCodeResource = function()
 {
-	return LS.ResourcesManager.getResource( this.filename );
+	return ONE.ResourcesManager.getResource( this.filename );
 }
 
 
 ScriptFromFile.prototype.getCode = function()
 {
-	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	var script_resource = ONE.ResourcesManager.getResource( this.filename );
 	if(!script_resource)
 		return "";
 	return script_resource.data;
@@ -1067,7 +1067,7 @@ ScriptFromFile.prototype.getCode = function()
 
 ScriptFromFile.prototype.setCode = function( code, skip_events, reset_state )
 {
-	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	var script_resource = ONE.ResourcesManager.getResource( this.filename );
 	if(!script_resource)
 		return "";
 	script_resource.data = code;
@@ -1080,8 +1080,8 @@ ScriptFromFile.updateComponents = function( script, skip_events )
 		return;
 
 	var fullpath = script.fullpath || script.filename;
-	var scene = LS.GlobalScene;
-	var components = scene.findNodeComponents( LS.ScriptFromFile );
+	var scene = ONE.GlobalScene;
+	var components = scene.findNodeComponents( ONE.ScriptFromFile );
 	for(var i = 0; i < components.length; ++i)
 	{
 		var compo = components[i];
@@ -1091,8 +1091,8 @@ ScriptFromFile.updateComponents = function( script, skip_events )
 }
 
 
-LS.extendClass( ScriptFromFile, Script );
+ONE.extendClass( ScriptFromFile, Script );
 
-LS.registerComponent( ScriptFromFile );
-LS.ScriptFromFile = ScriptFromFile;
+ONE.registerComponent( ScriptFromFile );
+ONE.ScriptFromFile = ScriptFromFile;
 

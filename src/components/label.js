@@ -42,7 +42,7 @@ Label.prototype.createHTML = function()
 	style.backgroundColor = "rgba(0,0,0,0.5)";
 	style.borderRadius = "2px";
 
-	var parent = LS.getGUIElement();
+	var parent = ONE.getGUIElement();
 	parent.appendChild( elem );
 
 	this._element = elem;
@@ -61,7 +61,7 @@ Label.prototype.render = function(e, render_settings)
 {
 	var node = this._root;
 
-	var camera = LS.Renderer._main_camera;
+	var camera = ONE.Renderer._main_camera;
 	if(!camera)
 		return;
 
@@ -113,5 +113,5 @@ Label.prototype.render = function(e, render_settings)
 	}
 }
 
-LS.registerComponent(Label);
+ONE.registerComponent(Label);
 

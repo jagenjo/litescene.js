@@ -164,10 +164,20 @@ FXStack.available_fx = {
 	},
 	"quantize": {
 		name: "Quantize",
+		functions: ["dither"],
 		uniforms: {
-			levels: { name: "u_levels", type: "float", value: 8, step: 1, min: 1 }
+			levels: { name: "u_levels", type: "float", value: 8, step: 1, min: 1 },
+			dither: { name: "u_dither", type: "float", value: 0.1, max: 1 }
 		},
-		code:"color.xyz = floor(color.xyz * u_levels@) / u_levels@;"
+		code:"\n\
+		if( u_dither@ > 0.0 )\n\
+		{\n\
+			vec3 qcolor@ = floor(color.xyz * u_levels@) / u_levels@;\n\
+			vec3 diff@ = (color.xyz - qcolor@) * u_levels@ * u_dither@;\n\
+			color.xyz = qcolor@ + vec3(dither(diff@.x),dither(diff@.y),dither(diff@.z)) / u_levels@;\n\
+		}\n\
+		else\n\
+			color.xyz = floor(color.xyz * u_levels@) / u_levels@;\n"
 	},
 	"edges": {
 		name: "Edges",
@@ -306,6 +316,82 @@ FXStack.available_functions = {
 				}\n\
 			}\n\
 		",
+	//ugly but effective: https://github.com/hughsk/glsl-dither/blob/master/8x8.glsl
+	dither8x8: "\n\
+		float dither8x8(vec2 position, float brightness) {\n\
+		  int x = int(mod(position.x, 8.0));\n\
+		  int y = int(mod(position.y, 8.0));\n\
+		  int index = x + y * 8;\n\
+		  float limit = 0.0;\n\
+		  if (x < 8) {\n\
+			if (index == 0) limit = 0.015625;\n\
+			else if (index == 1) limit = 0.515625;\n\
+			else if (index == 2) limit = 0.140625;\n\
+			else if (index == 3) limit = 0.640625;\n\
+			else if (index == 4) limit = 0.046875;\n\
+			else if (index == 5) limit = 0.546875;\n\
+			else if (index == 6) limit = 0.171875;\n\
+			else if (index == 7) limit = 0.671875;\n\
+			else if (index == 8) limit = 0.765625;\n\
+			else if (index == 9) limit = 0.265625;\n\
+			else if (index == 10) limit = 0.890625;\n\
+			else if (index == 11) limit = 0.390625;\n\
+			else if (index == 12) limit = 0.796875;\n\
+			else if (index == 13) limit = 0.296875;\n\
+			else if (index == 14) limit = 0.921875;\n\
+			else if (index == 15) limit = 0.421875;\n\
+			else if (index == 16) limit = 0.203125;\n\
+			else if (index == 17) limit = 0.703125;\n\
+			else if (index == 18) limit = 0.078125;\n\
+			else if (index == 19) limit = 0.578125;\n\
+			else if (index == 20) limit = 0.234375;\n\
+			else if (index == 21) limit = 0.734375;\n\
+			else if (index == 22) limit = 0.109375;\n\
+			else if (index == 23) limit = 0.609375;\n\
+			else if (index == 24) limit = 0.953125;\n\
+			else if (index == 25) limit = 0.453125;\n\
+			else if (index == 26) limit = 0.828125;\n\
+			else if (index == 27) limit = 0.328125;\n\
+			else if (index == 28) limit = 0.984375;\n\
+			else if (index == 29) limit = 0.484375;\n\
+			else if (index == 30) limit = 0.859375;\n\
+			else if (index == 31) limit = 0.359375;\n\
+			else if (index == 32) limit = 0.0625;\n\
+			else if (index == 33) limit = 0.5625;\n\
+			else if (index == 34) limit = 0.1875;\n\
+			else if (index == 35) limit = 0.6875;\n\
+			else if (index == 36) limit = 0.03125;\n\
+			else if (index == 37) limit = 0.53125;\n\
+			else if (index == 38) limit = 0.15625;\n\
+			else if (index == 39) limit = 0.65625;\n\
+			else if (index == 40) limit = 0.8125;\n\
+			else if (index == 41) limit = 0.3125;\n\
+			else if (index == 42) limit = 0.9375;\n\
+			else if (index == 43) limit = 0.4375;\n\
+			else if (index == 44) limit = 0.78125;\n\
+			else if (index == 45) limit = 0.28125;\n\
+			else if (index == 46) limit = 0.90625;\n\
+			else if (index == 47) limit = 0.40625;\n\
+			else if (index == 48) limit = 0.25;\n\
+			else if (index == 49) limit = 0.75;\n\
+			else if (index == 50) limit = 0.125;\n\
+			else if (index == 51) limit = 0.625;\n\
+			else if (index == 52) limit = 0.21875;\n\
+			else if (index == 53) limit = 0.71875;\n\
+			else if (index == 54) limit = 0.09375;\n\
+			else if (index == 55) limit = 0.59375;\n\
+			else if (index == 56) limit = 1.0;\n\
+			else if (index == 57) limit = 0.5;\n\
+			else if (index == 58) limit = 0.875;\n\
+			else if (index == 59) limit = 0.375;\n\
+			else if (index == 60) limit = 0.96875;\n\
+			else if (index == 61) limit = 0.46875;\n\
+			else if (index == 62) limit = 0.84375;\n\
+			else if (index == 63) limit = 0.34375;\n\
+		  }\n\
+		  return brightness < limit ? 0.0 : 1.0;\n\
+		}\n",
+
 	LUT:  "vec3 LUT(in vec3 color, in sampler2D textureB) {\n\
 		 lowp vec3 textureColor = clamp( color, vec3(0.0), vec3(1.0) );\n\
 		 mediump float blueColor = textureColor.b * 63.0;\n\
@@ -702,7 +788,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 					else
 					{
 						//bind something to avoid problems
-						tex = LS.Renderer._missing_texture;
+						tex = ONE.Renderer._missing_texture;
 						if(tex)
 							tex.bind( texture_slot );
 					}
@@ -856,7 +942,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 					else
 					{
 						//bind something to avoid problems
-						tex = LS.Renderer._missing_texture;
+						tex = ONE.Renderer._missing_texture;
 						if(tex)
 							tex.bind( texture_slot );
 					}
@@ -969,7 +1055,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 
 FXStack.prototype.getTexture = function( name )
 {
-	return LS.ResourcesManager.getTexture( name );
+	return ONE.ResourcesManager.getTexture( name );
 }
 
 FXStack.prototype.getPropertyInfoFromPath = function( path )
@@ -1053,5 +1139,5 @@ FXStack.registerFunction = function( name, code )
 	FXStack.available_functions[name] = code;
 }
 
-LS.FXStack = FXStack;
-LS.TextureFX = FXStack; //LEGACY
+ONE.FXStack = FXStack;
+ONE.TextureFX = FXStack; //LEGACY

@@ -11,7 +11,7 @@
 * @param {number} x the position in the curve to sample
 * @return {number}
 */
-LS.getCurveValueAt = function(values,minx,maxx,defaulty, x)
+ONE.getCurveValueAt = function(values,minx,maxx,defaulty, x)
 {
 	if(x < minx || x > maxx)
 		return defaulty;
@@ -48,13 +48,13 @@ LS.getCurveValueAt = function(values,minx,maxx,defaulty, x)
 * @return {Array}
 */
 
-LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
+ONE.resampleCurve = function(values,minx,maxx,defaulty, samples)
 {
 	var result = [];
 	result.length = samples;
 	var delta = (maxx - minx) / samples;
 	for(var i = 0; i < samples; i++)
-		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
+		result[i] = ONE.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
 	return result;
 }
 
@@ -217,5 +217,5 @@ function typedArrayToString( typed_array, same_size )
 	return r;
 }
 
-LS.stringToTypedArray = stringToTypedArray;
-LS.typedArrayToString = typedArrayToString;
+ONE.stringToTypedArray = stringToTypedArray;
+ONE.typedArrayToString = typedArrayToString;

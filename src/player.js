@@ -50,7 +50,7 @@ function Player(options)
 
 		if(!container)
 		{
-			console.log("No container specified in LS.Player, using BODY as container");
+			console.log("No container specified in ONE.Player, using BODY as container");
 			container = document.body;
 		}
 
@@ -70,18 +70,18 @@ function Player(options)
 
 	this.gl = GL.create(options); //create or reuse
 	this.canvas = this.gl.canvas;
-	this.render_settings = new LS.RenderSettings(); //this will be replaced by the scene ones.
-	this.scene = LS.GlobalScene;
+	this.render_settings = new ONE.RenderSettings(); //this will be replaced by the scene ones.
+	this.scene = ONE.GlobalScene;
 	this._file_drop_enabled = false; //use enableFileDrop
 
-	LS.Shaders.init();
+	ONE.Shaders.init();
 
 	//this allows to use your custom renderer
-	this.renderer = options.renderer || LS.Renderer;
+	this.renderer = options.renderer || ONE.Renderer;
 	this.renderer.init();
 
 	//this will repaint every frame and send events when the mouse clicks objects
-	this.state = LS.Player.STOPPED;
+	this.state = ONE.Player.STOPPED;
 
 	if( this.gl.ondraw )
 		throw("There is already a litegl attached to this context");
@@ -90,23 +90,23 @@ function Player(options)
 	this.configure( options );
 
 	//bind all the events 
-	this.gl.ondraw = LS.Player.prototype._ondraw.bind(this);
-	this.gl.onupdate = LS.Player.prototype._onupdate.bind(this);
+	this.gl.ondraw = ONE.Player.prototype._ondraw.bind(this);
+	this.gl.onupdate = ONE.Player.prototype._onupdate.bind(this);
 
-	var mouse_event_callback = LS.Player.prototype._onmouse.bind(this);
+	var mouse_event_callback = ONE.Player.prototype._onmouse.bind(this);
 	this.gl.onmousedown = mouse_event_callback;
 	this.gl.onmousemove = mouse_event_callback;
 	this.gl.onmouseup = mouse_event_callback;
 	this.gl.onmousewheel = mouse_event_callback;
 
-	var key_event_callback = LS.Player.prototype._onkey.bind(this);
+	var key_event_callback = ONE.Player.prototype._onkey.bind(this);
 	this.gl.onkeydown = key_event_callback;
 	this.gl.onkeyup = key_event_callback;
 
-	var touch_event_callback = LS.Player.prototype._ontouch.bind(this);
+	var touch_event_callback = ONE.Player.prototype._ontouch.bind(this);
 	this.gl.ontouch = touch_event_callback;
 
-	var gamepad_event_callback = LS.Player.prototype._ongamepad.bind(this);
+	var gamepad_event_callback = ONE.Player.prototype._ongamepad.bind(this);
 	this.gl.ongamepadconnected = gamepad_event_callback;
 	this.gl.ongamepaddisconnected = gamepad_event_callback;
 	this.gl.ongamepadButtonDown = gamepad_event_callback;
@@ -118,8 +118,8 @@ function Player(options)
 	gl.captureTouch( !(options.ignore_touch) );
 	gl.captureGamepads(true);
 
-	if(LS.Input)
-		LS.Input.init();
+	if(ONE.Input)
+		ONE.Input.init();
 
 	if(options.enableFileDrop !== false)
 		this.setFileDrop(true);
@@ -150,7 +150,7 @@ Object.defineProperty( Player.prototype, "file_drop_enabled", {
 Player.prototype.loadConfig = function( url, on_complete, on_scene_loaded )
 {
 	var that = this;
-	LS.Network.requestJSON( url, inner );
+	ONE.Network.requestJSON( url, inner );
 	function inner( data )
 	{
 		that.configure( data, on_scene_loaded );
@@ -171,18 +171,18 @@ Player.prototype.configure = function( options, on_scene_loaded )
 		this.enableDebug(false);
 
 	if(options.resources !== undefined)
-		LS.ResourcesManager.setPath( options.resources );
+		ONE.ResourcesManager.setPath( options.resources );
 
 	if(options.proxy)
-		LS.ResourcesManager.setProxy( options.proxy );
+		ONE.ResourcesManager.setProxy( options.proxy );
 	if(options.filesystems)
 	{
 		for(var i in options.filesystems)
-			LS.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
+			ONE.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
 	}
 
 	if(options.allow_base_files)
-		LS.ResourcesManager.allow_base_files = options.allow_base_files;
+		ONE.ResourcesManager.allow_base_files = options.allow_base_files;
 
 	if(options.autoresize && !this._resize_callback)
 	{
@@ -242,6 +242,9 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 		setTimeout(function(){ that._ondraw( true ); },1000); //render a frame after some time to ensure loading
 		if(window.onSceneReady)
 			window.onSceneReady();
+		window.postMessage("ready","*");
+		if(window.top)
+			window.top.postMessage("ready","*");
 		if(on_complete)
 			on_complete();
 	}
@@ -271,14 +274,14 @@ Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 	var scene = this.scene;
 
 	//reset old scene
-	if(this.state == LS.Player.PLAYING)
+	if(this.state == ONE.Player.PLAYING)
 		this.stop();
 	scene.clear();
 
 	if(scene_info && scene_info.constructor === String )
 		scene_info = JSON.parse(scene_info);
 
-	var scripts = LS.Scene.getScriptsList( scene_info );
+	var scripts = ONE.Scene.getScriptsList( scene_info );
 
 	if( scripts && scripts.length )
 	{
@@ -322,7 +325,7 @@ Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 */
 Player.prototype.pause = function()
 {
-	this.state = LS.Player.PAUSED;
+	this.state = ONE.Player.PAUSED;
 }
 
 /**
@@ -331,16 +334,19 @@ Player.prototype.pause = function()
 */
 Player.prototype.play = function()
 {
-	if(this.state == LS.Player.PLAYING)
+	if(this.state == ONE.Player.PLAYING)
 		return;
 	if(this.debug)
 		console.log("Start");
-	this.state = LS.Player.PLAYING;
-	if(LS.Input)
-		LS.Input.reset(); //this force some events to be sent
-	if(LS.GUI)
-		LS.GUI.reset(); //clear GUI
+	this.state = ONE.Player.PLAYING;
+	if(ONE.Input)
+		ONE.Input.reset(); //this force some events to be sent
+	if(ONE.GUI)
+		ONE.GUI.reset(); //clear GUI
 	this.scene.start();
+	window.postMessage("start","*");
+	if(window.top)
+		window.top.postMessage("start","*");
 }
 
 /**
@@ -349,10 +355,13 @@ Player.prototype.play = function()
 */
 Player.prototype.stop = function()
 {
-	this.state = LS.Player.STOPPED;
+	this.state = ONE.Player.STOPPED;
 	this.scene.finish();
-	if(LS.GUI)
-		LS.GUI.reset(); //clear GUI
+	if(ONE.GUI)
+		ONE.GUI.reset(); //clear GUI
+	window.postMessage("stop","*");
+	if(window.top)
+		window.top.postMessage("stop","*");
 }
 
 /**
@@ -361,10 +370,10 @@ Player.prototype.stop = function()
 */
 Player.prototype.clear = function()
 {
-	if(LS.Input)
-		LS.Input.reset(); //this force some events to be sent
-	if(LS.GUI)
-		LS.GUI.reset(); //clear GUI
+	if(ONE.Input)
+		ONE.Input.reset(); //this force some events to be sent
+	if(ONE.GUI)
+		ONE.GUI.reset(); //clear GUI
 	this.scene.clear();
 }
 
@@ -447,18 +456,18 @@ Player.prototype.enableLoadingBar = function()
 		scene_loaded: 0,
 		resources_loaded: 0
 	};
-	LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
+	LEvent.bind( ONE.ResourcesManager, "start_loading_resources", (function(e,v){ 
 		if(!this.loading)
 			return;
 		this.loading.resources_loaded = 0.0; 
 	}).bind(this) );
-	LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
+	LEvent.bind( ONE.ResourcesManager, "loading_resources_progress", (function(e,v){ 
 		if(!this.loading)
 			return;
 		if( this.loading.resources_loaded < v )
 			this.loading.resources_loaded = v;
 	}).bind(this) );
-	LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
+	LEvent.bind( ONE.ResourcesManager, "end_loading_resources", (function(e,v){ 
 		if(!this.loading)
 			return;
 		this._total_loading = undefined; 
@@ -469,7 +478,7 @@ Player.prototype.enableLoadingBar = function()
 
 Player.prototype._onfiledrop = function( file, evt )
 {
-	return LEvent.trigger( LS.GlobalScene, LS.EVENT.FILEDROP, { file: file, event: evt } );
+	return LEvent.trigger( ONE.GlobalScene, ONE.EVENT.FILEDROP, { file: file, event: evt } );
 }
 
 Player.prototype.showPlayDialog = function()
@@ -498,7 +507,7 @@ Player.prototype._ondraw = function( force )
 {
 	var scene = this.scene;
 
-	if( this.state == LS.Player.PLAYING || force )
+	if( this.state == ONE.Player.PLAYING || force )
 	{
 		if(this.onPreDraw)
 			this.onPreDraw();
@@ -516,7 +525,7 @@ Player.prototype._ondraw = function( force )
 	if(this.loading && this.loading.visible )
 	{
 		this.renderLoadingBar( this.loading );
-		LEvent.trigger( this.scene, LS.EVENT.RENDER_LOADING );
+		LEvent.trigger( this.scene, ONE.EVENT.RENDER_LOADING );
 		if(this.onDrawLoading)
 			this.onDrawLoading();
 	}
@@ -524,13 +533,13 @@ Player.prototype._ondraw = function( force )
 
 Player.prototype._onupdate = function(dt)
 {
-	if(this.state != LS.Player.PLAYING)
+	if(this.state != ONE.Player.PLAYING)
 		return;
 
-	if(LS.Tween)
-		LS.Tween.update(dt);
-	if(LS.Input)
-		LS.Input.update(dt);
+	if(ONE.Tween)
+		ONE.Tween.update(dt);
+	if(ONE.Input)
+		ONE.Input.update(dt);
 
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
@@ -546,11 +555,11 @@ Player.prototype._onupdate = function(dt)
 Player.prototype._onmouse = function(e)
 {
 	//send to the input system (if blocked ignore it)
-	if( LS.Input && LS.Input.onMouse(e) == true )
+	if( ONE.Input && ONE.Input.onMouse(e) == true )
 		return;
 
 	//console.log(e);
-	if(this.state != LS.Player.PLAYING)
+	if(this.state != ONE.Player.PLAYING)
 		return;
 
 	LEvent.trigger( this.scene, e.eventType || e.type, e, true );
@@ -564,7 +573,7 @@ Player.prototype._onmouse = function(e)
 Player.prototype._ontouch = function(e)
 {
 	//console.log(e);
-	if(this.state != LS.Player.PLAYING)
+	if(this.state != ONE.Player.PLAYING)
 		return;
 
 	if( LEvent.trigger( this.scene, e.eventType || e.type, e, true ) === true )
@@ -578,10 +587,10 @@ Player.prototype._ontouch = function(e)
 Player.prototype._onkey = function(e)
 {
 	//send to the input system
-	if(LS.Input)
-		LS.Input.onKey(e);
+	if(ONE.Input)
+		ONE.Input.onKey(e);
 
-	if(this.state != LS.Player.PLAYING)
+	if(this.state != ONE.Player.PLAYING)
 		return;
 
 	//hardcoded event handlers in the player
@@ -597,7 +606,7 @@ Player.prototype._onkey = function(e)
 
 Player.prototype._ongamepad = function(e)
 {
-	if(this.state != LS.Player.PLAYING)
+	if(this.state != ONE.Player.PLAYING)
 		return;
 
 	//hardcoded event handlers in the player
@@ -640,8 +649,8 @@ Player.prototype.renderLoadingBar = function( loading )
 Player.prototype.enableDebug = function(v)
 {
 	this.debug = !!v;
-	LS.Script.catch_important_exceptions = !v;
-	LS.catch_exceptions = !v;
+	ONE.Script.catch_important_exceptions = !v;
+	ONE.catch_exceptions = !v;
 }
 
 /**
@@ -655,7 +664,7 @@ Player.prototype.setDebugRender = function(v)
 	{
 		if(!v)
 			return;
-		this.debug_render = new LS.DebugRender();
+		this.debug_render = ONE.getDebugRender();
 	}
 
 	if(v)
@@ -665,4 +674,4 @@ Player.prototype.setDebugRender = function(v)
 }
 
 
-LS.Player = Player;
+ONE.Player = Player;

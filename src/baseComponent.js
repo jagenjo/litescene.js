@@ -52,7 +52,7 @@ BaseComponent.prototype.configure = function(o)
 		return;
 	if( o.uid ) 
 		this.uid = o.uid;
-	LS.cloneObject( o, this, false, true ); 
+	ONE.cloneObject( o, this, false, true, true ); 
 
 	if( this.onConfigure )
 		this.onConfigure( o );
@@ -65,11 +65,11 @@ BaseComponent.prototype.configure = function(o)
 **/
 BaseComponent.prototype.serialize = function()
 {
-	var o = LS.cloneObject(this,null,false,false,true);
+	var o = ONE.cloneObject(this,null,false,false,true);
 	if(this.uid) //special case, not enumerable
 		o.uid = this.uid;
 	if(!o.object_class)
-		o.object_class = LS.getObjectClassName( this );
+		o.object_class = ONE.getObjectClassName( this );
 
 	if( this.onSerialize )
 		this.onSerialize( o );
@@ -120,7 +120,7 @@ BaseComponent.prototype.createProperty = function( name, value, type, setter, ge
 			this.constructor[ "@" + name ] = { type: type };
 
 		//is a component
-		if( type == LS.TYPES.COMPONENT || LS.Components[ type ] || type.constructor.is_component || type.type == LS.TYPES.COMPONENT )
+		if( type == ONE.TYPES.COMPONENT || ONE.Components[ type ] || type.constructor.is_component || type.type == ONE.TYPES.COMPONENT )
 		{
 			var property_root = this; //with proto is problematic, because the getters cannot do this.set (this is the proto, not the component)
 			var private_name = "_" + name;
@@ -128,7 +128,7 @@ BaseComponent.prototype.createProperty = function( name, value, type, setter, ge
 				get: function() { 
 					if( !this[ private_name ] )
 						return null;
-					var scene = this._root && this._root.scene ? this._root._in_tree : LS.GlobalScene;
+					var scene = this._root && this._root.scene ? this._root._in_tree : ONE.GlobalScene;
 					return LSQ.get( this[ private_name ], null, scene );
 				},
 				set: function(v) { 
@@ -141,8 +141,8 @@ BaseComponent.prototype.createProperty = function( name, value, type, setter, ge
 				//writable: false //cannot be set to true if setter/getter
 			});
 
-			if( LS.Components[ type ] || type.constructor.is_component ) //passing component class name or component class constructor
-				type = { type: LS.TYPES.COMPONENT, component_class: type.constructor === String ? type : LS.getClassName( type ) };
+			if( ONE.Components[ type ] || type.constructor.is_component ) //passing component class name or component class constructor
+				type = { type: ONE.TYPES.COMPONENT, component_class: type.constructor === String ? type : ONE.getClassName( type ) };
 
 			if( typeof(type) == "object" )
 				this.constructor[ "@" + name ] = type;
@@ -415,10 +415,10 @@ BaseComponent.addExtraMethods = function( component )
 			if(!uid)
 				return;
 
-			if(uid[0] != LS._uid_prefix)
+			if(uid[0] != ONE._uid_prefix)
 			{
 				console.warn("Invalid UID, renaming it to: " + uid );
-				uid = LS._uid_prefix + uid;
+				uid = ONE._uid_prefix + uid;
 			}
 
 			if(uid == this._uid)
@@ -460,7 +460,7 @@ BaseComponent.addExtraMethods = function( component )
 
 };
 
-LS.BaseComponent = BaseComponent;
+ONE.BaseComponent = BaseComponent;
 
 //Used when a component is missing
 function MissingComponent()
@@ -480,4 +480,4 @@ MissingComponent.prototype.serialize = function()
 	return this._last_serialization;
 }
 
-LS.MissingComponent = MissingComponent;
+ONE.MissingComponent = MissingComponent;

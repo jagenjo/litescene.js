@@ -1,8 +1,8 @@
 ///@INFO: ANIMATION
 /**
-* Reads animation tracks from an LS.Animation resource and applies the properties to the objects referenced
+* Reads animation tracks from an ONE.Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -69,8 +69,8 @@ PlayAnimation.properties_order = ["animation","take"]; //this ones should be the
 PlayAnimation["@animation"] = { widget: "animation" };
 PlayAnimation["@root_node"] = { type: "node_id" };
 PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
-PlayAnimation["@current_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
-PlayAnimation["@blend_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
+PlayAnimation["@current_time"] = { type: ONE.TYPES.NUMBER, min: 0, units:"s" };
+PlayAnimation["@blend_time"] = { type: ONE.TYPES.NUMBER, min: 0, units:"s" };
 PlayAnimation["@take"] = { type: "enum", values: function(){
 	var anim = this.instance.getAnimation();
 	if(!anim)
@@ -83,7 +83,7 @@ PlayAnimation["@take"] = { type: "enum", values: function(){
 }};
 
 /**
-* the name of the LS.Animation resource where the takes and tracks are stored
+* the name of the ONE.Animation resource where the takes and tracks are stored
 * @property animation {String}
 */
 Object.defineProperty( PlayAnimation.prototype, "animation", {
@@ -114,7 +114,7 @@ Object.defineProperty( PlayAnimation.prototype, "animation", {
 });
 
 /**
-* the name of the LS.Animation.Take to play from the LS.Animation
+* the name of the ONE.Animation.Take to play from the ONE.Animation
 * A take representes a set of tracks
 * @property take {String}
 */
@@ -332,19 +332,19 @@ PlayAnimation.prototype.onUpdateBlendAnimation = function( dt )
 * @method getAnimation
 * @param {String} name [optional] the name of the animation, if omited then uses the animation set in the component
 * @param {Bool} force_load [optional] if true and the animation is not loaded, it will be loaded
-* @return {LS.Animation} the animation container
+* @return {ONE.Animation} the animation container
 */
 PlayAnimation.prototype.getAnimation = function( name, force_load )
 {
 	name = name === undefined ? this.animation : name;
 
-	var scene = this._root && this._root.scene ? this._root.scene : LS.GlobalScene;
+	var scene = this._root && this._root.scene ? this._root.scene : ONE.GlobalScene;
 	if(!name || name[0] == "@") 
 		return scene.animation;
-	var anim = LS.ResourcesManager.getResource( name );
+	var anim = ONE.ResourcesManager.getResource( name );
 	if(!anim && force_load)
-		LS.ResourcesManager.load( name );
-	if( anim && anim.constructor === LS.Animation )
+		ONE.ResourcesManager.load( name );
+	if( anim && anim.constructor === ONE.Animation )
 		return anim;
 	return null;
 }
@@ -497,7 +497,7 @@ PlayAnimation.prototype._processSample = function(nodename, property, value, opt
 PlayAnimation.prototype.getResources = function(res)
 {
 	if(this.animation)
-		res[ this.animation ] = LS.Animation;
+		res[ this.animation ] = ONE.Animation;
 }
 
 PlayAnimation.prototype.onResourceRenamed = function (old_name, new_name, resource)
@@ -523,4 +523,4 @@ PlayAnimation.prototype.getActions = function( actions )
 }
 
 
-LS.registerComponent( PlayAnimation );
+ONE.registerComponent( PlayAnimation );

@@ -467,7 +467,7 @@ var ResourcesManager = {
 			return resource.object_class;
 		if(resource.constructor.resource_type)
 			return resource.constructor.resource_type;
-		return LS.getObjectClassName( resource );
+		return ONE.getObjectClassName( resource );
 	},
 
 	/**
@@ -491,7 +491,7 @@ var ResourcesManager = {
 		for(var i = 0; i < resource_names.length; ++i)
 		{
 			var res_name = resource_names[i];
-			var resource = LS.ResourcesManager.resources[ res_name ];
+			var resource = ONE.ResourcesManager.resources[ res_name ];
 			if(!resource)
 				continue;
 
@@ -500,7 +500,7 @@ var ResourcesManager = {
 				data = resource._original_data;
 			else
 			{
-				var data_info = LS.Resource.getDataToStore( resource );
+				var data_info = ONE.Resource.getDataToStore( resource );
 				data = data_info.data;
 			}
 
@@ -534,16 +534,16 @@ var ResourcesManager = {
 		//get all the info about this file format
 		var format_info = null;
 		if(extension)
-			format_info = LS.Formats.supported[ extension ];
+			format_info = ONE.Formats.supported[ extension ];
 
 		//has this resource an special class specified?
 		if(format_info && format_info.resourceClass)
 			resource = new format_info.resourceClass();
-		else //otherwise create a generic LS.Resource (they store data or scripts)
+		else //otherwise create a generic ONE.Resource (they store data or scripts)
 		{
-			//if we already have a LS.Resource, reuse it (this is to avoid garbage and solve a problem with the editor
+			//if we already have a ONE.Resource, reuse it (this is to avoid garbage and solve a problem with the editor
 			var old_res = this.resources[ filename ];
-			if( old_res && old_res.constructor === LS.Resource )
+			if( old_res && old_res.constructor === ONE.Resource )
 			{
 				resource = old_res;
 				delete resource._original_data;
@@ -551,7 +551,7 @@ var ResourcesManager = {
 				resource._modified = false;
 			}
 			else
-				resource = new LS.Resource();
+				resource = new ONE.Resource();
 		}
 
 		if(data)
@@ -565,7 +565,7 @@ var ResourcesManager = {
 		}
 
 		if(must_register)
-			LS.ResourcesManager.registerResource( filename, resource );
+			ONE.ResourcesManager.registerResource( filename, resource );
 
 		return resource;
 	},
@@ -603,7 +603,7 @@ var ResourcesManager = {
 		{
 			if (resource.from_pack.constructor === String)
 			{
-				var pack = LS.ResourcesManager.getResource( resource.from_pack );
+				var pack = ONE.ResourcesManager.getResource( resource.from_pack );
 				if(pack)
 					this.resourceModified(pack);
 			}
@@ -612,7 +612,7 @@ var ResourcesManager = {
 		{
 			if (resource.from_prefab.constructor === String)
 			{
-				var prefab = LS.ResourcesManager.getResource( resource.from_prefab );
+				var prefab = ONE.ResourcesManager.getResource( resource.from_prefab );
 				if(prefab)
 					this.resourceModified(prefab);
 			}
@@ -638,7 +638,7 @@ var ResourcesManager = {
 
 	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
-	* Do not use to load regular files (txts, csv, etc), instead use the LS.Network methods
+	* Do not use to load regular files (txts, csv, etc), instead use the ONE.Network methods
 	*
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
@@ -650,7 +650,7 @@ var ResourcesManager = {
 	load: function( url, options, on_complete, force_load, on_error )
 	{
 		if(!url)
-			return console.error("LS.ResourcesManager.load requires url");
+			return console.error("ONE.ResourcesManager.load requires url");
 
 		//parameter swap...
 		if(options && options.constructor === Function && !on_complete )
@@ -696,7 +696,7 @@ var ResourcesManager = {
 		if(!this.allow_base_files && url.indexOf("/") == -1)
 		{
 			if(!this._parsing_local_file) //to avoid showing this warning when parsing scenes with local resources
-				console.warn("Cannot load resource, filename has no folder and LS.ResourcesManager.allow_base_files is set to false: ", url );
+				console.warn("Cannot load resource, filename has no folder and ONE.ResourcesManager.allow_base_files is set to false: ", url );
 			return; //this is not a valid file to load
 		}
 
@@ -704,15 +704,15 @@ var ResourcesManager = {
 		//set the callback
 		this.resources_being_loaded[url] = [{options: options, callback: on_complete}];
 
-		LEvent.trigger( LS.ResourcesManager, "resource_loading", url );
+		LEvent.trigger( ONE.ResourcesManager, "resource_loading", url );
 		//send an event if we are starting to load (used for loading icons)
 		//if(this.num_resources_being_loaded == 0)
-		//	LEvent.trigger( LS.ResourcesManager,"start_loading_resources", url );
+		//	LEvent.trigger( ONE.ResourcesManager,"start_loading_resources", url );
 		this.num_resources_being_loaded++;
 		var full_url = this.getFullURL(url);
 
 		//which type?
-		var format_info = LS.Formats.getFileFormatInfo( extension );
+		var format_info = ONE.Formats.getFileFormatInfo( extension );
 		if(format_info && format_info.has_preview && !options.is_preview )
 			LEvent.trigger( this, "load_resource_preview", url );
 
@@ -720,10 +720,10 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource( url, response, options, LS.ResourcesManager._resourceLoadedEnd, true );
+				ONE.ResourcesManager.processResource( url, response, options, ONE.ResourcesManager._resourceLoadedEnd, true );
 			},
 			error: function(err) { 	
-				LS.ResourcesManager._resourceLoadedError(url,err);
+				ONE.ResourcesManager._resourceLoadedError(url,err);
 				if(on_error)
 					on_error(url);
 			},
@@ -731,10 +731,10 @@ var ResourcesManager = {
 				var partial_load = 0;
 				if(e.total) //sometimes we dont have the total so we dont know the amount
 					partial_load = e.loaded / e.total;
-				if( LEvent.hasBind(  LS.ResourcesManager, "resource_loading_progress" ) ) //used to avoid creating objects during loading
-					LEvent.trigger( LS.ResourcesManager, "resource_loading_progress", { url: url, event: e, progress: partial_load } );
-				if( LEvent.hasBind(  LS.ResourcesManager, "loading_resources_progress" ) ) //used to avoid creating objects during loading
-					LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - (LS.ResourcesManager.num_resources_being_loaded - partial_load) / LS.ResourcesManager._total_resources_to_load );
+				if( LEvent.hasBind(  ONE.ResourcesManager, "resource_loading_progress" ) ) //used to avoid creating objects during loading
+					LEvent.trigger( ONE.ResourcesManager, "resource_loading_progress", { url: url, event: e, progress: partial_load } );
+				if( LEvent.hasBind(  ONE.ResourcesManager, "loading_resources_progress" ) ) //used to avoid creating objects during loading
+					LEvent.trigger( ONE.ResourcesManager, "loading_resources_progress", 1.0 - (ONE.ResourcesManager.num_resources_being_loaded - partial_load) / ONE.ResourcesManager._total_resources_to_load );
 			}
 		};
 
@@ -742,7 +742,7 @@ var ResourcesManager = {
 		settings.nocache = this.ignore_cache || (this.force_nocache_extensions.indexOf[ extension ] != -1) || this.nocache_files[ url ];
 
 		//in case we need to force a response format 
-		var format_info = LS.Formats.supported[ extension ];
+		var format_info = ONE.Formats.supported[ extension ];
 		if( format_info )
 		{
 			if( format_info.dataType ) //force dataType, otherwise it will be set by http server
@@ -754,7 +754,7 @@ var ResourcesManager = {
 		}
 
 		//send the REQUEST
-		LS.Network.request( settings ); //ajax call
+		ONE.Network.request( settings ); //ajax call
 		return false;
 	},
 
@@ -784,20 +784,20 @@ var ResourcesManager = {
 		var format_info = null;
 		
 		if(extension)
-			format_info = LS.Formats.supported[ extension ];
+			format_info = ONE.Formats.supported[ extension ];
 
 		//callback to embed a parameter, ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
 			if(!resource)
 			{
-				LS.ResourcesManager._resourceLoadedEnd( url, null ); //to remove it from loading 
+				ONE.ResourcesManager._resourceLoadedEnd( url, null ); //to remove it from loading 
 				return;
 			}
 
 			//do it again to avoid reusing old
-			var extension = LS.ResourcesManager.getExtension( url );
+			var extension = ONE.ResourcesManager.getExtension( url );
 			if(extension)
-				format_info = LS.Formats.supported[ extension ];
+				format_info = ONE.Formats.supported[ extension ];
 
 			//convert format
 			if( format_info && format_info.convert_to && extension != format_info.convert_to )
@@ -811,12 +811,12 @@ var ResourcesManager = {
 			}
 
 			//apply last changes: add to containers, remove from pending_loads, add special properties like fullpath, load associated resources...
-			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
+			ONE.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
 			//Keep original file inside the resource in case we want to save it
-			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) && (!resource._original_data && !resource._original_file) )
+			if(ONE.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) && (!resource._original_data && !resource._original_file) )
 			{
-				if( extension == LS.ResourcesManager.getExtension( resource.filename ) )
+				if( extension == ONE.ResourcesManager.getExtension( resource.filename ) )
 					resource._original_data = data;
 			}
 		}
@@ -855,14 +855,14 @@ var ResourcesManager = {
 			switch( format_info.type )
 			{
 				case "scene":
-					resource = LS.ResourcesManager.processScene( url, data, options, process_final );
+					resource = ONE.ResourcesManager.processScene( url, data, options, process_final );
 					break;
 				case "mesh":
-					resource = LS.ResourcesManager.processTextMesh( url, data, options, process_final );
+					resource = ONE.ResourcesManager.processTextMesh( url, data, options, process_final );
 					break;
 				case "texture":
 				case "image":
-					resource = LS.ResourcesManager.processImage( url, data, options, process_final );
+					resource = ONE.ResourcesManager.processImage( url, data, options, process_final );
 					break;
 				case "data":
 				default:
@@ -897,7 +897,7 @@ var ResourcesManager = {
 		}
 		else //or just store the resource as a plain data buffer
 		{
-			var resource = LS.ResourcesManager.createResource( url, data );
+			var resource = ONE.ResourcesManager.createResource( url, data );
 			if(resource)
 			{
 				resource.filename = resource.fullpath = url;
@@ -918,7 +918,7 @@ var ResourcesManager = {
 	processFinalResource: function( fullpath, resource, options, on_complete, was_loaded )
 	{
 		if(!resource || resource.constructor === String)
-			return LS.ResourcesManager._resourceLoadedError( fullpath, "error processing the resource" );
+			return ONE.ResourcesManager._resourceLoadedError( fullpath, "error processing the resource" );
 
 		//EXTEND add properties as basic resource ********************************
 		resource.filename = fullpath;
@@ -938,17 +938,17 @@ var ResourcesManager = {
 			resource.is_preview = true;
 
 		//Remove from temporal containers
-		if( LS.ResourcesManager.resources_being_processed[ fullpath ] )
-			delete LS.ResourcesManager.resources_being_processed[ fullpath ];
+		if( ONE.ResourcesManager.resources_being_processed[ fullpath ] )
+			delete ONE.ResourcesManager.resources_being_processed[ fullpath ];
 
-		//Load associated resources (some resources like LS.Prefab or LS.Scene have other resources associated that must be loaded too)
+		//Load associated resources (some resources like ONE.Prefab or ONE.Scene have other resources associated that must be loaded too)
 		if( resource.getResources )
-			LS.ResourcesManager.loadResources( resource.getResources({}) );
+			ONE.ResourcesManager.loadResources( resource.getResources({}) );
 
 		//REGISTER adds to containers *******************************************
-		LS.ResourcesManager.registerResource( fullpath, resource );
+		ONE.ResourcesManager.registerResource( fullpath, resource );
 		if(options.preview_of)
-			LS.ResourcesManager.registerResource( options.preview_of, resource );
+			ONE.ResourcesManager.registerResource( options.preview_of, resource );
 
 		//POST-PROCESS is done from inside registerResource, this way we ensure that every registered resource
 		//has been post-processed, not only the loaded ones.
@@ -991,7 +991,7 @@ var ResourcesManager = {
 
 		//Compute resource type
 		if(!resource.object_class)
-			resource.object_class = LS.getObjectClassName( resource );
+			resource.object_class = ONE.getObjectClassName( resource );
 		var type = resource.object_class;
 		if(resource.constructor.resource_type)
 			type = resource.constructor.resource_type;
@@ -1008,7 +1008,7 @@ var ResourcesManager = {
 		if(!resource.is_preview)
 			LEvent.trigger(this,"resource_registered", resource);
 
-		LS.GlobalScene.requestFrame(); //render scene
+		ONE.GlobalScene.requestFrame(); //render scene
 	},	
 
 	/**
@@ -1035,11 +1035,11 @@ var ResourcesManager = {
 		if( this.materials[filename] )
 			delete this.materials[ filename ];
 
-		if(resource.constructor === LS.Pack || resource.constructor === LS.Prefab)
+		if(resource.constructor === ONE.Pack || resource.constructor === ONE.Prefab)
 			resource.setResourcesLink(null);
 
 		LEvent.trigger(this,"resource_unregistered", resource);
-		LS.GlobalScene.requestFrame(); //render scene
+		ONE.GlobalScene.requestFrame(); //render scene
 		return true;
 	},
 
@@ -1088,7 +1088,7 @@ var ResourcesManager = {
 
 		//inform everybody in the scene
 		if(!skip_event)
-			LS.GlobalScene.sendResourceRenamedEvent( old_name, new_name, res );
+			ONE.GlobalScene.sendResourceRenamedEvent( old_name, new_name, res );
 
 		//inform prefabs and packs...
 		for(var i in this.resources)
@@ -1117,7 +1117,7 @@ var ResourcesManager = {
 		this.resources_renamed_recently[ old_name ] = new_name;
 
 		if(!skip_event)
-			LEvent.trigger( LS.ResourcesManager, "resource_renamed", [ old_name, new_name, res ] );
+			LEvent.trigger( ONE.ResourcesManager, "resource_renamed", [ old_name, new_name, res ] );
 		return true;
 	},
 
@@ -1196,6 +1196,16 @@ var ResourcesManager = {
 		return this.materials[ name_or_id ];
 	},
 
+	convertFilenameToLocator: function( filename )
+	{
+		return "@RES-" + filename.replace(/\//gi,"\\");
+	},
+
+	convertLocatorToFilename: function( locator )
+	{
+		return locator.substr(5).replace(/\\/gi,"/");
+	},
+
 	/**
 	* Binds a callback for when a resource is loaded (in case you need to do something special)
 	*
@@ -1241,13 +1251,13 @@ var ResourcesManager = {
 	//Called after a resource has been loaded and processed
 	_resourceLoadedEnd: function(url,res)
 	{
-		if( LS.ResourcesManager.debug )
-			console.log("RES: " + url + " ---> " + LS.ResourcesManager.num_resources_being_loaded);
+		if( ONE.ResourcesManager.debug )
+			console.log("RES: " + url + " ---> " + ONE.ResourcesManager.num_resources_being_loaded);
 
 		if(res)
 		{
 			//trigger all associated load callbacks
-			var callbacks_array = LS.ResourcesManager.resources_being_loaded[url];
+			var callbacks_array = ONE.ResourcesManager.resources_being_loaded[url];
 			if(callbacks_array)
 				for(var i = 0; i < callbacks_array.length; ++i )
 				{
@@ -1256,55 +1266,55 @@ var ResourcesManager = {
 				}
 
 			//triggers 'once' callbacks
-			var callbacks_array = LS.ResourcesManager.resource_once_callbacks[url];
+			var callbacks_array = ONE.ResourcesManager.resource_once_callbacks[url];
 			if(callbacks_array)
 			{
 				for(var i = 0; i < callbacks_array.length; ++i)
 					if(callbacks_array[i]) //could be null if it has been canceled
 						callbacks_array[i](url, res);
-				delete LS.ResourcesManager.resource_once_callbacks[url];
+				delete ONE.ResourcesManager.resource_once_callbacks[url];
 			}
 		}
 
 		//two pases, one for launching, one for removing
-		if( LS.ResourcesManager.resources_being_loaded[url] )
+		if( ONE.ResourcesManager.resources_being_loaded[url] )
 		{
-			delete LS.ResourcesManager.resources_being_loaded[url];
-			LS.ResourcesManager.num_resources_being_loaded--;
+			delete ONE.ResourcesManager.resources_being_loaded[url];
+			ONE.ResourcesManager.num_resources_being_loaded--;
 			if(res)
-				LEvent.trigger( LS.ResourcesManager, "resource_loaded", url );
+				LEvent.trigger( ONE.ResourcesManager, "resource_loaded", url );
 			else
-				LEvent.trigger( LS.ResourcesManager, "resource_problem_loading", url );
-			LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - LS.ResourcesManager.num_resources_being_loaded / LS.ResourcesManager._total_resources_to_load );
-			if( LS.ResourcesManager.num_resources_being_loaded == 0)
+				LEvent.trigger( ONE.ResourcesManager, "resource_problem_loading", url );
+			LEvent.trigger( ONE.ResourcesManager, "loading_resources_progress", 1.0 - ONE.ResourcesManager.num_resources_being_loaded / ONE.ResourcesManager._total_resources_to_load );
+			if( ONE.ResourcesManager.num_resources_being_loaded == 0)
 			{
-				LEvent.trigger( LS.ResourcesManager, "end_loading_resources", true);
-				LS.ResourcesManager._total_resources_to_load = 0;
+				LEvent.trigger( ONE.ResourcesManager, "end_loading_resources", true);
+				ONE.ResourcesManager._total_resources_to_load = 0;
 			}
 		}
 
 		//request frame
-		LS.GlobalScene.requestFrame(); 
+		ONE.GlobalScene.requestFrame(); 
 	},
 
 	_resourceLoadedError: function( url, error )
 	{
 		console.log("Error loading " + url);
-		delete LS.ResourcesManager.resources_being_loaded[url];
-		delete LS.ResourcesManager.resource_once_callbacks[url];
-		LS.ResourcesManager.resources_not_found[url] = true;
-		LEvent.trigger( LS.ResourcesManager, "resource_not_found", url);
-		LS.ResourcesManager.num_resources_being_loaded--;
-		if( LS.ResourcesManager.num_resources_being_loaded == 0 )
-			LEvent.trigger( LS.ResourcesManager, "end_loading_resources", false);
+		delete ONE.ResourcesManager.resources_being_loaded[url];
+		delete ONE.ResourcesManager.resource_once_callbacks[url];
+		ONE.ResourcesManager.resources_not_found[url] = true;
+		LEvent.trigger( ONE.ResourcesManager, "resource_not_found", url);
+		ONE.ResourcesManager.num_resources_being_loaded--;
+		if( ONE.ResourcesManager.num_resources_being_loaded == 0 )
+			LEvent.trigger( ONE.ResourcesManager, "end_loading_resources", false);
 			//$(ResourcesManager).trigger("end_loading_resources");
 	}
 };
 
-LS.RM = LS.ResourcesManager = ResourcesManager;
+ONE.RM = ONE.ResourcesManager = ResourcesManager;
 
-LS.getTexture = function( name_or_texture ) {
-	return LS.ResourcesManager.getTexture( name_or_texture );
+ONE.getTexture = function( name_or_texture ) {
+	return ONE.ResourcesManager.getTexture( name_or_texture );
 }	
 
 
@@ -1315,13 +1325,13 @@ LS.getTexture = function( name_or_texture ) {
 // This actions depend on the resource type, and format, and it is open so future formats are easy to implement.
 
 //global formats: take a file and extract info
-LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, data, options) {
+ONE.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, data, options) {
 	//this object has already been expanded, it happens with objects created from parsers that encode the wbin extension
 	if(data.constructor === Object && data.object_class )
 	{
-		if( LS.Classes[ data.object_class ] )
+		if( ONE.Classes[ data.object_class ] )
 		{
-			var ctor = LS.Classes[ data.object_class ] || window[ data.object_class ];
+			var ctor = ONE.Classes[ data.object_class ] || window[ data.object_class ];
 			if( ctor && ctor.fromBinary )
 				return ctor.fromBinary( data, filename );
 			else if(ctor && ctor.prototype.fromBinary)
@@ -1338,7 +1348,7 @@ LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, dat
 	return final_data;
 },"binary");
 
-LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data, options) {
+ONE.ResourcesManager.registerResourcePreProcessor("json", function(filename, data, options) {
 	var resource = data;
 	if( data.constructor === String )
 	{
@@ -1359,15 +1369,15 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 
 	if(!class_name)
 	{
-		var complex = LS.ResourcesManager.getExtension( filename, true );
-		var ctor = LS.ResourceClasses_by_extension[ complex ];
+		var complex = ONE.ResourcesManager.getExtension( filename, true );
+		var ctor = ONE.ResourceClasses_by_extension[ complex ];
 		if(ctor)
-			class_name = LS.getClassName( ctor );
+			class_name = ONE.getClassName( ctor );
 	}
 
 	if( class_name && !data.is_data )
 	{
-		var ctor = LS.Classes[ class_name ] || window[ class_name ];
+		var ctor = ONE.Classes[ class_name ] || window[ class_name ];
 		if(ctor)
 		{
 			if(ctor.prototype.configure)
@@ -1387,7 +1397,7 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 	else
 	{
 		//unknown JSON, create a resource
-		resource = new LS.Resource();
+		resource = new ONE.Resource();
 		resource.filename = filename;
 		resource._data = data;
 		resource.type = "json";
@@ -1397,7 +1407,7 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 });
 
 //global formats: take a file and extract info
-LS.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data, options ) {
+ONE.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data, options ) {
 	
 	if(!global.JSZip)
 		throw("JSZip not found. To use ZIPs you must have the JSZip.js library included in the website.");
@@ -1407,13 +1417,13 @@ LS.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data
 		zip.forEach(function (relativePath, file){
 			if(file.dir)
 				return; //ignore folders
-			var ext = LS.ResourcesManager.getExtension( relativePath );
-			var format = LS.Formats.supported[ ext ];
+			var ext = ONE.ResourcesManager.getExtension( relativePath );
+			var format = ONE.Formats.supported[ ext ];
 			file.async( format && format.dataType == "text" ? "string" : "arraybuffer").then( function(filedata){
 				if( relativePath == "scene.json" && (!options || !options.to_memory) )
-					LS.GlobalScene.configure( JSON.parse( filedata ) );
+					ONE.GlobalScene.configure( JSON.parse( filedata ) );
 				else
-					LS.ResourcesManager.processResource( relativePath, filedata );
+					ONE.ResourcesManager.processResource( relativePath, filedata );
 			});
 		});
 	});
@@ -1423,7 +1433,7 @@ LS.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data
 },"binary");
 
 //For resources without file extension (JSONs and WBINs)
-LS.ResourcesManager.processDataResource = function( url, data, options, callback )
+ONE.ResourcesManager.processDataResource = function( url, data, options, callback )
 {
 	//JSON?
 	if( data.constructor === String )
@@ -1446,17 +1456,17 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 
 	//JS OBJECT?
 	var class_name = data.object_class;
-	if(class_name && LS.Classes[class_name] )
+	if(class_name && ONE.Classes[class_name] )
 	{
-		var ctor = LS.Classes[class_name];
+		var ctor = ONE.Classes[class_name];
 		var resource = null;
 		if(ctor.prototype.configure)
 		{
-			resource = new LS.Classes[class_name]();
+			resource = new ONE.Classes[class_name]();
 			resource.configure( data );
 		}
 		else
-			resource = new LS.Classes[class_name]( data );
+			resource = new ONE.Classes[class_name]( data );
 		if(callback)
 			callback(url, resource, options);
 		return resource;
@@ -1470,9 +1480,9 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 
 //Called after the http request for an image
 //Takes image data in some raw format and transforms it in regular image data, then converts it to GL.Texture
-LS.ResourcesManager.processImage = function( filename, data, options, callback ) {
+ONE.ResourcesManager.processImage = function( filename, data, options, callback ) {
 
-	var extension = LS.ResourcesManager.getExtension(filename);
+	var extension = ONE.ResourcesManager.getExtension(filename);
 	var mimetype = "application/octet-stream";
 	if(extension == "jpg" || extension == "jpeg")
 		mimetype = "image/jpg";
@@ -1483,7 +1493,7 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 	else if(extension == "png")
 		mimetype = "image/png";
 	else {
-		var format = LS.Formats.supported[ extension ];
+		var format = ONE.Formats.supported[ extension ];
 		if(format.mimetype)
 			mimetype = format.mimetype;
 		else
@@ -1505,7 +1515,7 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 	image.onload = function()
 	{
 		var filename = this.real_filename;
-		var texture = LS.ResourcesManager.processTexture( filename, this, options );
+		var texture = ONE.ResourcesManager.processTexture( filename, this, options );
 		inner_on_texture( texture );
 	}
 	image.onerror = function(err){
@@ -1519,14 +1529,14 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 	{
 		if(texture)
 		{
-			//LS.ResourcesManager.registerResource( filename, texture ); //this is done already by processResource
-			if(LS.ResourcesManager.keep_files)
+			//ONE.ResourcesManager.registerResource( filename, texture ); //this is done already by processResource
+			if(ONE.ResourcesManager.keep_files)
 				texture._original_data = data;
 		}
 
 		if( objectURL )
 		{
-			if( !LS.ResourcesManager.keep_urls )
+			if( !ONE.ResourcesManager.keep_urls )
 				URL.revokeObjectURL( objectURL ); //free memory
 			else
 				texture._local_url = objectURL; //used in strange situations
@@ -1540,11 +1550,11 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 }
 
 //Similar to processImage but for non native file formats
-LS.ResourcesManager.processImageNonNative = function( filename, data, options ) {
+ONE.ResourcesManager.processImageNonNative = function( filename, data, options ) {
 
 	//clone because DDS changes the original data
 	var cloned_data = new Uint8Array(data).buffer;
-	var texture_data = LS.Formats.parse( filename, cloned_data, options );
+	var texture_data = ONE.Formats.parse( filename, cloned_data, options );
 
 	if(!texture_data)
 	{
@@ -1561,12 +1571,12 @@ LS.ResourcesManager.processImageNonNative = function( filename, data, options ) 
 	}
 
 	//texture in object format
-	var texture = LS.ResourcesManager.processTexture( filename, texture_data );
+	var texture = ONE.ResourcesManager.processTexture( filename, texture_data );
 	return texture;
 }
 
 //Takes one image (or canvas or object with width,height,pixels) as input and creates a GL.Texture
-LS.ResourcesManager.processTexture = function(filename, img, options)
+ONE.ResourcesManager.processTexture = function(filename, img, options)
 {
 	if(img.width == (img.height / 6) || filename.indexOf("CUBECROSS") != -1) //cubemap
 	{
@@ -1607,9 +1617,9 @@ LS.ResourcesManager.processTexture = function(filename, img, options)
 }
 
 //Transform text mesh data in a regular GL.Mesh
-LS.ResourcesManager.processTextMesh = function( filename, data, options ) {
+ONE.ResourcesManager.processTextMesh = function( filename, data, options ) {
 
-	var mesh_data = LS.Formats.parse( filename, data, options );
+	var mesh_data = ONE.Formats.parse( filename, data, options );
 
 	if(mesh_data == null)
 	{
@@ -1623,10 +1633,10 @@ LS.ResourcesManager.processTextMesh = function( filename, data, options ) {
 
 //this is called when loading a scene from a format that is not the regular serialize of our engine (like from ASE, G3DJ, BVH,...)
 //converts scene data in a SceneNode
-LS.ResourcesManager.processScene = function( filename, data, options ) {
+ONE.ResourcesManager.processScene = function( filename, data, options ) {
 	//options = options || {};
 
-	var scene_data = LS.Formats.parse( filename, data, options );
+	var scene_data = ONE.Formats.parse( filename, data, options );
 
 	if(scene_data == null)
 	{
@@ -1634,51 +1644,51 @@ LS.ResourcesManager.processScene = function( filename, data, options ) {
 		return null;
 	}
 
-	if( scene_data && scene_data.constructor === LS.Scene )
+	if( scene_data && scene_data.constructor === ONE.Scene )
 		throw("processScene must receive object, no Scene");
 
 	if(!scene_data.root)
 		throw("this is not an scene, root property missing");
 
-	LS.ResourcesManager._parsing_local_file = true;
+	ONE.ResourcesManager._parsing_local_file = true;
 
 	//resources (meshes, textures...)
 	for(var i in scene_data.meshes)
 	{
 		var mesh = scene_data.meshes[i];
-		LS.ResourcesManager.processResource( i, mesh );
+		ONE.ResourcesManager.processResource( i, mesh );
 	}
 
 	//used for anims mostly
 	for(var i in scene_data.resources)
 	{
 		var res = scene_data.resources[i];
-		LS.ResourcesManager.processResource(i,res);
+		ONE.ResourcesManager.processResource(i,res);
 	}
 
 	for(var i in scene_data.materials)
 	{
 		var material = scene_data.materials[i];
-		LS.ResourcesManager.processResource(i,material);
+		ONE.ResourcesManager.processResource(i,material);
 	}
 
-	var node = new LS.SceneNode();
+	var node = new ONE.SceneNode();
 	node.configure( scene_data.root );
 
 	//make it a pack or prefab
 	if(options && options.filename)
 	{
-		var ext = LS.RM.getExtension( options.filename );
+		var ext = ONE.RM.getExtension( options.filename );
 		if(ext != "json")
 			options.filename += ".json";
 	}
 
-	LS.ResourcesManager._parsing_local_file = false;
+	ONE.ResourcesManager._parsing_local_file = false;
 
 	return node;
 }
 
-LS.ResourcesManager.loadTextureAtlas = function( atlas_info, on_complete, force )
+ONE.ResourcesManager.loadTextureAtlas = function( atlas_info, on_complete, force )
 {
 	var image = new Image();
 	image.src = this.getFullURL( atlas_info.filename );
@@ -1700,10 +1710,10 @@ LS.ResourcesManager.loadTextureAtlas = function( atlas_info, on_complete, force 
 			var texture = GL.Texture.fromImage( canvas, { format: GL.RGBA, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR, wrap: gl.REPEAT } );
 			if(!force)
 				texture.is_preview = true;
-			LS.ResourcesManager.registerResource( info.name, texture );
+			ONE.ResourcesManager.registerResource( info.name, texture );
 		}
 
-		LS.GlobalScene.requestFrame();
+		ONE.GlobalScene.requestFrame();
 		if(on_complete)
 			on_complete();
 	}
@@ -1712,7 +1722,7 @@ LS.ResourcesManager.loadTextureAtlas = function( atlas_info, on_complete, force 
 // Post processors **********************************************************************************
 // Take a resource already processed and does some final actions (like validate, register or compute metadata)
 
-LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mesh ) {
+ONE.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mesh ) {
 
 	mesh.object_class = "Mesh"; //useful
 	if(mesh.metadata)
@@ -1729,36 +1739,36 @@ LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mes
 	if(!mesh.getBuffer("normals"))
 		mesh.computeNormals();
 
-	if(LS.ResourcesManager.free_data) //free buffers to reduce memory usage
+	if(ONE.ResourcesManager.free_data) //free buffers to reduce memory usage
 		mesh.freeData();
 
-	LS.ResourcesManager.meshes[filename] = mesh;
+	ONE.ResourcesManager.meshes[filename] = mesh;
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Texture", function( filename, texture ) {
+ONE.ResourcesManager.registerResourcePostProcessor("Texture", function( filename, texture ) {
 	//store in appropiate container
-	LS.ResourcesManager.textures[filename] = texture;
+	ONE.ResourcesManager.textures[filename] = texture;
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Material", function( filename, material ) {
+ONE.ResourcesManager.registerResourcePostProcessor("Material", function( filename, material ) {
 	//store in appropiate containers
-	LS.ResourcesManager.materials[filename] = material;
-	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
+	ONE.ResourcesManager.materials[filename] = material;
+	ONE.ResourcesManager.materials_by_uid[ material.uid ] = material;
 	if(material.prepare)
-		material.prepare( LS.GlobalScene );
+		material.prepare( ONE.GlobalScene );
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Pack", function( filename, pack ) {
+ONE.ResourcesManager.registerResourcePostProcessor("Pack", function( filename, pack ) {
 	//flag contents to specify where do they come from
 	pack.flagResources();
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Prefab", function( filename, prefab ) {
+ONE.ResourcesManager.registerResourcePostProcessor("Prefab", function( filename, prefab ) {
 	//apply to nodes in the scene that use this prefab
 	prefab.applyToNodes();
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("ShaderCode", function( filename, shader_code ) {
+ONE.ResourcesManager.registerResourcePostProcessor("ShaderCode", function( filename, shader_code ) {
 	//apply to materials that are using this ShaderCode
 	shader_code.applyToMaterials();
 });

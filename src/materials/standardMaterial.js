@@ -19,7 +19,7 @@ function StandardMaterial(o)
 {
 	ShaderMaterial.call(this,null); //do not pass the data object, it is called later
 
-	this.blend_mode = LS.Blend.NORMAL;
+	this.blend_mode = ONE.Blend.NORMAL;
 
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty( "ambient", new Float32Array([1.0,1.0,1.0]), "color" );
@@ -48,7 +48,7 @@ function StandardMaterial(o)
 	this.bumpmap_factor = 1.0;
 
 	this.displacementmap_factor = 0.1;
-	this._texture_settings = new Uint8Array(9);
+	this._texture_settings = new Uint8Array(11);
 
 	this.use_scene_ambient = true;
 	this.point_size = 1.0;
@@ -129,7 +129,7 @@ Object.defineProperty( StandardMaterial.prototype, 'specular_gloss', {
 
 StandardMaterial.description = "This material is a general use material that allows to control the most common properties.";
 
-StandardMaterial["@blend_mode"] = { type: "enum", values: LS.Blend };
+StandardMaterial["@blend_mode"] = { type: "enum", values: ONE.Blend };
 StandardMaterial.actions = {};
 
 StandardMaterial.DETAIL_TEXTURE = "detail";
@@ -146,7 +146,7 @@ StandardMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInsta
 StandardMaterial.prototype.renderShadowInstance = ShaderMaterial.prototype.renderShadowInstance;
 StandardMaterial.prototype.renderPickingInstance = ShaderMaterial.prototype.renderPickingInstance;
 
-//called from LS.Renderer.processVisibleData
+//called from ONE.Renderer.processVisibleData
 StandardMaterial.prototype.prepare = function( scene )
 {
 	var flags = this.flags;
@@ -162,10 +162,10 @@ StandardMaterial.prototype.prepare = function( scene )
 	render_state.depth_test = flags.depth_test;
 	render_state.depth_mask = flags.depth_write;
 
-	render_state.blend = this.blend_mode != LS.Blend.NORMAL;
-	if( this.blend_mode != LS.Blend.NORMAL )
+	render_state.blend = this.blend_mode != ONE.Blend.NORMAL;
+	if( this.blend_mode != ONE.Blend.NORMAL )
 	{
-		var func = LS.BlendFunctions[ this.blend_mode ];
+		var func = ONE.BlendFunctions[ this.blend_mode ];
 		if(func)
 		{
 			render_state.blendFunc0 = func[0];
@@ -215,7 +215,7 @@ StandardMaterial.FLAGS = {
 
 StandardMaterial.shader_codes = {};
 
-//returns the LS.ShaderCode required to render
+//returns the ONE.ShaderCode required to render
 //here we cannot filter by light pass because this is done before applying shaderblocks
 //in the StandardMaterial we cache versions of the ShaderCode according to the settings
 StandardMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
@@ -224,7 +224,7 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 
 	//lets check which code flags are active according to the configuration of the shader
 	var code_flags = 0;
-	var scene = LS.Renderer._current_scene;
+	var scene = ONE.Renderer._current_scene;
 
 	//TEXTURES
 	if( this.textures.color )
@@ -265,7 +265,7 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 		code_flags |= FLAGS.ALPHA_TEST;
 
 	//check if we already have this ShaderCode created
-	var shader_code = LS.StandardMaterial.shader_codes[ code_flags ];
+	var shader_code = ONE.StandardMaterial.shader_codes[ code_flags ];
 
 	//reuse shader codes when possible **************************************
 	if(shader_code)
@@ -366,7 +366,7 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	//	flat_normals += "";
 
 	//compile shader and cache
-	shader_code = new LS.ShaderCode();
+	shader_code = new ONE.ShaderCode();
 	var final_code = StandardMaterial.code_template;
 
 	if( StandardMaterial.onShaderCode )
@@ -380,7 +380,7 @@ StandardMaterial.prototype.getShaderCode = function( instance, render_settings, 
 	});
 	*/
 
-	LS.StandardMaterial.shader_codes[ code_flags ] = shader_code;
+	ONE.StandardMaterial.shader_codes[ code_flags ] = shader_code;
 	return shader_code;
 }
 
@@ -421,7 +421,7 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 			continue;
 
 		if(texture.constructor === String) //name of texture
-			texture = LS.ResourcesManager.textures[texture];
+			texture = ONE.ResourcesManager.textures[texture];
 		else if (texture.constructor != Texture)
 			continue;		
 		
@@ -430,9 +430,9 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 
 		var slot = last_texture_slot;
 		if( i == "environment" )
-			slot = LS.Renderer.ENVIRONMENT_TEXTURE_SLOT;
+			slot = ONE.Renderer.ENVIRONMENT_TEXTURE_SLOT;
 		else if( i == "irradiance" )
-			slot = LS.Renderer.IRRADIANCE_TEXTURE_SLOT;
+			slot = ONE.Renderer.IRRADIANCE_TEXTURE_SLOT;
 		else
 			last_texture_slot++;
 
@@ -525,35 +525,35 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 
 	//add some more
 	o.merge({
-		shader_name:  LS.TYPES.STRING,
+		shader_name:  ONE.TYPES.STRING,
 
-		blend_mode: LS.TYPES.NUMBER,
-		specular_factor: LS.TYPES.NUMBER,
-		specular_gloss: LS.TYPES.NUMBER,
-		backlight_factor: LS.TYPES.NUMBER,
-		translucency: LS.TYPES.NUMBER,
-		reflection_factor: LS.TYPES.NUMBER,
-		reflection_fresnel: LS.TYPES.NUMBER,
-		velvet_exp: LS.TYPES.NUMBER,
-		point_size: LS.TYPES.NUMBER,
+		blend_mode: ONE.TYPES.NUMBER,
+		specular_factor: ONE.TYPES.NUMBER,
+		specular_gloss: ONE.TYPES.NUMBER,
+		backlight_factor: ONE.TYPES.NUMBER,
+		translucency: ONE.TYPES.NUMBER,
+		reflection_factor: ONE.TYPES.NUMBER,
+		reflection_fresnel: ONE.TYPES.NUMBER,
+		velvet_exp: ONE.TYPES.NUMBER,
+		point_size: ONE.TYPES.NUMBER,
 
-		normalmap_factor: LS.TYPES.NUMBER,
-		bumpmap_factor: LS.TYPES.NUMBER,
-		displacementmap_factor: LS.TYPES.NUMBER,
-		emissive_extra: LS.TYPES.NUMBER,
+		normalmap_factor: ONE.TYPES.NUMBER,
+		bumpmap_factor: ONE.TYPES.NUMBER,
+		displacementmap_factor: ONE.TYPES.NUMBER,
+		emissive_extra: ONE.TYPES.NUMBER,
 
-		ambient: LS.TYPES.VEC3,
-		emissive: LS.TYPES.VEC3,
-		velvet: LS.TYPES.VEC3,
-		extra: LS.TYPES.VEC4,
-		detail_factor: LS.TYPES.NUMBER,
-		detail_scale: LS.TYPES.VEC2,
+		ambient: ONE.TYPES.VEC3,
+		emissive: ONE.TYPES.VEC3,
+		velvet: ONE.TYPES.VEC3,
+		extra: ONE.TYPES.VEC4,
+		detail_factor: ONE.TYPES.NUMBER,
+		detail_scale: ONE.TYPES.VEC2,
 
-		specular_on_top: LS.TYPES.BOOLEAN,
-		normalmap_tangent: LS.TYPES.BOOLEAN,
-		reflection_specular: LS.TYPES.BOOLEAN,
-		use_scene_ambient: LS.TYPES.BOOLEAN,
-		velvet_additive: LS.TYPES.BOOLEAN
+		specular_on_top: ONE.TYPES.BOOLEAN,
+		normalmap_tangent: ONE.TYPES.BOOLEAN,
+		reflection_specular: ONE.TYPES.BOOLEAN,
+		use_scene_ambient: ONE.TYPES.BOOLEAN,
+		velvet_additive: ONE.TYPES.BOOLEAN
 	});
 
 	return o;
@@ -585,22 +585,22 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "emissive_extra":
 		case "detail_factor":
 		case "point_size":
-			type = LS.TYPES.NUMBER; break;
+			type = ONE.TYPES.NUMBER; break;
 		case "extra":
-			type = LS.TYPES.VEC4; break;
+			type = ONE.TYPES.VEC4; break;
 		case "ambient":
 		case "emissive":
 		case "velvet":
-			type = LS.TYPES.VEC3; break;
+			type = ONE.TYPES.VEC3; break;
 		case "detail_scale":
-			type = LS.TYPES.VEC2; break;
+			type = ONE.TYPES.VEC2; break;
 		case "specular_on_top":
 		case "specular_on_alpha":
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
 		case "velvet_additive":
-			type = LS.TYPES.BOOLEAN; break;
+			type = ONE.TYPES.BOOLEAN; break;
 		default:
 			return null;
 	}
@@ -616,17 +616,17 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 
 StandardMaterial.clearShadersCache = function()
 {
-	LS.log("StandardMaterial ShaderCode cache cleared");
+	ONE.log("StandardMaterial ShaderCode cache cleared");
 	StandardMaterial.shader_codes = {};
 }
 
-LS.registerMaterialClass( StandardMaterial );
-LS.StandardMaterial = StandardMaterial;
+ONE.registerMaterialClass( StandardMaterial );
+ONE.StandardMaterial = StandardMaterial;
 
 //legacy
-LS.Classes["newStandardMaterial"] = StandardMaterial;
-//LS.newStandardMaterial = StandardMaterial;
-//LS.MaterialClasses.newStandardMaterial = StandardMaterial;
+ONE.Classes["newStandardMaterial"] = StandardMaterial;
+//ONE.newStandardMaterial = StandardMaterial;
+//ONE.MaterialClasses.newStandardMaterial = StandardMaterial;
 
 //**********************************************
 var UVS_CODE = "\n\
@@ -924,6 +924,7 @@ varying vec3 v_local_pos;\n\
 varying vec3 v_local_normal;\n\
 \n\
 //globals\n\
+uniform vec4 u_viewport;\n\
 uniform vec3 u_camera_eye;\n\
 uniform vec2 u_camera_planes;\n\
 uniform vec4 u_clipping_plane;\n\
@@ -985,10 +986,10 @@ void main() {\n\
 //hooks are vs_out (out of main), vs_local (vertex4 to deform vertices localy), vs_global (v_pos to deform final position), fs_out (out of main), fs_encode (final_color before being written)
 this.onStart = function()
 {
-  LS.StandardMaterial.onShaderCode = function(code,mat)
+  ONE.StandardMaterial.onShaderCode = function(code,mat)
   {
   	code.fs_encode = "final_color.x = final_color.y;";
   }
-	LS.StandardMaterial.clearShadersCache();
+	ONE.StandardMaterial.clearShadersCache();
 }
 */

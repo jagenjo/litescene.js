@@ -1,3 +1,4 @@
+//WORK IN PROGRESS, NOT WORKING YET
 function NavegationMesh( o )
 {
 	this._points = [];
@@ -37,4 +38,4 @@ NavegationMesh.prototype.renderEditor = function( camera )
 	//render mesh
 }
 
-LS.registerComponent( NavegationMesh );
+ONE.registerComponent( NavegationMesh );

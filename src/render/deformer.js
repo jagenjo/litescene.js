@@ -19,5 +19,5 @@ Deformer.prototype.applyByCPU = function( vertex_data, normals_data )
 	//overwrite
 }
 
-LS.Deformer = Deformer;
+ONE.Deformer = Deformer;
 */

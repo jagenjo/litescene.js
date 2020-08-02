@@ -40,11 +40,11 @@ EVENT.REQUEST_FRAME = "requestFrame";
 
 function Scene()
 {
-	this.uid = LS.generateUId("TREE-");
+	this.uid = ONE.generateUId("TREE-");
 
-	this._state = LS.STOPPED;
+	this._state = ONE.STOPPED;
 
-	this._root = new LS.SceneNode("root");
+	this._root = new ONE.SceneNode("root");
 	this._root.removeAllComponents();
 	this._root._is_root  = true;
 	this._root._in_tree = this;
@@ -68,7 +68,7 @@ function Scene()
 	this.external_repository = null;
 
 	//work in progress, not finished yet. This will contain all the objects in cells
-	this._spatial_container = new LS.SpatialContainer();
+	this._spatial_container = new ONE.SpatialContainer();
 
 	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene) they do not have access to the data in the scene
 	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app. they have access to the scene data
@@ -91,7 +91,7 @@ function Scene()
 	this.init();
 }
 
-//LS.extendClass( Scene, ComponentContainer ); //scene could also have components
+//ONE.extendClass( Scene, ComponentContainer ); //scene could also have components
 
 Object.defineProperty( Scene.prototype, "root", {
 	enumerable: true,
@@ -144,7 +144,7 @@ Object.defineProperty( Scene.prototype, "frame", {
 });
 
 //Some useful events
-Scene.supported_events = [LS.EVENT.START,LS.EVENT.UPDATE,LS.EVENT.FINISH,LS.EVENT.CLEAR,LS.EVENT.BEFORE_RELOAD,LS.EVENT.CHANGE,EVENT.AFTER_RENDER,LS.EVENT.CONFIGURE,EVENT.NODE_ADDED,"nodeChangeParent","nodeComponentRemoved",LS.EVENT.RELOAD,"renderPicking","scene_loaded",LS.EVENT.SERIALIZE];
+Scene.supported_events = [ONE.EVENT.START,ONE.EVENT.UPDATE,ONE.EVENT.FINISH,ONE.EVENT.CLEAR,ONE.EVENT.BEFORE_RELOAD,ONE.EVENT.CHANGE,EVENT.AFTER_RENDER,ONE.EVENT.CONFIGURE,EVENT.NODE_ADDED,"nodeChangeParent","nodeComponentRemoved",ONE.EVENT.RELOAD,"renderPicking","scene_loaded",ONE.EVENT.SERIALIZE];
 
 //methods
 
@@ -158,7 +158,7 @@ Scene.supported_events = [LS.EVENT.START,LS.EVENT.UPDATE,LS.EVENT.FINISH,LS.EVEN
 Scene.prototype.init = function()
 {
 	this.id = "";
-	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
+	//this.materials = {}; //shared materials cache: moved to ONE.RM.resources
 	this.external_repository = null;
 
 	this.global_scripts = [];
@@ -167,7 +167,7 @@ Scene.prototype.init = function()
 	this.texture_atlas = null;
 
 	this._root.removeAllComponents();
-	this._root.uid = LS.generateUId("NODE-");
+	this._root.uid = ONE.generateUId("NODE-");
 
 	this._nodes = [ this._root ];
 	this._nodes_by_name = { "root": this._root };
@@ -179,14 +179,14 @@ Scene.prototype.init = function()
 	this._spatial_container.clear();
 
 	//default components
-	this.info = new LS.Components.GlobalInfo();
+	this.info = new ONE.Components.GlobalInfo();
 	this._root.addComponent( this.info );
-	this._root.addComponent( new LS.Camera({ eye:[0,100,100], center:[0,0,0]} ) );
-	this._root.addComponent( new LS.Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
+	this._root.addComponent( new ONE.Camera({ eye:[0,100,100], center:[0,0,0]} ) );
+	this._root.addComponent( new ONE.Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this._frame = 0;
 	this._last_collect_frame = -1; //force collect
-	this._state = LS.STOPPED;
+	this._state = ONE.STOPPED;
 
 	this._time = 0;
 	this._global_time = 0; //in seconds
@@ -274,10 +274,15 @@ Scene.prototype.configure = function( scene_info )
 	//this clears all the nodes
 	if(scene_info.root)
 	{
-		this._spatial_container.clear(); // is this necessary?
-		LS._pending_encoded_objects = [];
-		this._root.configure( scene_info.root );
-		LS.resolvePendingEncodedObjects();
+		this._spatial_container.clear(); // is this necessary? never used
+		//two passes configure, first nodes, then components, in case a component requires a node
+		var pending_components = []; 
+		//components info could store data about other nodes/components, better catch it in case they are created later during the process
+		ONE._pending_encoded_objects = [];
+		this._root.configure( scene_info.root, pending_components );
+		for(var i = 0; i < pending_components.length; i+=2)
+			pending_components[i].configureComponents( pending_components[i+1] );
+		ONE.resolvePendingEncodedObjects();
 	}
 
 	if( scene_info.global_scripts )
@@ -287,7 +292,7 @@ Scene.prototype.configure = function( scene_info )
 		this.external_scripts = scene_info.external_scripts.concat();
 
 	if( scene_info.preloaded_resources )
-		this.preloaded_resources = LS.cloneObject( scene_info.preloaded_resources );
+		this.preloaded_resources = ONE.cloneObject( scene_info.preloaded_resources );
 
 	if( scene_info.local_resources )
 		this._local_resources = scene_info.local_resources;
@@ -296,7 +301,7 @@ Scene.prototype.configure = function( scene_info )
 		this.layer_names = scene_info.layer_names.concat();
 
 	if( scene_info.animation )
-		this.animation = new LS.Animation( scene_info.animation );
+		this.animation = new ONE.Animation( scene_info.animation );
 
 	//if(scene_info.components)
 	//	this.configureComponents( scene_info );
@@ -335,8 +340,10 @@ Scene.prototype.serialize = function( simplified  )
 {
 	var o = {};
 
+	o.version = ONE.Version;
+
 	o.uid = this.uid;
-	o.object_class = LS.getObjectClassName(this);
+	o.object_class = ONE.getObjectClassName(this);
 
 	o.external_repository = this.external_repository;
 
@@ -352,9 +359,9 @@ Scene.prototype.serialize = function( simplified  )
 	o.layer_names = this.layer_names.concat();
 	o.global_scripts = this.global_scripts.concat();
 	o.external_scripts = this.external_scripts.concat();
-	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
-	o.texture_atlas = LS.cloneObject( this.texture_atlas );
-	o.local_resources = LS.cloneObject( this._local_resources );
+	o.preloaded_resources = ONE.cloneObject( this.preloaded_resources );
+	o.texture_atlas = ONE.cloneObject( this.texture_atlas );
+	o.local_resources = ONE.cloneObject( this._local_resources );
 
 	if( this._editor )
 		o.editor = this._editor;
@@ -404,7 +411,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		}
 	}
 
-	var scripts = LS.Scene.getScriptsList( data, true );
+	var scripts = ONE.Scene.getScriptsList( data, true );
 	this.external_scripts = data.external_scripts; //must be copyed before, because it is used inside loadScripts to check origin 
 
 	//check JSON for special scripts
@@ -422,7 +429,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		that.configure(response);
 
 		if( that.texture_atlas )
-			LS.RM.loadTextureAtlas( that.texture_atlas, inner_preloaded_all );
+			ONE.RM.loadTextureAtlas( that.texture_atlas, inner_preloaded_all );
 		else
 			inner_preloaded_all();
 	}
@@ -436,7 +443,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 		 */
 		LEvent.trigger(that, EVENT.LOAD );
 
-		if(!LS.ResourcesManager.isLoading())
+		if(!ONE.ResourcesManager.isLoading())
 			inner_all_loaded();
 
 		if(on_complete)
@@ -465,7 +472,7 @@ Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress
 
 /**
 * Loads a scene from a relative url pointing to a JSON description (or WBIN,ZIP)
-* Warning: this url is not passed through the LS.ResourcesManager so the url is absolute
+* Warning: this url is not passed through the ONE.ResourcesManager so the url is absolute
 *
 * @method load
 * @param {String} url where the JSON object containing the scene is stored
@@ -482,13 +489,13 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 
 	var that = this;
 
-	var extension = LS.ResourcesManager.getExtension( url );
-	var format_info = LS.Formats.getFileFormatInfo( extension );
+	var extension = ONE.ResourcesManager.getExtension( url );
+	var format_info = ONE.Formats.getFileFormatInfo( extension );
 	if(!format_info) //hack, to avoid errors
 		format_info = { dataType: "json" };
 
 	//request scene file using our own library
-	LS.Network.request({
+	ONE.Network.request({
 		url: url,
 		nocache: true,
 		dataType: extension == "json" ? "json" : (format_info.dataType || "text"), //datatype of json is text...
@@ -497,7 +504,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 		error: inner_error
 	});
 
-	this._state = LS.LOADING;
+	this._state = ONE.LOADING;
 
 	/**
 	 * Fired before loading scene
@@ -508,7 +515,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 	function inner_data_loaded( response )
 	{
 		//process whatever we loaded (in case it is a pack)
-		LS.ResourcesManager.processResource( url, response, null, inner_data_processed );
+		ONE.ResourcesManager.processResource( url, response, null, inner_data_processed );
 	}
 
 	function inner_data_processed( pack_url, pack )
@@ -545,7 +552,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 		if( response.constructor !== Object )
 			throw("response must be object");
 
-		var scripts = LS.Scene.getScriptsList( response, true );
+		var scripts = ONE.Scene.getScriptsList( response, true );
 
 		//check JSON for special scripts
 		if ( scripts.length )
@@ -568,7 +575,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 		that.loadResources( inner_all_loaded );
 		LEvent.trigger(that, EVENT.LOAD );
 
-		if(!LS.ResourcesManager.isLoading())
+		if(!ONE.ResourcesManager.isLoading())
 			inner_all_loaded();
 	}
 
@@ -602,7 +609,7 @@ Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_res
 */
 Scene.prototype.loadFromResources = function( url, on_complete, on_error, on_progress, on_resources_loaded )
 {
-	url = LS.ResourcesManager.getFullURL( url );
+	url = ONE.ResourcesManager.getFullURL( url );
 	this.load( url, on_complete, on_error, on_progress, on_resources_loaded );
 }
 
@@ -629,18 +636,18 @@ Scene.getScriptsList = function( scene, allow_local, full_paths )
 		for(var i in scene.global_scripts)
 		{
 			var script_url = scene.global_scripts[i];
-			if(!script_url || LS.ResourcesManager.getExtension( script_url ) != "js" )
+			if(!script_url || ONE.ResourcesManager.getExtension( script_url ) != "js" )
 				continue;
 
-			var res = LS.ResourcesManager.getResource( script_url );
+			var res = ONE.ResourcesManager.getResource( script_url );
 			if(res)
 			{
 				if( allow_local )
-					script_url = LS.ResourcesManager.cleanFullpath( script_url );
+					script_url = ONE.ResourcesManager.cleanFullpath( script_url );
 			}
 
 			if(full_paths)
-				script_url = LS.ResourcesManager.getFullURL( script_url );
+				script_url = ONE.ResourcesManager.getFullURL( script_url );
 
 			scripts.push( script_url );
 		}
@@ -654,7 +661,7 @@ Scene.getScriptsList = function( scene, allow_local, full_paths )
 //reloads external and global scripts taking into account if they come from wbins
 Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
 {
-	if(!LS.allow_scripts)
+	if(!ONE.allow_scripts)
 	{
 		console.error("LiteScene.allow_scripts is set to false, so scripts imported into this scene are ignored.");
 		if(on_complete)
@@ -663,7 +670,7 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 	}
 
 	//get a list of scripts (they cannot be fullpaths)
-	scripts = scripts || LS.Scene.getScriptsList( this, true );
+	scripts = scripts || ONE.Scene.getScriptsList( this, true );
 
 	if(!scripts.length)
 	{
@@ -672,9 +679,9 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 		return;
 	}
 
-	if( LS._block_scripts )
+	if( ONE._block_scripts )
 	{
-		console.error("Safety: LS.block_scripts enabled, cannot request script");
+		console.error("Safety: ONE.block_scripts enabled, cannot request script");
 		return;
 	}
 
@@ -688,10 +695,10 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 		var is_external = this.external_scripts.indexOf( script_url ) != -1;
 		if( !is_external ) //comes from scene.external_scripts
 		{
-			var res = LS.ResourcesManager.getResource( script_url );
+			var res = ONE.ResourcesManager.getResource( script_url );
 			if(!res || force_reload)
 			{
-				var final_url = LS.ResourcesManager.getFullURL( script_url );
+				var final_url = ONE.ResourcesManager.getFullURL( script_url );
 				final_scripts.push( final_url );
 				continue;
 			}
@@ -706,7 +713,7 @@ Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_re
 			final_scripts.push( script_url );
 	}
 
-	LS.Network.requestScript( final_scripts, inner_complete, on_error );
+	ONE.Network.requestScript( final_scripts, inner_complete, on_error );
 
 	function inner_complete()
 	{
@@ -729,11 +736,11 @@ Scene.prototype.checkComponentsCodeModification = function()
 		for(var j = 0; j < node._components.length; ++j)
 		{
 			var compo = node._components[j];
-			var class_name = LS.getObjectClassName( compo );
-			if( compo.constructor == LS.MissingComponent )
+			var class_name = ONE.getObjectClassName( compo );
+			if( compo.constructor == ONE.MissingComponent )
 				class_name = compo._comp_class;
 
-			var current_class = LS.Components[ class_name ];
+			var current_class = ONE.Components[ class_name ];
 			if( !current_class || current_class == compo.constructor ) //already uses the right class
 				continue;
 
@@ -763,9 +770,9 @@ Scene.prototype.appendScene = function(scene)
 	for(var i in nodes)
 	{
 		var node = nodes[i];
-		var new_node = new LS.SceneNode( node.id );
+		var new_node = new ONE.SceneNode( node.id );
 		this.root.addChild( new_node );
-		new_node.configure( node.constructor == LS.SceneNode ? node.serialize() : node  );
+		new_node.configure( node.constructor == ONE.SceneNode ? node.serialize() : node  );
 	}
 }
 
@@ -808,7 +815,7 @@ Scene.prototype.getAllCameras = function()
 	for(var i = 0; i < this._nodes.length; ++i)
 	{
 		var node = this._nodes[i];
-		var node_cameras = node.getComponents( LS.Components.Camera );
+		var node_cameras = node.getComponents( ONE.Components.Camera );
 		if(node_cameras && node_cameras.length)
 			cameras = cameras.concat( node_cameras );
 	}
@@ -855,7 +862,7 @@ Scene.prototype.onNodeAdded = function(e,node)
 
 	//store by uid
 	if(!node.uid || this._nodes_by_uid[ node.uid ])
-		node._uid = LS.generateUId("NODE-");
+		node._uid = ONE.generateUId("NODE-");
 	//if( this._nodes_by_uid[ node.uid ] )
 	//	console.warn("There are more than one node with the same UID: ", node.uid );
 	this._nodes_by_uid[ node.uid ] = node;
@@ -874,7 +881,7 @@ Scene.prototype.onNodeAdded = function(e,node)
 	 * Fired when a new node is added to this scene
 	 *
 	 * @event nodeAdded
-	 * @param {LS.SceneNode} node
+	 * @param {ONE.SceneNode} node
 	 */
 	LEvent.trigger(this, EVENT.NODE_ADDED, node);
 	LEvent.trigger(this, EVENT.CHANGE );
@@ -901,7 +908,7 @@ Scene.prototype.onNodeRemoved = function(e,node)
 	 * Fired after a node has been removed
 	 *
 	 * @event nodeRemoved
-	 * @param {LS.SceneNode} node
+	 * @param {ONE.SceneNode} node
 	 */
 	LEvent.trigger(this, EVENT.NODE_REMOVED, node);
 	LEvent.trigger(this, EVENT.CHANGE );
@@ -969,7 +976,7 @@ Scene.prototype.getNode = function( name )
 		return this.root;
 	if(!name || name.constructor !== String)
 		return null;
-	if(name.charAt(0) == LS._uid_prefix)
+	if(name.charAt(0) == ONE._uid_prefix)
 		return this._nodes_by_uid[ name ];
 
 	// the | char is used to specify a node child of another node
@@ -1068,8 +1075,8 @@ Scene.prototype.findComponentByUId = function(uid)
 */
 Scene.prototype.findMaterialByUId = function(uid)
 {
-	if(LS.RM.materials[uid])
-		return LS.RM.materials[uid];
+	if(ONE.RM.materials[uid])
+		return ONE.RM.materials[uid];
 
 	for(var i = 0; i < this._nodes.length; ++i)
 	{
@@ -1096,10 +1103,22 @@ Scene.prototype.getPropertyInfo = function( property_uid )
 
 	var start = path[0].substr(0,5);
 
+	//for resources
+	if( start == "@RES-")
+	{
+		var filename = ONE.ResourcesManager.convertLocatorToFilename(path[0]);
+		var resource = ONE.ResourcesManager.getResource(filename);
+		if(path.length == 1)
+			return resource;
+		if(resource && resource.getPropertyInfoFromPath)
+			return resource.getPropertyInfoFromPath( path.slice(1) );
+		return null;
+	}
+
 	//for global materials
 	if( start == "@MAT-")
 	{
-		var material = LS.RM.materials_by_uid[ path[0] ];
+		var material = ONE.RM.materials_by_uid[ path[0] ];
 		if(!material)
 			return null;
 		return material.getPropertyInfoFromPath( path.slice(1) );
@@ -1115,7 +1134,7 @@ Scene.prototype.getPropertyInfo = function( property_uid )
 			return {
 				node: comp.root,
 				target: comp,
-				name: comp ? LS.getObjectClassName( comp ) : "",
+				name: comp ? ONE.getObjectClassName( comp ) : "",
 				type: "component",
 				value: comp
 			};
@@ -1140,9 +1159,22 @@ Scene.prototype.getPropertyInfo = function( property_uid )
 */
 Scene.prototype.getPropertyInfoFromPath = function( path )
 {
-	if(path[0].substr(0,5) == "@MAT-")
+	var start = path[0].substr(0,5);
+	//for resources
+	if( start == "@RES-")
 	{
-		var material = LS.RM.materials_by_uid[ path[0] ];
+		var filename = ONE.ResourcesManager.convertLocatorToFilename(path[0]);
+		var resource = ONE.ResourcesManager.getResource(filename);
+		if(path.length == 1)
+			return resource;
+		if(resource && resource.getPropertyInfoFromPath)
+			return resource.getPropertyInfoFromPath( path.slice(1) );
+		return null;
+	}
+
+	if(start == "@MAT-")
+	{
+		var material = ONE.RM.materials_by_uid[ path[0] ];
 		if(!material)
 			return null;
 		return material.getPropertyInfoFromPath( path.slice(1) );
@@ -1156,8 +1188,7 @@ Scene.prototype.getPropertyInfoFromPath = function( path )
 
 
 /**
-* Assigns a value to the property of a component in a node based on the locator of that property
-* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
+* returns the value of a property given its locator
 *
 * @method getPropertyValue
 * @param {String} locator locator of the property
@@ -1167,27 +1198,30 @@ Scene.prototype.getPropertyInfoFromPath = function( path )
 */
 Scene.prototype.getPropertyValue = function( locator, root_node )
 {
-	var path = property_uid.split("/");
-
-	if(path[0].substr(0,5) == "@MAT-")
-	{
-		var material = LS.RM.materials_by_uid[ path[0] ];
-		if(!material)
-			return null;
-		return material.getPropertyValueFromPath( path.slice(1) );
-	}
-
-	var node = this.getNode( path[0] );
-	if(!node)
-		return null;
-	return node.getPropertyValueFromPath( path.slice(1) );
+	var path = locator.split("/");
+	if(root_node)
+		return root_node.getPropertyValueFromPath( path );
+	return this.getPropertyValueFromPath( path );
 }
 
 Scene.prototype.getPropertyValueFromPath = function( path )
 {
-	if(path[0].substr(0,5) == "@MAT-")
+	var start = path[0].substr(0,5);
+
+	if( start == "@RES-")
 	{
-		var material = LS.RM.materials_by_uid[ path[0] ];
+		var filename = ONE.ResourcesManager.convertLocatorToFilename(path[0]);
+		var resource = ONE.ResourcesManager.getResource(filename);
+		if(path.length == 1)
+			return resource;
+		if(resource && resource.getPropertyInfoFromPath)
+			return resource.getPropertyInfoFromPath( path.slice(1) );
+		return null;
+	}
+
+	if(start == "@MAT-")
+	{
+		var material = ONE.RM.materials_by_uid[ path[0] ];
 		if(!material)
 			return null;
 		return material.getPropertyValueFromPath( path.slice(1) );
@@ -1231,9 +1265,25 @@ Scene.prototype.setPropertyValueFromPath = function( path, value, root_node, off
 	if(path.length < (offset+1))
 		return;
 
-	if(path[offset].substr(0,5) == "@MAT-")
+	var start = path[offset].substr(0,5);
+
+	if( start == "@RES-")
 	{
-		var material = LS.RM.materials_by_uid[ path[offset] ];
+		var filename = ONE.ResourcesManager.convertLocatorToFilename(path[0]);
+		var resource = ONE.ResourcesManager.getResource(filename);
+		if(path.length == 1)
+		{
+			console.warn("assigning a value to a locator with only the name of a resource doesn't make any sense");
+			return null; 
+		}
+		if( resource && resource.setPropertyValueFromPath )
+			return resource.setPropertyValueFromPath( path, value, offset + 1 );
+		return null;
+	}
+
+	if(start == "@MAT-")
+	{
+		var material = ONE.RM.materials_by_uid[ path[offset] ];
 		if(!material)
 			return null;
 		return material.setPropertyValueFromPath( path, value, offset + 1 );
@@ -1311,7 +1361,7 @@ Scene.prototype.getResources = function( resources, as_array, skip_in_pack, skip
 	if(skip_in_pack)
 		for(var i in resources)
 		{
-			var resource = LS.ResourcesManager.resources[i];
+			var resource = ONE.ResourcesManager.resources[i];
 			if(!resource)
 				continue;
 			if(resource && (resource.from_prefab || resource.from_pack))
@@ -1329,7 +1379,7 @@ Scene.prototype.getResources = function( resources, as_array, skip_in_pack, skip
 	//check if any resource requires another resource (a material that requires textures)
 	for(var i in resources)
 	{
-		var resource = LS.ResourcesManager.resources[i];
+		var resource = ONE.ResourcesManager.resources[i];
 		if(!resource)
 			continue;
 		if(resource.getResources)
@@ -1382,12 +1432,12 @@ Scene.prototype.loadResources = function( on_complete )
 		return;
 	}
 
-	LEvent.bind( LS.ResourcesManager, "end_loading_resources", on_loaded );
-	LS.ResourcesManager.loadResources( resources );
+	LEvent.bind( ONE.ResourcesManager, "end_loading_resources", on_loaded );
+	ONE.ResourcesManager.loadResources( resources );
 
 	function on_loaded()
 	{
-		LEvent.unbind( LS.ResourcesManager, "end_loading_resources", on_loaded );
+		LEvent.unbind( ONE.ResourcesManager, "end_loading_resources", on_loaded );
 		if(on_complete)
 			on_complete();
 	}
@@ -1425,16 +1475,16 @@ Scene.prototype.removePreloadResource = function( fullpath )
 */
 Scene.prototype.start = function()
 {
-	if(this._state == LS.PLAYING)
+	if(this._state == ONE.PLAYING)
 		return;
 
-	this._state = LS.PLAYING;
+	this._state = ONE.PLAYING;
 	this._start_time = getTime() * 0.001;
 	/**
 	 * Fired when the nodes need to be initialized
 	 *
 	 * @event init
-	 * @param {LS.Scene} scene
+	 * @param {ONE.Scene} scene
 	 */
 	LEvent.trigger(this, EVENT.INIT, this);
 	this.triggerInNodes( EVENT.INIT );
@@ -1442,7 +1492,7 @@ Scene.prototype.start = function()
 	 * Fired when the scene is starting to play
 	 *
 	 * @event start
-	 * @param {LS.Scene} scene
+	 * @param {ONE.Scene} scene
 	 */
 	LEvent.trigger(this, EVENT.START ,this);
 	this.triggerInNodes( EVENT.START );
@@ -1455,15 +1505,15 @@ Scene.prototype.start = function()
 */
 Scene.prototype.pause = function()
 {
-	if( this._state != LS.PLAYING )
+	if( this._state != ONE.PLAYING )
 		return;
 
-	this._state = LS.PAUSED;
+	this._state = ONE.PAUSED;
 	/**
 	 * Fired when the scene pauses (mostly in the editor)
 	 *
 	 * @event pause
-	 * @param {LS.Scene} scene
+	 * @param {ONE.Scene} scene
 	 */
 	LEvent.trigger(this, EVENT.PAUSE,this);
 	this.triggerInNodes( EVENT.PAUSE );
@@ -1477,15 +1527,15 @@ Scene.prototype.pause = function()
 */
 Scene.prototype.unpause = function()
 {
-	if(this._state != LS.PAUSED)
+	if(this._state != ONE.PAUSED)
 		return;
 
-	this._state = LS.PLAYING;
+	this._state = ONE.PLAYING;
 	/**
 	 * Fired when the scene unpauses (mostly in the editor)
 	 *
 	 * @event unpause
-	 * @param {LS.Scene} scene
+	 * @param {ONE.Scene} scene
 	 */
 	LEvent.trigger(this, EVENT.UNPAUSE,this);
 	this.triggerInNodes( EVENT.UNPAUSE );
@@ -1501,15 +1551,15 @@ Scene.prototype.unpause = function()
 */
 Scene.prototype.finish = function()
 {
-	if(this._state == LS.STOPPED)
+	if(this._state == ONE.STOPPED)
 		return;
 
-	this._state = LS.STOPPED;
+	this._state = ONE.STOPPED;
 	/**
 	 * Fired when the scene stops playing
 	 *
 	 * @event finish
-	 * @param {LS.Scene} scene
+	 * @param {ONE.Scene} scene
 	 */
 	LEvent.trigger(this, EVENT.FINISH,this);
 	this.triggerInNodes( EVENT.FINISH );
@@ -1610,9 +1660,9 @@ Scene.prototype.update = function(dt)
 	 * Fired before doing an update
 	 *
 	 * @event beforeUpdate
-	 * @param {LS.Scene} scene
+	 * @param {ONE.Scene} scene
 	 */
-	LEvent.trigger(this,LS.EVENT.BEFORE_UPDATE, this);
+	LEvent.trigger(this,ONE.EVENT.BEFORE_UPDATE, this);
 
 	this._global_time = getTime() * 0.001;
 	//this._time = this._global_time - this._start_time;
@@ -1625,7 +1675,7 @@ Scene.prototype.update = function(dt)
 	 * @event update
 	 * @param {number} dt
 	 */
-	LEvent.trigger(this, LS.EVENT.UPDATE, dt);
+	LEvent.trigger(this, ONE.EVENT.UPDATE, dt);
 
 	/**
 	 * Fired while updating but using a fixed timestep (1/60)
@@ -1636,10 +1686,10 @@ Scene.prototype.update = function(dt)
 	if(this._fixed_update_timestep > 0)
 	{
 		this._remaining_fixed_update_time += dt;
-		if(LEvent.hasBind(this, LS.EVENT.FIXED_UPDATE))
+		if(LEvent.hasBind(this, ONE.EVENT.FIXED_UPDATE))
 			while( this._remaining_fixed_update_time > this._fixed_update_timestep )
 			{
-				LEvent.trigger(this, LS.EVENT.FIXED_UPDATE, this._fixed_update_timestep );
+				LEvent.trigger(this, ONE.EVENT.FIXED_UPDATE, this._fixed_update_timestep );
 				this._remaining_fixed_update_time -= this._fixed_update_timestep;
 			}
 		else
@@ -1651,7 +1701,7 @@ Scene.prototype.update = function(dt)
 	 *
 	 * @event afterUpdate
 	 */
-	LEvent.trigger(this, LS.EVENT.AFTER_UPDATE, this);
+	LEvent.trigger(this, ONE.EVENT.AFTER_UPDATE, this);
 }
 
 /**
@@ -1705,7 +1755,7 @@ Scene.prototype.generateUniqueNodeName = function(prefix)
 Scene.prototype.requestFrame = function()
 {
 	this._must_redraw = true;
-	LEvent.trigger( this, LS.EVENT.REQUEST_FRAME );
+	LEvent.trigger( this, ONE.EVENT.REQUEST_FRAME );
 }
 
 Scene.prototype.refresh = Scene.prototype.requestFrame; //DEPRECATED
@@ -1738,12 +1788,12 @@ Scene.prototype.purgeResidualEvents = function()
 		for(var j = 0; j < event.length; ++j)
 		{
 			var inst = event[j][1];
-			if(inst && LS.isClassComponent( inst.constructor ) )
+			if(inst && ONE.isClassComponent( inst.constructor ) )
 			{
 				//no attached node or node not attached to any scene
 				if(!inst._root || inst._root.scene !== this )
 				{
-					console.warn("Event attached to the Scene belongs to a removed node, purged. Event:",i,"Class:", LS.getObjectClassName( inst ) );
+					console.warn("Event attached to the Scene belongs to a removed node, purged. Event:",i,"Class:", ONE.getObjectClassName( inst ) );
 					continue; //skip keeping it, so it will no longer exist
 				}
 			}
@@ -1786,7 +1836,7 @@ Scene.prototype.findNodeComponents = function( type )
 
 	var find_component = null;
 	if(type.constructor === String)
-		find_component = LS.Components[ type ];
+		find_component = ONE.Components[ type ];
 	else
 		find_component = type;
 	if(!find_component)
@@ -1820,7 +1870,7 @@ Scene.prototype.instantiate = function( prefab_url, position, rotation, parent )
 	if(!prefab_url || prefab_url.constructor !== String)
 		throw("prefab must be the url to the prefab");
 
-	var node = new LS.SceneNode();
+	var node = new ONE.SceneNode();
 	if(position && position.length === 3)
 		node.transform.position = position;
 	if(rotation && rotation.length === 4)
@@ -1840,14 +1890,14 @@ Scene.prototype.instantiate = function( prefab_url, position, rotation, parent )
 * @method toPack
 * @param {String} fullpath a given fullpath name, it will be assigned to the scene with the appropiate extension
 * @param {Array} resources [optional] array with all the resources to add, if no array is given it will get the active resources in this scene
-* @return {LS.Pack} the pack
+* @return {ONE.Pack} the pack
 */
 Scene.prototype.toPack = function( fullpath, resources )
 {
 	fullpath = fullpath || "unnamed_scene";
 
 	//change name to valid name
-	var basename = LS.RM.removeExtension( fullpath, true );
+	var basename = ONE.RM.removeExtension( fullpath, true );
 	var final_fullpath = basename + ".SCENE.wbin";
 
 	//extract json info
@@ -1858,7 +1908,7 @@ Scene.prototype.toPack = function( fullpath, resources )
 		resources = this.getResources( null, true, true, true );
 
 	//create pack
-	var pack = LS.Pack.createPack( LS.RM.getFilename( final_fullpath ), resources, { "scene.json": scene_json } );
+	var pack = ONE.Pack.createPack( ONE.RM.getFilename( final_fullpath ), resources, { "scene.json": scene_json } );
 	pack.fullpath = final_fullpath;
 	pack.category = "Scene";
 
@@ -1868,10 +1918,10 @@ Scene.prototype.toPack = function( fullpath, resources )
 //WIP: this is in case we have static nodes in the scene
 Scene.prototype.updateStaticObjects = function()
 {
-	var old = LS.allow_static;
-	LS.allow_static = false;
+	var old = ONE.allow_static;
+	ONE.allow_static = false;
 	this.collectData();
-	LS.allow_static = old;
+	ONE.allow_static = old;
 }
 
 /**
@@ -1879,7 +1929,7 @@ Scene.prototype.updateStaticObjects = function()
 *
 * @method findNearestReflectionProbe
 * @param {vec3} position
-* @return {LS.ReflectionProbe} the reflection probe
+* @return {ONE.ReflectionProbe} the reflection probe
 */
 Scene.prototype.findNearestReflectionProbe = function( position )
 {
@@ -1962,7 +2012,7 @@ Scene.prototype.sendResourceRenamedEvent = function( old_name, new_name, resourc
 					if(!propinfo)
 						continue;
 					var type = propinfo.type || propinfo.widget;
-					if(type && (type == LS.TYPES.RESOURCE || LS.ResourceClasses[ type ])) //is a resource
+					if(type && (type == ONE.TYPES.RESOURCE || ONE.ResourceClasses[ type ])) //is a resource
 						component[k] = new_name;
 				}
 			}
@@ -1980,7 +2030,7 @@ Scene.prototype.sendResourceRenamedEvent = function( old_name, new_name, resourc
 				{
 					var modified = material.onResourceRenamed( old_name, new_name, resource );
 					if(modified) //we need this to remove material._original_data or anything that could interfiere
-						LS.RM.resourceModified( material );
+						ONE.RM.resourceModified( material );
 				}
 				else
 					console.warn("sendResourceRenamedEvent: Material not found or it didnt have a onResourceRenamed");
@@ -1994,7 +2044,7 @@ Scene.prototype.getDataPath = function( path )
 {
 	path = path || "";
 	var folder = this.extra.data_folder || this.extra.folder;
-	return LS.RM.cleanFullpath( folder + "/" + path );
+	return ONE.RM.cleanFullpath( folder + "/" + path );
 }
 
 
@@ -2002,19 +2052,19 @@ Scene.prototype.getDataPath = function( path )
 * Creates and returns an scene animation track
 *
 * @method createAnimation
-* @return {LS.Animation} the animation track
+* @return {ONE.Animation} the animation track
 */
 Scene.prototype.createAnimation = function()
 {
 	if(this.animation)
 		return this.animation;
-	this.animation = new LS.Animation();
-	this.animation.name = LS.Animation.DEFAULT_SCENE_NAME;
-	this.animation.createTake( "default", LS.Animation.DEFAULT_DURATION );
+	this.animation = new ONE.Animation();
+	this.animation.name = ONE.Animation.DEFAULT_SCENE_NAME;
+	this.animation.createTake( "default", ONE.Animation.DEFAULT_DURATION );
 	return this.animation;
 }
 
-LS.Scene = Scene;
-LS.Classes.Scene = Scene;
-LS.Classes.SceneTree = Scene; //LEGACY
+ONE.Scene = Scene;
+ONE.Classes.Scene = Scene;
+ONE.Classes.SceneTree = Scene; //LEGACY
 

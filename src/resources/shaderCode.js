@@ -27,6 +27,7 @@ function ShaderCode( code )
 }
 
 ShaderCode.help_url = "https://github.com/jagenjo/litescene.js/blob/master/guides/shaders.md";
+//ShaderCode.examples //defined from webglstudio coding.js
 
 //block types
 ShaderCode.CODE = 1;
@@ -62,6 +63,22 @@ Object.defineProperty( ShaderCode.prototype, "version", {
 	}
 });
 
+ShaderCode.prototype.getResources = function( res )
+{
+	for(var i in this._code_parts)
+	{
+		var part = this._code_parts[i];
+
+		for(var j in part)
+		{
+			var m = part[j];
+			for(var k in m.includes)
+			{
+				res[ k ] = true;
+			}
+		}
+	}
+}
 
 //parse the code
 //store in a easy to use way
@@ -117,18 +134,18 @@ ShaderCode.prototype.processCode = function()
 				var property_type = words[2];
 				var value = words[3];
 				if( value !== undefined )
-					value = LS.stringToValue(value);
+					value = ONE.stringToValue(value);
 				var options = null;
 				var options_index = line.indexOf("{");
 				if(options_index != -1)
-					options = LS.stringToValue( line.substr(options_index) );
+					options = ONE.stringToValue( line.substr(options_index) );
 				this._global_uniforms[ varname ] = { name: varname, uniform: uniform_name, type: property_type, value: value, options: options };
 			}
 			continue;
 		}
 
-		var name = LS.ResourcesManager.removeExtension( subfile_name );
-		var extension = LS.ResourcesManager.getExtension( subfile_name );
+		var name = ONE.ResourcesManager.removeExtension( subfile_name );
+		var extension = ONE.ResourcesManager.getExtension( subfile_name );
 
 		if(extension == "vs" || extension == "fs")
 		{
@@ -162,11 +179,11 @@ ShaderCode.prototype.processCode = function()
 	if(init_code)
 	{
 		//clean code
-		init_code = LS.ShaderCode.removeComments( init_code );
+		init_code = ONE.ShaderCode.removeComments( init_code );
 
 		if(init_code) //still some code? (we test it because if there is a single line of code the behaviour changes)
 		{
-			if(LS.catch_exceptions)
+			if(ONE.catch_exceptions)
 			{
 				try
 				{
@@ -174,7 +191,7 @@ ShaderCode.prototype.processCode = function()
 				}
 				catch (err)
 				{
-					LS.dispatchCodeError( err, LScript.computeLineFromError(err), this );
+					ONE.dispatchCodeError( err, LScript.computeLineFromError(err), this );
 				}
 			}
 			else
@@ -187,7 +204,7 @@ ShaderCode.prototype.processCode = function()
 
 
 	//to alert all the materials out there using this shader that they must update themselves.
-	LEvent.trigger( LS.ShaderCode, "modified", this );
+	LEvent.trigger( ONE.ShaderCode, "modified", this );
 	this._version += 1;
 }
 
@@ -239,11 +256,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	var context = {}; //used to store metaprogramming defined vars in the shader
 
 	//compute context defines
-	for(var i = 0, l = LS.Shaders.shader_blocks.length; i < l; ++i)
+	for(var i = 0, l = ONE.Shaders.shader_blocks.length; i < l; ++i)
 	{
 		if( !(block_flags & 1<<i) ) //is flag enabled
 			continue;
-		var shader_block = LS.Shaders.shader_blocks[i];
+		var shader_block = ONE.Shaders.shader_blocks[i];
 		if(!shader_block)
 			continue; //???
 		if(shader_block.context_macros)
@@ -281,23 +298,27 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	}
 
 	//add globals
-	vs_code = LS.Shaders.global_extra_shader_code + vs_code;
-	fs_code = LS.Shaders.global_extra_shader_code + fs_code;
+	vs_code = ONE.Shaders.global_extra_shader_code + vs_code;
+	fs_code = ONE.Shaders.global_extra_shader_code + fs_code;
 
 	//compile the shader and return it
 	var shader = this.compileShader( vs_code, fs_code );
 	if(!shader)
 		return null;
 
+	//check if this shader will support rendering to draw buffers
+	var clean_fs_code = ONE.ShaderCode.removeComments( fs_code );
+	shader.supports_drawbuffers = clean_fs_code.indexOf("gl_FragData") != -1;
+
 	//DEBUG
-	if(LS.debug)
+	if(ONE.debug)
 	{
 		var blocks = [];
-		for(var i = 0; i < LS.Shaders.num_shaderblocks; ++i)
+		for(var i = 0; i < ONE.Shaders.num_shaderblocks; ++i)
 		{
 			if( !(block_flags & 1<<i) ) //is flag enabled
 				continue;
-			var shader_block = LS.Shaders.shader_blocks[i];
+			var shader_block = ONE.Shaders.shader_blocks[i];
 			if(!shader_block)
 				continue; //???
 			blocks.push( shader_block );
@@ -324,7 +345,7 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 	if( this._has_error )
 		return null;
 
-	if( LS.Debug ) //debug shaders
+	if( ONE.Debug ) //debug shaders
 	{
 		console.log("Shader Compiled: ", this.fullpath || this.filename )
 		console.groupCollapsed("VS shader");
@@ -337,7 +358,7 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 
 	var shader = null;
 
-	if(!LS.catch_exceptions)
+	if(!ONE.catch_exceptions)
 	{
 		shader = new GL.Shader( vs_code, fs_code );
 	}
@@ -350,7 +371,7 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 		catch(err)
 		{
 			this._has_error = true;
-			LS.Shaders.dumpShaderError( this.filename, err, vs_code, fs_code );
+			ONE.Shaders.dumpShaderError( this.filename, err, vs_code, fs_code );
 			var error_info = GL.Shader.parseError( err, vs_code, fs_code );
 			var line = error_info.line_number;
 			var lines = this._code.split("\n");
@@ -362,15 +383,15 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 					lines[i] = lines[i].trim();
 				code_line = lines.indexOf( error_line_code ); //bug: what if this line is twice in the code?...
 			}
-			LS.dispatchCodeError( err, code_line, this, "shader" );
+			ONE.dispatchCodeError( err, code_line, this, "shader" );
 		}
 	}
 
 	if(shader)
 	{
-		if( LS.debug )
+		if( ONE.debug )
 			console.log(" + shader compiled: ", this.fullpath || this.filename );
-		LS.dispatchNoErrors( this, "shader" );
+		ONE.dispatchNoErrors( this, "shader" );
 	}
 	return shader;
 }
@@ -401,20 +422,20 @@ ShaderCode.prototype.validatePublicUniforms = function( shader )
 //makes this resource available 
 ShaderCode.prototype.register = function()
 {
-	LS.ResourcesManager.registerResource( this.fullpath || this.filename, this );
+	ONE.ResourcesManager.registerResource( this.fullpath || this.filename, this );
 }
 
 //searches for materials using this ShaderCode and forces them to be updated (update the properties)
 ShaderCode.prototype.applyToMaterials = function( scene )
 {
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 	var filename = this.fullpath || this.filename;
 
 	//materials in the resources
-	for(var i in LS.ResourcesManager.resources)
+	for(var i in ONE.ResourcesManager.resources)
 	{
-		var res = LS.ResourcesManager.resources[i];
-		if( res.constructor !== LS.ShaderMaterial || res._shader != filename )
+		var res = ONE.ResourcesManager.resources[i];
+		if( res.constructor !== ONE.ShaderMaterial || res._shader != filename )
 			continue;
 
 		res.processShaderCode();
@@ -425,7 +446,7 @@ ShaderCode.prototype.applyToMaterials = function( scene )
 	for(var i = 0; i < nodes.length; ++i)
 	{
 		var node = nodes[i];
-		if(node.material && node.material.constructor === LS.ShaderMaterial && node.material._shader == filename )
+		if(node.material && node.material.constructor === ONE.ShaderMaterial && node.material._shader == filename )
 			node.material.processShaderCode();
 	}
 }
@@ -540,7 +561,7 @@ ShaderCode.getDefaultCode = function( instance,  render_settings, pass )
 	if( ShaderCode.default_code_instance )
 		return ShaderCode.default_code_instance;
 
-	var shader_code = ShaderCode.default_code_instance = new LS.ShaderCode();
+	var shader_code = ShaderCode.default_code_instance = new ONE.ShaderCode();
 	shader_code.code = ShaderCode.flat_code;
 	return shader_code;
 }
@@ -617,10 +638,17 @@ void main() {\n\
 
 //default fragment shader code
 ShaderCode.default_fs = "\n\
+	#ifdef DRAW_BUFFERS\n\
+		#extension GL_EXT_draw_buffers : require \n\
+	#endif\n\
 	precision mediump float;\n\
 	uniform vec4 u_material_color;\n\
 	void main() {\n\
-		gl_FragColor = u_material_color;\n\
+		#ifdef DRAW_BUFFERS\n\
+			gl_FragData[0] = u_material_color;\n\
+		#else\n\
+			gl_FragColor = u_material_color;\n\
+		#endif\n\
 	}\n\
 ";
 
@@ -630,5 +658,5 @@ ShaderCode.flat_code = "\n\
 ";
 
 
-LS.ShaderCode = ShaderCode;
-LS.registerResourceClass( ShaderCode );
+ONE.ShaderCode = ShaderCode;
+ONE.registerResourceClass( ShaderCode );

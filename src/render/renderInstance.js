@@ -10,7 +10,7 @@
 
 function RenderInstance( node, component )
 {
-	this.uid = LS.generateUId("RINS"); //unique identifier for this RI
+	this.uid = ONE.generateUId("RINS"); //unique identifier for this RI
 	this.layers = 3; //in layer 1 and 2 by default
 	this.index = -1; //used to know the rendering order
 	this.version = -1; //not used yet
@@ -89,8 +89,8 @@ RenderInstance.prototype.fromNode = function(node, skip_matrices)
 		if(node.transform)
 			this.setMatrix( node.transform._global_matrix );
 		else
-			this.setMatrix( LS.IDENTITY );
-		mat4.multiplyVec3( this.position, this.matrix, LS.ZEROS );
+			this.setMatrix( ONE.IDENTITY );
+		mat4.multiplyVec3( this.position, this.matrix, ONE.ZEROS );
 	}
 }
 
@@ -115,7 +115,7 @@ RenderInstance.prototype.computeNormalMatrix = function()
 	if(RenderInstance.fast_normalmatrix)
 	{
 		this.normal_matrix.set( this.matrix );
-		mat4.setTranslation( this.normal_matrix, LS.ZEROS );
+		mat4.setTranslation( this.normal_matrix, ONE.ZEROS );
 		return;
 	}
 
@@ -361,6 +361,13 @@ RenderInstance.prototype.render = function(shader, primitive)
 	if(primitive === undefined)
 		primitive = this.primitive;
 
+	var changed_draw_buffers = false;
+	if(!shader.supports_drawbuffers && GL.FBO.current && GL.FBO.current.color_textures.length > 1)
+	{
+		changed_draw_buffers = true;
+		GL.FBO.current.toSingle();
+	}
+
 	//instancing
 	if(this.instanced_models && this.instanced_models.length)
 	{
@@ -386,6 +393,9 @@ RenderInstance.prototype.render = function(shader, primitive)
 	{
 		shader.drawBuffers( this.vertex_buffers, this.index_buffer, primitive, this.range[0], this.range[1] );
 	}
+
+	if(changed_draw_buffers)
+		GL.FBO.current.toMulti();
 }
 
 RenderInstance.prototype.addShaderBlock = function( block, uniforms )
@@ -509,7 +519,7 @@ RenderInstance.prototype.overlapsSphere = function( center, radius )
 * Checks if this object was visible by a camera during the last frame
 *
 * @method wasVisibleByCamera
-* @param {LS.Camera} camera [optional] if a camera is supplied it checks if it was visible by that camera, otherwise tells you if it was visible by any camera
+* @param {ONE.Camera} camera [optional] if a camera is supplied it checks if it was visible by that camera, otherwise tells you if it was visible by any camera
 * @return {Boolean} true if it was visible by the camera (or any camera if no camera supplied), false otherwise
 */
 RenderInstance.prototype.wasVisibleByCamera = function( camera )
@@ -519,4 +529,4 @@ RenderInstance.prototype.wasVisibleByCamera = function( camera )
 	return (this._camera_visibility | (1<<(camera._rendering_index))) ? true : false;
 }
 
-LS.RenderInstance = RenderInstance;
+ONE.RenderInstance = RenderInstance;

@@ -2,11 +2,11 @@
 /**
 * Formats is the class where all the info about what is every format, how to parse it, etc, is located
 *
-* @class LS.Formats
+* @class ONE.Formats
 * @param{String} id the id (otherwise a random one is computed)
 * @constructor
 */
-LS.Formats = {
+ONE.Formats = {
 
 	//all the supported file formats and their parsers
 	supported: {},
@@ -53,7 +53,7 @@ LS.Formats = {
 		if(options.extension)
 			info.extension = options.extension; //force a format
 		else
-			info.extension = LS.ResourcesManager.getExtension( filename );
+			info.extension = ONE.ResourcesManager.getExtension( filename );
 
 		var format = this.supported[ info.extension ];
 		if(!format || !format.parse)
@@ -103,7 +103,7 @@ LS.Formats = {
 		if(!filename)
 			return null;
 
-		var ext = LS.RM.getExtension( filename ).toLowerCase();
+		var ext = ONE.RM.getExtension( filename ).toLowerCase();
 		var info = this.supported[ ext ];
 		if(!info)
 			return null;
@@ -179,14 +179,14 @@ LS.Formats = {
 };
 
 //native formats do not need parser
-LS.Formats.addSupportedFormat( "png,jpg,jpeg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
-LS.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
-LS.Formats.addSupportedFormat( "json", { dataType: "text" } );
-LS.Formats.addSupportedFormat( "js", { dataType: "text" } );
-LS.Formats.addSupportedFormat( "txt,html,css,csv", { dataType: "text" } );
-LS.Formats.addSupportedFormat( "glsl", { dataType: "text", resource: "ShaderCode", "resourceClass": LS.ShaderCode  } );
-LS.Formats.addSupportedFormat( "zip", { dataType: "arraybuffer" } );
-WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
+ONE.Formats.addSupportedFormat( "png,jpg,jpeg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
+ONE.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
+ONE.Formats.addSupportedFormat( "json", { dataType: "text" } );
+ONE.Formats.addSupportedFormat( "js", { dataType: "text" } );
+ONE.Formats.addSupportedFormat( "txt,html,css,csv", { dataType: "text" } );
+ONE.Formats.addSupportedFormat( "glsl", { dataType: "text", resource: "ShaderCode", "resourceClass": ONE.ShaderCode  } );
+ONE.Formats.addSupportedFormat( "zip", { dataType: "arraybuffer" } );
+WBin.classes = ONE.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
 
 
 var parserMESH = {
@@ -210,4 +210,4 @@ var parserMESH = {
 	}
 }
 
-LS.Formats.addSupportedFormat( "mesh", parserMESH );
+ONE.Formats.addSupportedFormat( "mesh", parserMESH );

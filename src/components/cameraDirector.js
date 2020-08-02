@@ -35,4 +35,4 @@ CameraDirector.prototype.showProperties = function( inspector )
 {
 }
 
-LS.registerComponent( CameraDirector );
+ONE.registerComponent( CameraDirector );

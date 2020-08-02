@@ -20,7 +20,9 @@ if( typeof(GL) === "undefined" )
 * @module LS
 */
 
-var LS = {
+var ONE = {
+
+	Version: 0.6,
 
 	//systems: defined in their own files
 	ResourcesManager: null,
@@ -36,7 +38,7 @@ var LS = {
 	Tween: null,
 
 	//containers
-	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
+	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "ONE.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
 	ResourceClasses_by_extension: {}, //used to associate JSONs to resources, only used by GRAPHs
 	Globals: {}, //global scope to share info among scripts
@@ -127,7 +129,7 @@ var LS = {
 		//console.log( document.currentScript.src );
 
 		//allows to register several at the same time
-		var name = LS.getClassName( component );
+		var name = ONE.getClassName( component );
 
 		if(old_classname && old_classname.constructor !== String)
 			throw("old_classname must be null or a String");
@@ -154,10 +156,10 @@ var LS = {
 			component.actions = {};
 
 		//add default methods
-		LS.extendClass( component, LS.BaseComponent );
+		ONE.extendClass( component, ONE.BaseComponent );
 		BaseComponent.addExtraMethods( component );
 
-		if( LS.debug )
+		if( ONE.debug )
 		{
 			var c = new component();
 			var r = c.serialize();
@@ -168,9 +170,9 @@ var LS = {
 		//event
 		LEvent.trigger(LS, "component_registered", component ); 
 
-		if(LS.GlobalScene) //because main components are create before the global scene is created
+		if(ONE.GlobalScene) //because main components are create before the global scene is created
 		{
-			this.replaceComponentClass( LS.GlobalScene, old_classname || name, name );
+			this.replaceComponentClass( ONE.GlobalScene, old_classname || name, name );
 			if( old_classname != name )
 				this.unregisterComponent( old_classname );
 		}
@@ -216,7 +218,7 @@ var LS = {
 	*/
 	replaceComponentClass: function( scene, old_class_name, new_class_name )
 	{
-		var proposed_class = new_class_name.constructor === String ? LS.Components[ new_class_name ] : new_class_name;
+		var proposed_class = new_class_name.constructor === String ? ONE.Components[ new_class_name ] : new_class_name;
 		if(!proposed_class)
 			return 0;
 
@@ -225,9 +227,9 @@ var LS = {
 		
 		if(	old_class_name.constructor === String )
 		{
-			old_class = LS.Components[ old_class_name ];
+			old_class = ONE.Components[ old_class_name ];
 			if( old_class )
-				old_class_name = LS.getClassName( old_class );
+				old_class_name = ONE.getClassName( old_class );
 		}
 
 		var num = 0;
@@ -240,7 +242,7 @@ var LS = {
 			for(var j = 0; j < node._components.length; ++j)
 			{
 				var comp = node._components[j];
-				var comp_name = comp.constructor === LS.MissingComponent ? comp._comp_class : LS.getObjectClassName( comp );
+				var comp_name = comp.constructor === ONE.MissingComponent ? comp._comp_class : ONE.getObjectClassName( comp );
 
 				//it it is the exact same class then skip it
 				if( comp.constructor === proposed_class )
@@ -281,7 +283,7 @@ var LS = {
 	*/
 	registerResourceClass: function( resourceClass )
 	{
-		var class_name = LS.getClassName( resourceClass );
+		var class_name = ONE.getClassName( resourceClass );
 		this.ResourceClasses[ class_name ] = resourceClass;
 		this.Classes[ class_name ] = resourceClass;
 		resourceClass.is_resource = true;
@@ -296,7 +298,7 @@ var LS = {
 			resourceClass.FORMAT.extension = resourceClass.EXTENSION.toLowerCase();
 
 		var extension = resourceClass.FORMAT.extension;
-		if(!extension && resourceClass != LS.Resource )
+		if(!extension && resourceClass != ONE.Resource )
 			console.warn("Resource without extension info? " + class_name );
 		else
 		{
@@ -304,17 +306,17 @@ var LS = {
 			resourceClass.EXTENSION = extension;
 		}
 
-		if( LS.Formats && extension )
+		if( ONE.Formats && extension )
 		{
-			var format_info = LS.Formats.supported[ extension ];
+			var format_info = ONE.Formats.supported[ extension ];
 			if( !format_info )
-				LS.Formats.supported[ extension ] = format_info = resourceClass.FORMAT;
+				ONE.Formats.supported[ extension ] = format_info = resourceClass.FORMAT;
 			else
 			{
 				if(!format_info.resourceClass)
 					format_info.resourceClass = resourceClass;
 				//else if(format_info.resourceClass != resourceClass) //animations and prefab use the same file extension
-				//	console.warn("format has resourceClass that do not match this resource: ", LS.getClassName(format_info.resourceClass), LS.getClassName(resourceClass) );
+				//	console.warn("format has resourceClass that do not match this resource: ", ONE.getClassName(format_info.resourceClass), ONE.getClassName(resourceClass) );
 			}
 		}
 
@@ -340,14 +342,14 @@ var LS = {
 		if(!coroutines)
 			return;
 		for(var i = 0; i < coroutines.length; ++i)
-			LS.safeCall( coroutines[i], data ); //call resolves
+			ONE.safeCall( coroutines[i], data ); //call resolves
 		coroutines.length = 0;
 	},
 
 	createCoroutine: function( event )
 	{
 		return new Promise(function(resolve){
-			LS.addWaitingCoroutine( resolve, event );
+			ONE.addWaitingCoroutine( resolve, event );
 		});
 	},
 
@@ -369,9 +371,9 @@ var LS = {
 	nextFrame: function( skip_request )
 	{
 		if(!skip_request)
-			LS.GlobalScene.requestFrame();
+			ONE.GlobalScene.requestFrame();
 		return new Promise(function(resolve){
-			LS.addWaitingCoroutine( resolve, "render" );
+			ONE.addWaitingCoroutine( resolve, "render" );
 		});
 	},
 
@@ -384,7 +386,7 @@ var LS = {
 	*/
 	safeCall: function(callback, params, instance)
 	{
-		if(!LS.catch_exceptions)
+		if(!ONE.catch_exceptions)
 		{
 			if(instance)
 				return callback.apply( instance, params );
@@ -413,7 +415,7 @@ var LS = {
 	*/
 	setTimeout: function(callback, time)
 	{
-		if(!LS.catch_exceptions)
+		if(!ONE.catch_exceptions)
 			return setTimeout( callback,time );
 
 		try
@@ -435,7 +437,7 @@ var LS = {
 	*/
 	setInterval: function(callback, time)
 	{
-		if(!LS.catch_exceptions)
+		if(!ONE.catch_exceptions)
 			return setInterval( callback,time );
 
 		try
@@ -581,18 +583,18 @@ var LS = {
 
 				if( encode_objects && target && v[0] == "@ENC" ) //encoded object (component, node...)
 				{
-					var decoded_obj = LS.decodeObject(v);
+					var decoded_obj = ONE.decodeObject(v);
 					o[i] = decoded_obj;
 					if(!decoded_obj) //object not found
 					{
-						if( LS._pending_encoded_objects )
-							LS._pending_encoded_objects.push([o,i,v]);
+						if( ONE._pending_encoded_objects )
+							ONE._pending_encoded_objects.push([o,i,v]);
 						else
 							console.warn( "Object UID referencing object not found in the scene:", v[2] );
 					}
 				}
 				else
-					o[i] = LS.cloneObject( v ); 
+					o[i] = ONE.cloneObject( v ); 
 			}
 			else //Objects: 
 			{
@@ -604,25 +606,25 @@ var LS = {
 
 				if( encode_objects && !target )
 				{
-					o[i] = LS.encodeObject(v);
+					o[i] = ONE.encodeObject(v);
 					continue;
 				}
 
 				if( v.constructor !== Object && !target && !v.toJSON )
 				{
-					console.warn("Cannot clone internal classes:", LS.getObjectClassName( v )," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'");
+					console.warn("Cannot clone internal classes:", ONE.getObjectClassName( v )," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'");
 					continue;
 				}
 
 				if( v.toJSON )
 					o[i] = v.toJSON();
 				else if( recursive )
-					o[i] = LS.cloneObject( v, null, true );
+					o[i] = ONE.cloneObject( v, null, true );
 				else {
-					if(v.constructor !== Object && LS.Classes[ LS.getObjectClassName(v) ])
-						console.warn("Cannot clone internal classes:", LS.getObjectClassName(v)," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'" );
+					if(v.constructor !== Object && ONE.Classes[ ONE.getObjectClassName(v) ])
+						console.warn("Cannot clone internal classes:", ONE.getObjectClassName(v)," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'" );
 
-					if(LS.catch_exceptions)
+					if(ONE.catch_exceptions)
 					{
 						try
 						{
@@ -649,17 +651,17 @@ var LS = {
 		if( !obj || obj.constructor === Number || obj.constructor === String || obj.constructor === Boolean || obj.constructor === Object ) //regular objects
 			return obj;
 		if( obj.constructor.is_component && obj._root) //in case the value of this property is an actual component in the scene
-			return [ "@ENC", LS.TYPES.COMPONENT, obj.getLocator(), LS.getObjectClassName( obj ) ];
-		if( obj.constructor == LS.SceneNode && obj._in_tree) //in case the value of this property is an actual node in the scene
-			return [ "@ENC", LS.TYPES.SCENENODE, obj.uid ];
-		if( obj.constructor == LS.Scene)
-			return [ "@ENC", LS.TYPES.SCENE, obj.fullpath ]; //weird case
+			return [ "@ENC", ONE.TYPES.COMPONENT, obj.getLocator(), ONE.getObjectClassName( obj ) ];
+		if( obj.constructor == ONE.SceneNode && obj._in_tree) //in case the value of this property is an actual node in the scene
+			return [ "@ENC", ONE.TYPES.SCENENODE, obj.uid ];
+		if( obj.constructor == ONE.Scene)
+			return [ "@ENC", ONE.TYPES.SCENE, obj.fullpath ]; //weird case
 		if( obj.serialize || obj.toJSON )
 		{
 			//return obj.serialize ? obj.serialize() : obj.toJSON(); //why not this?
-			return [ "@ENC", LS.TYPES.OBJECT, obj.serialize ? obj.serialize() : obj.toJSON(), LS.getObjectClassName( obj ) ];
+			return [ "@ENC", ONE.TYPES.OBJECT, obj.serialize ? obj.serialize() : obj.toJSON(), ONE.getObjectClassName( obj ) ];
 		}
-		console.warn("Cannot clone internal classes:", LS.getObjectClassName( obj )," When serializing an object I found a property with a class that doesnt support serialization. If this property shouldn't be serialized start the name with underscore.'");
+		console.warn("Cannot clone internal classes:", ONE.getObjectClassName( obj )," When serializing an object I found a property with a class that doesnt support serialization. If this property shouldn't be serialized start the name with underscore.'");
 		return null;
 	},
 
@@ -670,21 +672,21 @@ var LS = {
 
 		switch( data[1] )
 		{
-			case LS.TYPES.COMPONENT: 
+			case ONE.TYPES.COMPONENT: 
 			case "node":  //legacy
-			case LS.TYPES.SCENENODE: 
+			case ONE.TYPES.SCENENODE: 
 				var obj = LSQ.get( data[2] );
 				if( obj )
 					return obj;
 				return null;
 				break;
 				//return  break;
-			case LS.TYPES.SCENE: return null; break; //weird case
-			case LS.TYPES.OBJECT: 
+			case ONE.TYPES.SCENE: return null; break; //weird case
+			case ONE.TYPES.OBJECT: 
 			default:
 				if( !data[2] || !data[2].object_class )
 					return null;
-				var ctor = LS.Classes[ data[2].object_class ];
+				var ctor = ONE.Classes[ data[2].object_class ];
 				if(!ctor)
 					return null;
 				var v = new ctor();
@@ -695,34 +697,35 @@ var LS = {
 		return null;
 	},
 
+	//used during scene configure because when configuring objects they may have nodes encoded in the properties
 	resolvePendingEncodedObjects: function()
 	{
-		if(!LS._pending_encoded_objects)
+		if(!ONE._pending_encoded_objects)
 		{
 			console.warn("no pending enconded objects");
 			return;
 		}
-		for(var i = 0; i < LS._pending_encoded_objects.length; ++i)
+		for(var i = 0; i < ONE._pending_encoded_objects.length; ++i)
 		{
-			var pending = LS._pending_encoded_objects[i];
-			var decoded_object = LS.decodeObject(pending[2]);
+			var pending = ONE._pending_encoded_objects[i];
+			var decoded_object = ONE.decodeObject(pending[2]);
 			if(decoded_object)
 				pending[0][ pending[1] ] = decoded_object;
 			else
 				console.warn("Decoded object not found when configuring from JSON");
 		}
-		LS._pending_encoded_objects = null;
+		ONE._pending_encoded_objects = null;
 	},
 
 	switchGlobalScene: function( scene )
 	{
-		if(scene === LS.GlobalScene)
+		if(scene === ONE.GlobalScene)
 			return;
-		if( scene === null || scene.constructor !== LS.Scene )
+		if( scene === null || scene.constructor !== ONE.Scene )
 			throw("Not an scene");
-		var old_scene = LS.GlobalScene;
+		var old_scene = ONE.GlobalScene;
 		LEvent.trigger( LS, "global_scene_changed", scene );
-		LS.GlobalScene = scene;
+		ONE.GlobalScene = scene;
 	},
 
 	/**
@@ -780,7 +783,7 @@ var LS = {
 			return;
 
 		for(var i in children)
-			LS.clearUIds( children[i], uids_removed );
+			ONE.clearUIds( children[i], uids_removed );
 
 		return uids_removed;
 	},
@@ -797,7 +800,7 @@ var LS = {
 		if (!obj)
 			return;
 
-		if(obj.constructor.fullname) //this is to overwrite the common name "Prefab" for a global name "LS.Prefab"
+		if(obj.constructor.fullname) //this is to overwrite the common name "Prefab" for a global name "ONE.Prefab"
 			return obj.constructor.fullname;
 
 		if(obj.constructor.name)
@@ -874,23 +877,23 @@ var LS = {
 			else if ( isFunction(v) )//&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
 				continue; //o[i] = v;
 			else if (  v.constructor === Boolean )
-				o[i] = LS.TYPES.BOOLEAN;
+				o[i] = ONE.TYPES.BOOLEAN;
 			else if (  v.constructor === Number )
-				o[i] = LS.TYPES.NUMBER;
+				o[i] = ONE.TYPES.NUMBER;
 			else if ( v.constructor === String )
-				o[i] = LS.TYPES.STRING;
+				o[i] = ONE.TYPES.STRING;
 			else if ( v.buffer && v.buffer.constructor === ArrayBuffer ) //typed array
 			{
 				if(v.length == 2)
-					o[i] = LS.TYPES.VEC2;
+					o[i] = ONE.TYPES.VEC2;
 				else if(v.length == 3)
-					o[i] = LS.TYPES.VEC3;
+					o[i] = ONE.TYPES.VEC3;
 				else if(v.length == 4)
-					o[i] = LS.TYPES.VEC4;
+					o[i] = ONE.TYPES.VEC4;
 				else if(v.length == 9)
-					o[i] = LS.TYPES.MAT3;
+					o[i] = ONE.TYPES.MAT3;
 				else if(v.length == 16)
-					o[i] = LS.TYPES.MAT4;
+					o[i] = ONE.TYPES.MAT4;
 				else
 					o[i] = 0;
 			}
@@ -918,14 +921,14 @@ var LS = {
 	*/
 	registerMaterialClass: function( material_class )
 	{ 
-		var class_name = LS.getClassName( material_class );
+		var class_name = ONE.getClassName( material_class );
 
 		//register
 		this.MaterialClasses[ class_name ] = material_class;
 		this.Classes[ class_name ] = material_class;
 
 		//add extra material methods
-		LS.extendClass( material_class, Material );
+		ONE.extendClass( material_class, Material );
 
 		//event
 		LEvent.trigger( LS, "materialclass_registered", material_class );
@@ -942,10 +945,17 @@ var LS = {
 	*/
 	getScript: function( name )
 	{
-		var script = LS.Script.active_scripts[name];
+		var script = ONE.Script.active_scripts[name];
 		if(script)
 			return script.context;
 		return null;
+	},
+
+	getDebugRender: function()
+	{
+		if(!ONE.debug_render)
+			ONE.debug_render = new ONE.DebugRender();
+		return ONE.debug_render;
 	},
 
 	//we do it in a function to make it more standard and traceable
@@ -984,7 +994,7 @@ var LS = {
 	**/
 	checkLocatorBelongsToPrefab: function( locator, root )
 	{
-		root = root || LS.GlobalScene.root;
+		root = root || ONE.GlobalScene.root;
 		var property_path = locator.split("/");
 
 		if( !property_path.length )
@@ -1003,24 +1013,24 @@ var LS = {
 	* @method convertLocatorFromUIDsToName
 	* @param {String} locator string with info about a property (p.e. "my_node/Transform/y")
 	* @param {boolean} use_basename if you want to just use the node name, othewise it uses the fullname (name with path)
-	* @param {LS.SceneNode} root
+	* @param {ONE.SceneNode} root
 	* @return {String} the result name without UIDs
 	*/
 	convertLocatorFromUIDsToName: function( locator, use_basename, root )
 	{
-		root = root || LS.GlobalScene.root;
+		root = root || ONE.GlobalScene.root;
 		var property_path = locator.split("/");
 
 		if( !property_path.length )
 			return null;
 
-		if( property_path[0][0] !== LS._uid_prefix && ( property_path.length == 1 || property_path[1][0] !== LS._uid_prefix))
+		if( property_path[0][0] !== ONE._uid_prefix && ( property_path.length == 1 || property_path[1][0] !== ONE._uid_prefix))
 			return null; //is already using names
 
 		var node = LSQ.get( property_path[0], root );
 		if(!node)
 		{
-			console.warn("getIDasName: node not found in LS.GlobalScene: " + property_path[0] );
+			console.warn("getIDasName: node not found in ONE.GlobalScene: " + property_path[0] );
 			return false;
 		}
 
@@ -1031,9 +1041,9 @@ var LS = {
 		}
 
 		//what about the component?
-		if( property_path.length > 1 && property_path[1][0] == LS._uid_prefix )
+		if( property_path.length > 1 && property_path[1][0] == ONE._uid_prefix )
 		{
-			var comp = LS.GlobalScene.findComponentByUId( property_path[1] );
+			var comp = ONE.GlobalScene.findComponentByUId( property_path[1] );
 			if(comp)
 			{
 				var comp_name = comp.constructor.name;
@@ -1065,8 +1075,8 @@ var LS = {
 	*/
 	reset: function()
 	{
-		LS.GlobalScene.clear();
-		LS.ResourcesManager.reset();
+		ONE.GlobalScene.clear();
+		ONE.ResourcesManager.reset();
 		LEvent.trigger( LS, "reset" );
 	},
 
@@ -1098,12 +1108,12 @@ var LS = {
 				case "float": 
 				case "sampler2D": 
 				case "samplerCube":
-				case LS.TYPES.NUMBER: 
-				case LS.TYPES.VEC2: 
-				case LS.TYPES.VEC3:
-				case LS.TYPES.VEC4:
-				case LS.TYPES.COLOR:
-				case LS.TYPES.COLOR4:
+				case ONE.TYPES.NUMBER: 
+				case ONE.TYPES.VEC2: 
+				case ONE.TYPES.VEC3:
+				case ONE.TYPES.VEC4:
+				case ONE.TYPES.COLOR:
+				case ONE.TYPES.COLOR4:
 				case "mat3": 
 				case "mat4":
 					return false;
@@ -1117,12 +1127,12 @@ var LS = {
 			case "float": 
 			case "sampler2D": 
 			case "samplerCube":
-			case LS.TYPES.NUMBER: return isNumber(value);
-			case LS.TYPES.VEC2: return value.length === 2;
-			case LS.TYPES.VEC3: return value.length === 3;
-			case LS.TYPES.VEC4: return value.length === 4;
-			case LS.TYPES.COLOR: return value.length === 3;
-			case LS.TYPES.COLOR4: return value.length === 4;
+			case ONE.TYPES.NUMBER: return isNumber(value);
+			case ONE.TYPES.VEC2: return value.length === 2;
+			case ONE.TYPES.VEC3: return value.length === 3;
+			case ONE.TYPES.VEC4: return value.length === 4;
+			case ONE.TYPES.COLOR: return value.length === 3;
+			case ONE.TYPES.COLOR4: return value.length === 4;
 			case "mat3": return value.length === 9;
 			case "mat4": return value.length === 16;
 		}
@@ -1187,6 +1197,8 @@ var LS = {
 	}
 }
 
+var LS = ONE; //LEGACY
+
 //ensures no exception is catched by the system (useful for developers)
 Object.defineProperty( LS, "catch_exceptions", { 
 	set: function(v){ 
@@ -1201,18 +1213,18 @@ Object.defineProperty( LS, "catch_exceptions", {
 //ensures no exception is catched by the system (useful for developers)
 Object.defineProperty( LS, "block_scripts", { 
 	set: function(v){ 
-		LS._block_scripts = v; 
+		ONE._block_scripts = v; 
 		LScript.block_execution = v; 
 	},
 	get: function() { 
-		return !!LS._block_scripts;
+		return !!ONE._block_scripts;
 	},
 	enumerable: true
 });
 
 
 //Add some classes
-LS.Classes.WBin = LS.WBin = global.WBin = WBin;
+ONE.Classes.WBin = ONE.WBin = global.WBin = WBin;
 
 /**
 * LSQ allows to set or get values easily from the global scene, using short strings as identifiers
@@ -1235,12 +1247,12 @@ function LSQ(v)
 */
 LSQ.set = function( locator, value, root, scene )
 {
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 	if(!root)
 		scene.setPropertyValue( locator, value );
 	else
 	{
-		if(root.constructor === LS.SceneNode)
+		if(root.constructor === ONE.SceneNode)
 		{
 			var path = locator.split("/");
 			var node = root.findNodeByUId( path[0] );
@@ -1265,13 +1277,13 @@ LSQ.get = function( locator, root, scene )
 {
 	if(!locator) //sometimes we have a var with a locator that is null
 		return null;
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 	var info;
 	if(!root)
 		info = scene.getPropertyInfo( locator );
 	else
 	{
-		if(root.constructor === LS.SceneNode)
+		if(root.constructor === ONE.SceneNode)
 		{
 			var path = locator.split("/");
 			var node = root.findNodeByUId( path[0] );
@@ -1302,10 +1314,10 @@ LSQ.shortify = function( locator, scene )
 	var node = null;
 
 	//already short
-	if( t[0][0] != LS._uid_prefix )
+	if( t[0][0] != ONE._uid_prefix )
 		return locator;
 
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 
 	node = scene._nodes_by_uid[ t[0] ];
 	if(!node) //node not found
@@ -1314,11 +1326,11 @@ LSQ.shortify = function( locator, scene )
 	t[0] = node.getPathName();
 	if(t[1])
 	{
-		if( t[1][0] == LS._uid_prefix )
+		if( t[1][0] == ONE._uid_prefix )
 		{
 			var compo = node.getComponentByUId(t[1]);
 			if(compo)
-				t[1] = LS.getObjectClassName( compo );
+				t[1] = ONE.getObjectClassName( compo );
 		}
 	}
 	return t.join("/");
@@ -1365,13 +1377,13 @@ if(global.GL)
 	GL.Mesh.EXTENSION = "wbin";
 	GL.Texture.EXTENSION = "png";
 
-	LS.registerResourceClass( GL.Mesh );
-	LS.registerResourceClass( GL.Texture );
+	ONE.registerResourceClass( GL.Mesh );
+	ONE.registerResourceClass( GL.Texture );
 
-	LS.Mesh = GL.Mesh;
-	LS.Texture = GL.Texture;
-	LS.Buffer = GL.Buffer;
-	//LS.Shader = GL.Shader; //this could be confussing since there is also ShaderBlocks etc in LiteScene
+	ONE.Mesh = GL.Mesh;
+	ONE.Texture = GL.Texture;
+	ONE.Buffer = GL.Buffer;
+	//ONE.Shader = GL.Shader; //this could be confussing since there is also ShaderBlocks etc in LiteScene
 }
 
 

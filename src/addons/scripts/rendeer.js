@@ -47,12 +47,12 @@ function Rendeer( o )
 
 Rendeer.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( LS.Renderer, "renderInstances", this.onRender, this );
+	LEvent.bind( ONE.Renderer, "renderInstances", this.onRender, this );
 }
 
 Rendeer.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( LS.Renderer, "renderInstances", this.onRender, this );
+	LEvent.unbind( ONE.Renderer, "renderInstances", this.onRender, this );
 }
 
 Rendeer.prototype.onRender = function( e )
@@ -60,7 +60,7 @@ Rendeer.prototype.onRender = function( e )
 	if(!this.enabled)
 		return;
 
-	var current_camera = LS.Renderer._current_camera;
+	var current_camera = ONE.Renderer._current_camera;
 
 	this._rd_camera.perspective( current_camera.fov, current_camera._final_aspect, current_camera.near, current_camera.far );
 	this._rd_camera.lookAt( current_camera._global_eye , current_camera._global_center, current_camera._global_up );
@@ -75,7 +75,7 @@ Rendeer.prototype.setShaders = function(v)
 		this._rd_renderer.setShadersFromFile(v);
 }
 
-LS.registerComponent( Rendeer );
+ONE.registerComponent( Rendeer );
 
 CORE.registerModule( RendeerEngine );
 
@@ -85,7 +85,7 @@ Rendeer.prototype.inspect = function( inspector )
 	var node = this._root;
 	var component = this;
 	inspector.addButton(null,"Edit Shaders", function(){
-		CodingModule.editInstanceCode( component, { id: component.uid, title: node.id, lang: "text", path: component.uid, help: LS.Components.Rendeer.help, 
+		CodingModule.editInstanceCode( component, { id: component.uid, title: node.id, lang: "text", path: component.uid, help: ONE.Components.Rendeer.help, 
 			setCode: function(v) { component.setShaders( v ); }, 
 			getCode: function() { return this.shaders; }});
 	});

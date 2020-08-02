@@ -3,7 +3,7 @@
 *	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
 *	It helps to create the textures and bind them easily, add extra buffers or show it on the screen.
 *	Check the FrameFX and CameraFX components to see it in action.
-*   Dependencies: LS.Renderer (writes there only)
+*   Dependencies: ONE.Renderer (writes there only)
 *
 * @class RenderFrameContext
 * @namespace LS
@@ -19,7 +19,7 @@ function RenderFrameContext( o )
 	this.use_depth_texture = true; //store the depth in a texture
 	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
-	this.name = null; //if a name is provided all the textures will be stored in the LS.ResourcesManager
+	this.name = null; //if a name is provided all the textures will be stored in the ONE.ResourcesManager
 
 	this.generate_mipmaps = false; //try to generate mipmaps if possible (only when the texture is power of two)
 	this.adjust_aspect = false; //when the size doesnt match the canvas size it could look distorted, settings this to true will fix the problem
@@ -79,9 +79,9 @@ RenderFrameContext.prototype.clear = function()
 	if(this.name)
 	{
 		for(var i = 0; i < this._textures.length; ++i)
-			delete LS.ResourcesManager.textures[ this.name + (i > 1 ? i : "") ];
+			delete ONE.ResourcesManager.textures[ this.name + (i > 1 ? i : "") ];
 		if(this._depth_texture)
-			delete LS.ResourcesManager.textures[ this.name + "_depth"];
+			delete ONE.ResourcesManager.textures[ this.name + "_depth"];
 	}
 
 	this._fbo = null;
@@ -248,12 +248,12 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport, camer
 	//enable FBO
 	RenderFrameContext.enableFBO( this._fbo, this.adjust_aspect );
 
-	if(LS.RenderFrameContext.current)
-		RenderFrameContext.stack.push( LS.RenderFrameContext.current );
-	LS.RenderFrameContext.current = this;
+	if(ONE.RenderFrameContext.current)
+		RenderFrameContext.stack.push( ONE.RenderFrameContext.current );
+	ONE.RenderFrameContext.current = this;
 
 	//set depth info inside the texture
-	camera = camera || LS.Renderer._current_camera;
+	camera = camera || ONE.Renderer._current_camera;
 	if(this._depth_texture && camera)
 	{
 		this._depth_texture.near_far_planes[0] = camera.near;
@@ -283,7 +283,7 @@ RenderFrameContext.prototype.cloneBuffers = function()
 				cloned_texture = this._cloned_textures[i] = new GL.Texture( texture.width, texture.height, texture.getProperties() );
 			texture.copyTo( cloned_texture );
 			if(i == 0)
-				LS.ResourcesManager.textures[":color_buffer" ] = cloned_texture;
+				ONE.ResourcesManager.textures[":color_buffer" ] = cloned_texture;
 		}
 	}
 
@@ -299,7 +299,7 @@ RenderFrameContext.prototype.cloneBuffers = function()
 			this._cloned_depth_texture.near_far_planes = vec2.create();
 		this._cloned_depth_texture.near_far_planes.set( depth.near_far_planes );
 
-		LS.ResourcesManager.textures[":depth_buffer" ] = this._cloned_depth_texture;
+		ONE.ResourcesManager.textures[":depth_buffer" ] = this._cloned_depth_texture;
 	}
 
 	//rebind FBO
@@ -346,7 +346,7 @@ RenderFrameContext.prototype.disable = function()
 				final_texture.has_mipmaps = true;
 			}
 
-			LS.ResourcesManager.textures[ name ] = final_texture;
+			ONE.ResourcesManager.textures[ name ] = final_texture;
 		}
 
 		if(this._depth_texture)
@@ -369,14 +369,14 @@ RenderFrameContext.prototype.disable = function()
 			}
 
 			depth_texture.filename = name;
-			LS.ResourcesManager.textures[ name ] = depth_texture;
+			ONE.ResourcesManager.textures[ name ] = depth_texture;
 		}
 	}
 
 	if( RenderFrameContext.stack.length )
-		LS.RenderFrameContext.current = RenderFrameContext.stack.pop();
+		ONE.RenderFrameContext.current = RenderFrameContext.stack.pop();
 	else
-		LS.RenderFrameContext.current = null;
+		ONE.RenderFrameContext.current = null;
 }
 
 /**
@@ -422,11 +422,11 @@ RenderFrameContext.enableFBO = function( fbo, adjust_aspect )
 {
 	fbo.bind( true ); //changes viewport to full FBO size (saves old)
 
-	LS.Renderer._full_viewport.set( gl.viewport_data );
+	ONE.Renderer._full_viewport.set( gl.viewport_data );
 	if( adjust_aspect )
 	{
-		fbo._old_aspect = LS.Renderer.global_aspect;
-		LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (fbo.color_textures[0].width / fbo.color_textures[0].height);
+		fbo._old_aspect = ONE.Renderer.global_aspect;
+		ONE.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (fbo.color_textures[0].width / fbo.color_textures[0].height);
 	}
 	else
 		delete fbo._old_aspect;
@@ -435,9 +435,9 @@ RenderFrameContext.enableFBO = function( fbo, adjust_aspect )
 RenderFrameContext.disableFBO = function( fbo )
 {
 	fbo.unbind(); //restores viewport to old saved one
-	LS.Renderer._full_viewport.set( fbo._old_viewport );
+	ONE.Renderer._full_viewport.set( fbo._old_viewport );
 	if( fbo._old_aspect )
-		LS.Renderer.global_aspect = fbo._old_aspect;
+		ONE.Renderer.global_aspect = fbo._old_aspect;
 }
 
 
@@ -467,9 +467,9 @@ RenderFrameContext.prototype.show = function( use_antialiasing )
 RenderFrameContext.reset = function()
 {
 	gl.bindFramebuffer( gl.FRAMEBUFFER, null );
-	LS.RenderFrameContext.current = null;
-	LS.RenderFrameContext.stack.length = 0;
+	ONE.RenderFrameContext.current = null;
+	ONE.RenderFrameContext.stack.length = 0;
 }
 
 
-LS.RenderFrameContext = RenderFrameContext;
+ONE.RenderFrameContext = RenderFrameContext;

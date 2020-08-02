@@ -10,16 +10,16 @@ function CameraFX( o )
 
 	/**
 	* The FX Stack
-	* @property fx {LS.FXStack}
+	* @property fx {ONE.FXStack}
 	*/
-	this.fx = new LS.FXStack( o ? o.fx : null );
+	this.fx = new ONE.FXStack( o ? o.fx : null );
 
 	/**
 	* The position of the camera (in local space, node space)
 	* @property eye {vec3}
 	* @default [0,100,100]
 	*/
-	this.frame = new LS.RenderFrameContext();
+	this.frame = new ONE.RenderFrameContext();
 	this.frame.use_depth_texture = true;
 	this.use_antialiasing = false;
 
@@ -197,13 +197,13 @@ CameraFX.prototype.showFBO = function()
 
 	this.frame.disable();
 
-	LEvent.trigger( LS.Renderer, "beforeShowFrameContext", this.frame );
+	LEvent.trigger( ONE.Renderer, "beforeShowFrameContext", this.frame );
 
 	if(this.shader_material)
 	{
-		var material = LS.ResourcesManager.getResource( this.shader_material );
+		var material = ONE.ResourcesManager.getResource( this.shader_material );
 		var rendered = false;
-		if(material && material.constructor === LS.ShaderMaterial )
+		if(material && material.constructor === ONE.ShaderMaterial )
 			rendered = material.applyToTexture( this.frame._color_texture );
 		if(!rendered)
 			this.frame._color_texture.toViewport(); //fallback in case the shader is missing
@@ -231,4 +231,4 @@ CameraFX.prototype.applyFX = function()
 	this.fx.applyFX( color_texture, null, { depth_texture: depth_texture } );
 }
 
-LS.registerComponent( CameraFX );
+ONE.registerComponent( CameraFX );

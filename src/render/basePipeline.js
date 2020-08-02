@@ -20,7 +20,7 @@
 
 
 //define surface structures
-LS.Shaders.registerSnippet("surface","\n\
+ONE.Shaders.registerSnippet("surface","\n\
 	//used to store surface shading properties\n\
 	struct SurfaceOutput {\n\
 		vec3 Albedo;\n\
@@ -51,7 +51,7 @@ LS.Shaders.registerSnippet("surface","\n\
 ");
 
 // LIGHT STRUCTS AND FUNCTIONS *****************************************
-LS.Shaders.registerSnippet("light_structs","\n\
+ONE.Shaders.registerSnippet("light_structs","\n\
 	#ifndef SB_LIGHT_STRUCTS\n\
 	#define SB_LIGHT_STRUCTS\n\
 	uniform lowp vec4 u_light_info;\n\
@@ -65,7 +65,7 @@ LS.Shaders.registerSnippet("light_structs","\n\
 	uniform mat4 u_light_matrix; //projection to light screen space\n\
 	uniform vec3 u_ambient_light;\n\
 	struct Light {\n\
-		lowp vec4 Info; //type of light (3: DIRECTIONAL), falloff type, pass index, num passes \n\
+		lowp vec4 Info; //type of light (1:OMNI, 2: SPOT, 3: DIRECTIONAL), falloff type, pass index, num passes \n\
 		vec3 Color;\n\
 		vec3 Ambient;\n\
 		vec3 Position;\n\
@@ -250,7 +250,7 @@ Light._disabled_shaderblock_code = "\n\
 ";
 
 //this is the main light block
-var light_block = new LS.ShaderBlock("light");
+var light_block = new ONE.ShaderBlock("light");
 light_block.addCode( GL.VERTEX_SHADER, Light._vs_shaderblock_code, Light._vs_shaderblock_code );
 light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_fs_shaderblock_code, Light._disabled_shaderblock_code );
 light_block.register();
@@ -283,7 +283,7 @@ Light._attenuation_enabled_fragment_code = "\n\
 ";
 Light._attenuation_disabled_fragment_code = "";
 
-var attenuation_block = Light.attenuation_block = new LS.ShaderBlock("attenuation");
+var attenuation_block = Light.attenuation_block = new ONE.ShaderBlock("attenuation");
 attenuation_block.addCode( GL.FRAGMENT_SHADER, Light._attenuation_enabled_fragment_code, Light._attenuation_disabled_fragment_code );
 attenuation_block.register();
 
@@ -293,8 +293,17 @@ Light._light_texture_fragment_enabled_code ="\n\
 uniform sampler2D light_texture;\n\
 void applyLightTexture( in Input IN, inout Light LIGHT )\n\
 {\n\
-	vec4 v = LIGHT.Matrix * vec4( IN.worldPos,1.0 );\n\
-	vec2 uv = v.xy / v.w * 0.5 + vec2(0.5);\n\
+	vec2 uv;\n\
+	if(LIGHT.Info.x == 1.0) //omni\n\
+	{\n\
+		vec3 V = normalize(IN.worldPos - LIGHT.Position);\n\
+		uv = vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);\n\
+	}\n\
+	else\n\
+	{\n\
+		vec4 v = LIGHT.Matrix * vec4( IN.worldPos,1.0 );\n\
+		uv = v.xy / v.w * 0.5 + vec2(0.5);\n\
+	}\n\
 	LIGHT.Color *= texture2D( light_texture, uv ).xyz;\n\
 }\n\
 ";
@@ -305,7 +314,7 @@ void applyLightTexture( in Input IN, inout Light LIGHT )\n\
 }\n\
 ";
 
-var light_texture_block = Light.light_texture_block = new LS.ShaderBlock("light_texture");
+var light_texture_block = Light.light_texture_block = new ONE.ShaderBlock("light_texture");
 light_texture_block.addCode( GL.FRAGMENT_SHADER, Light._light_texture_fragment_enabled_code, Light._light_texture_fragment_disabled_code );
 light_texture_block.register();
 
@@ -425,11 +434,11 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 
 Light._shadowmap_2d_disabled_code = "\nfloat testShadow( Light LIGHT ) { return 1.0; }\n";
 
-var shadowmapping_depth_in_color_block = new LS.ShaderBlock("depth_in_color");
+var shadowmapping_depth_in_color_block = new ONE.ShaderBlock("depth_in_color");
 shadowmapping_depth_in_color_block.register();
 Light.shadowmapping_depth_in_color_block = shadowmapping_depth_in_color_block;
 
-var shadowmapping_block = new LS.ShaderBlock("testShadow");
+var shadowmapping_block = new ONE.ShaderBlock("testShadow");
 shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code);
 shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_fragment_code, Light._shadowmap_2d_disabled_code );
 //shadowmapping_block.defineContextMacros({"SHADOWBLOCK":"testShadow"});
@@ -437,14 +446,14 @@ shadowmapping_block.register();
 Light.shadowmapping_2d_shader_block = shadowmapping_block;
 Light.registerShadowType( "hard", shadowmapping_block );
 
-var shadowmapping_2D_hard_shader_block = new LS.ShaderBlock("testShadow2D_hard");
+var shadowmapping_2D_hard_shader_block = new ONE.ShaderBlock("testShadow2D_hard");
 shadowmapping_2D_hard_shader_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
 shadowmapping_2D_hard_shader_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
 shadowmapping_2D_hard_shader_block.register();
 Light.shadowmapping_2D_hard_shader_block = shadowmapping_2D_hard_shader_block;
 //Light.registerShadowType( "hard", shadowmapping_hard_2d_shader_block );
 
-var shadowmapping_2D_soft_block = new LS.ShaderBlock("testShadow2D_soft");
+var shadowmapping_2D_soft_block = new ONE.ShaderBlock("testShadow2D_soft");
 shadowmapping_2D_soft_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
 shadowmapping_2D_soft_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
 shadowmapping_2D_soft_block.register();
@@ -491,22 +500,22 @@ var environment_disabled_code = "\n\
 	}\n\
 ";
 
-var environment_cubemap_block = new LS.ShaderBlock("environment_cubemap");
+var environment_cubemap_block = new ONE.ShaderBlock("environment_cubemap");
 environment_cubemap_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_CUBEMAP: "" } );
 environment_cubemap_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_cubemap"});
 environment_cubemap_block.register();
 
-var environment_2d_block = new LS.ShaderBlock("environment_2D");
+var environment_2d_block = new ONE.ShaderBlock("environment_2D");
 environment_2d_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_2D"});
 environment_2d_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_TEXTURE: "" } );
 environment_2d_block.register();
 
-var environment_planar_block = new LS.ShaderBlock("environment_planar");
+var environment_planar_block = new ONE.ShaderBlock("environment_planar");
 environment_planar_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_planar"});
 environment_planar_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_PLANAR: "" } );
 environment_planar_block.register();
 
-var environment_block = new LS.ShaderBlock("environment");
+var environment_block = new ONE.ShaderBlock("environment");
 environment_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code );
 environment_block.register();
 
@@ -541,7 +550,7 @@ var reflection_disabled_code = "\n\
 	}\n\
 ";
 
-var reflection_block = new LS.ShaderBlock("applyReflection");
+var reflection_block = new ONE.ShaderBlock("applyReflection");
 ShaderMaterial.reflection_block = reflection_block;
 reflection_block.addCode( GL.FRAGMENT_SHADER, reflection_code, reflection_disabled_code );
 reflection_block.register();
@@ -555,9 +564,9 @@ var irradiance_disabled_code = "\n\
 	}\n\
 ";
 
-if( !LS.Shaders.getShaderBlock("applyIrradiance") )
+if( !ONE.Shaders.getShaderBlock("applyIrradiance") )
 {
-	var irradiance_block = new LS.ShaderBlock("applyIrradiance");
+	var irradiance_block = new ONE.ShaderBlock("applyIrradiance");
 	ShaderMaterial.irradiance_block = irradiance_block;
 	irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_disabled_code, irradiance_disabled_code );
 	irradiance_block.register();

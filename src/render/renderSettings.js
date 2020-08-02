@@ -10,7 +10,7 @@ function RenderSettings( o )
 	this.renderer_name = null; //null means default
 
 	//global render settings
-	this.default_shadowmap_resolution = LS.RenderSettings.default_shadowmap_resolution; //let the system decide best shadowmap resolution according to quality settings
+	this.default_shadowmap_resolution = ONE.RenderSettings.default_shadowmap_resolution; //let the system decide best shadowmap resolution according to quality settings
 	this.ignore_viewports = false;	//render to full viewport, ignoring the viewport in the cameras
 	this.ignore_clear = false;	//skip global clear, used in case you want to mix LiteScene with another renderer
 	this.keep_viewport = false; //do not force a full canvas viewport at render start (use the current one in WebGL as the full)
@@ -53,7 +53,7 @@ RenderSettings["@layers"] = { type: "layers" };
 
 RenderSettings.prototype.serialize = function()
 {
-	return LS.cloneObject(this);
+	return ONE.cloneObject(this);
 }
 
 RenderSettings.prototype.configure = function(o)
@@ -69,4 +69,4 @@ RenderSettings.prototype.configure = function(o)
 
 RenderSettings.prototype.toJSON = RenderSettings.prototype.serialize;
 
-LS.RenderSettings = RenderSettings;
+ONE.RenderSettings = RenderSettings;

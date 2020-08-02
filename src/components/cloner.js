@@ -14,7 +14,7 @@ function Cloner(o)
 
 	this._instances_matrix = [];
 
-	this._RI = new LS.RenderInstance( null, this );
+	this._RI = new ONE.RenderInstance( null, this );
 
 	if(o)
 		this.configure(o);
@@ -48,13 +48,13 @@ Cloner.prototype.onRemovedFromScene = function(scene)
 
 Cloner.prototype.getMesh = function() {
 	if( this.mesh && this.mesh.constructor === String )
-		return LS.ResourcesManager.meshes[ this.mesh ];
+		return ONE.ResourcesManager.meshes[ this.mesh ];
 	return this.mesh;
 }
 
 Cloner.prototype.getLODMesh = function() {
 	if( this.lod_mesh && this.lod_mesh.constructor === String )
-		return LS.ResourcesManager.meshes[this.lod_mesh];
+		return ONE.ResourcesManager.meshes[this.lod_mesh];
 	return this.lod_mesh;
 }
 
@@ -99,12 +99,12 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	RI.layers = node.layers;
 
 	RI.fromNode( this._root, true );
-	RI.setMatrix( LS.IDENTITY, LS.IDENTITY ); //RI matrix is ignored in instanced rendering
+	RI.setMatrix( ONE.IDENTITY, ONE.IDENTITY ); //RI matrix is ignored in instanced rendering
 
 	//material (after flags because it modifies the flags)
 	var material = null;
 	if(this.material)
-		material = LS.ResourcesManager.getResource( this.material );
+		material = ONE.ResourcesManager.getResource( this.material );
 	else
 		material = this._root.getMaterial();
 	RI.setMaterial( material );
@@ -317,7 +317,7 @@ Cloner.prototype.updateRenderInstancesArray = function()
 
 		for(var i = 0; i < total; ++i)
 			if(!this._RIs[i])
-				this._RIs[i] = new LS.RenderInstance(this._root, this);
+				this._RIs[i] = new ONE.RenderInstance(this._root, this);
 	}
 }
 
@@ -414,4 +414,4 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 */
 
 
-LS.registerComponent(Cloner);
+ONE.registerComponent(Cloner);

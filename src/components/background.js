@@ -18,7 +18,7 @@ function BackgroundRenderer(o)
 BackgroundRenderer.icon = "mini-icon-bg.png";
 BackgroundRenderer["@texture"] = { type: "texture" };
 BackgroundRenderer["@material_name"] = { type: "material" };
-BackgroundRenderer["@blend_mode"] = { type: "enum", values: LS.Blend };
+BackgroundRenderer["@blend_mode"] = { type: "enum", values: ONE.Blend };
 BackgroundRenderer["@opacity"] = { type: "number", step: 0.01 };
 
 /*
@@ -60,7 +60,7 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 	var mat = null;
 
 	if( this.material_name )
-		mat = LS.ResourcesManager.materials[ this.material_name ];
+		mat = ONE.ResourcesManager.materials[ this.material_name ];
 
 	if(!mat)
 	{
@@ -68,11 +68,11 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 		if(!texture) 
 			return;
 		if(texture.constructor === String)
-			texture = LS.ResourcesManager.textures[ texture ];
+			texture = ONE.ResourcesManager.textures[ texture ];
 
 		if(!this._material)
-			mat = this._material = new LS.StandardMaterial({shader: "lowglobal", 
-				queue: LS.RenderQueue.BACKGROUND, 
+			mat = this._material = new ONE.StandardMaterial({shader: "lowglobal", 
+				queue: ONE.RenderQueue.BACKGROUND, 
 				flags: {
 					cast_shadows: false,
 					ignore_lights: true,
@@ -97,7 +97,7 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new LS.RenderInstance( this._root, this );
+		this._render_instance = RI = new ONE.RenderInstance( this._root, this );
 
 	RI.setMesh( mesh );
 	RI.setMaterial( mat );
@@ -106,4 +106,4 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 }
 
 //disabled till the viewprojection matrix issue is fixed
-//LS.registerComponent( BackgroundRenderer );
+//ONE.registerComponent( BackgroundRenderer );

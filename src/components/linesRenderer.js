@@ -2,7 +2,7 @@
 /**
 * Helps rendering several lines
 * @class LinesRenderer
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -192,8 +192,8 @@ LinesRenderer.prototype.onAfterRender = function(e)
 	if( this._must_update )
 		this.updateMesh();
 
-	LS.Draw.renderMesh( this._mesh, GL.LINES, null, null, 0, this._lines.length * 2 );
+	ONE.Draw.renderMesh( this._mesh, GL.LINES, null, null, 0, this._lines.length * 2 );
 }
 
 
-LS.registerComponent( LinesRenderer );
+ONE.registerComponent( LinesRenderer );

@@ -2,31 +2,32 @@
 //here goes the ending of commonjs stuff
 
 //create Global Scene
-var Scene = LS.GlobalScene = new LS.Scene();
+var Scene = ONE.GlobalScene = new ONE.Scene();
 
-LS.newMeshNode = function(id,mesh_name)
+ONE.newMeshNode = function(id,mesh_name)
 {
-	var node = new LS.SceneNode(id);
-	node.addComponent( new LS.Components.MeshRenderer() );
+	var node = new ONE.SceneNode(id);
+	node.addComponent( new ONE.Components.MeshRenderer() );
 	node.setMesh(mesh_name);
 	return node;
 }
 
-LS.newLightNode = function(id)
+ONE.newLightNode = function(id)
 {
-	var node = new LS.SceneNode(id);
-	node.addComponent( new LS.Components.Light() );
+	var node = new ONE.SceneNode(id);
+	node.addComponent( new ONE.Components.Light() );
 	return node;
 }
 
-LS.newCameraNode = function(id)
+ONE.newCameraNode = function(id)
 {
-	var node = new LS.SceneNode(id);
-	node.addComponent( new LS.Components.Camera() );
+	var node = new ONE.SceneNode(id);
+	node.addComponent( new ONE.Components.Camera() );
 	return node;
 }
 
-global.LS = LS;
+global.ONE = ONE;
+global.LS = ONE; //Legacy
 
 //*******************************/
 })( typeof(window) != "undefined" ? window : self ); //TODO: add support for commonjs

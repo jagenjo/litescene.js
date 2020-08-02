@@ -148,7 +148,7 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 	if(mesh)
 		vec3.copy( center, BBox.getCenter(mesh.bounding) );
 
-	var camera = LS.Renderer._current_camera;
+	var camera = ONE.Renderer._current_camera;
 
 	var pos = this._root.transform.getGlobalPosition();
 	var object_center = this.getObjectCenter();
@@ -171,7 +171,7 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 
 	gl.enable(gl.BLEND);
 	gl.enable(gl.DEPTH_TEST);
-	LS.Draw.setColor([1,1,1,1]);
+	ONE.Draw.setColor([1,1,1,1]);
 
 	var lines = [];
 	var lines_colors = [];
@@ -184,7 +184,7 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 		lines_colors.push( [1,1,1,0],[1,1,1,1]);
 		//Draw.setColor([0.33,0.874,0.56,1.0]);
 		if( window.EditorModule )
-			LS.Draw.renderImage( icon_pos, EditorModule.icons_path + "/mini-icon-script.png",f * 0.03);
+			ONE.Draw.renderImage( icon_pos, EditorModule.icons_path + "/mini-icon-script.png",f * 0.03);
 	}
 
 	var model = this._root.transform.getGlobalMatrix();
@@ -207,8 +207,8 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 		}
 		else
 		{
-			points_colors.push( LS.Components.AnnotationComponent.editor_color );
-			lines_colors.push( [0,0,0,0.2], LS.Components.AnnotationComponent.editor_color );
+			points_colors.push( ONE.Components.AnnotationComponent.editor_color );
+			lines_colors.push( [0,0,0,0.2], ONE.Components.AnnotationComponent.editor_color );
 		}
 		note._end_screen = camera.project( end );
 	}
@@ -236,31 +236,31 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 	}
 
 	//render in two passes to have the cool semitransparent effect 
-	LS.Draw.setPointSize( 12 );
-	LS.Draw.renderPoints(points, points_colors);
+	ONE.Draw.setPointSize( 12 );
+	ONE.Draw.renderPoints(points, points_colors);
 
-	LS.Draw.setColor( [0,0,0,0.5] );
-	LS.Draw.setPointSize( 10 );
-	LS.Draw.renderPoints(points, points_colors);
+	ONE.Draw.setColor( [0,0,0,0.5] );
+	ONE.Draw.setPointSize( 10 );
+	ONE.Draw.renderPoints(points, points_colors);
 
-	LS.Draw.setColor([1,1,1,1]);
-	LS.Draw.renderLines(lines, lines_colors);
+	ONE.Draw.setColor([1,1,1,1]);
+	ONE.Draw.renderLines(lines, lines_colors);
 
 	gl.depthFunc( gl.GREATER );
 
-	LS.Draw.setAlpha(0.1);
-	LS.Draw.renderPoints(points, points_colors);
-	LS.Draw.renderLines(lines, lines_colors);
+	ONE.Draw.setAlpha(0.1);
+	ONE.Draw.renderPoints(points, points_colors);
+	ONE.Draw.renderLines(lines, lines_colors);
 
 	gl.depthFunc( gl.LESS );
 
 	//texts
 	if( gl.start2D )
 	{
-		LS.Draw.setColor( LS.Components.AnnotationComponent.editor_color );
+		ONE.Draw.setColor( ONE.Components.AnnotationComponent.editor_color );
 		var pos2D = vec3.create();
 		gl.start2D();
-		gl.fillColor = LS.Components.AnnotationComponent.editor_color;
+		gl.fillColor = ONE.Components.AnnotationComponent.editor_color;
 		gl.font = "20px Arial";
 
 		for(var i = 0; i < this.notes.length; ++i)
@@ -271,16 +271,16 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 			gl.fillText( first_line, pos2D[0] + 10, pos2D[1] + 8);
 
 			/*
-			LS.Draw.push();
+			ONE.Draw.push();
 			//Draw.lookAt( note.end_world, camera_eye, [0,1,0] );
-			LS.Draw.fromTranslationFrontTop(note.end_world, front, top );
+			ONE.Draw.fromTranslationFrontTop(note.end_world, front, top );
 
-			LS.Draw.translate( [-1,-1,0] );
-			LS.Draw.scale( [-0.0004 * f,0.0004 * f,0.0004 * f] );
+			ONE.Draw.translate( [-1,-1,0] );
+			ONE.Draw.scale( [-0.0004 * f,0.0004 * f,0.0004 * f] );
 			var first_line = note.text.split("\n")[0];
-			LS.Draw.renderText( first_line );
+			ONE.Draw.renderText( first_line );
 			//Draw.renderWireBox(10,10,10);
-			LS.Draw.pop();
+			ONE.Draw.pop();
 			*/
 		}
 	}
@@ -289,4 +289,4 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 }
 
 
-LS.registerComponent( AnnotationComponent );
+ONE.registerComponent( AnnotationComponent );

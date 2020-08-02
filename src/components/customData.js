@@ -125,5 +125,5 @@ CustomData.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
 }
 
-LS.registerComponent( CustomData );
-LS.CustomData = CustomData;
+ONE.registerComponent( CustomData );
+ONE.CustomData = CustomData;

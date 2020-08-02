@@ -39,7 +39,7 @@ Object.defineProperty( MediaPlayer.prototype, "enabled", {
 		else
 		{
 			var scene = this._root ? this._root.scene : null;
-			if(scene && scene.state === LS.RUNNING && this._media.autoplay)
+			if(scene && scene.state === ONE.RUNNING && this._media.autoplay)
 			{
 				if(this._media.currentTime >= this._media.duration)
 					this._media.currentTime = 0;
@@ -85,13 +85,13 @@ Object.defineProperty( MediaPlayer.prototype, "src", {
 
 Object.defineProperty( MediaPlayer.prototype, "time", {
 	set: function(v){
-		this._media.currentTime = time;
+		this._media.currentTime = v;
 	},
 	get: function()
 	{
 		return this._media.currentTime;
 	},
-	enumerable: false
+	enumerable: true
 });
 
 Object.defineProperty( MediaPlayer.prototype, "texture", {
@@ -141,13 +141,12 @@ Object.defineProperty( MediaPlayer.prototype, "volume", {
 
 Object.defineProperty( MediaPlayer.prototype, "duration", {
 	set: function(v){
-		throw("MediaPlayer duration cannot be assigned, is read-only");
 	},
 	get: function()
 	{
 		return this._media.duration;
 	},
-	enumerable: false
+	enumerable: true
 });
 
 Object.defineProperty( MediaPlayer.prototype, "playback_rate", {
@@ -249,7 +248,7 @@ MediaPlayer.prototype.load = function( url, force )
 	if(!url)
 		return;
 
-	var final_url = LS.RM.getFullURL( url, { ignore_proxy: this.ignore_proxy  } );
+	var final_url = ONE.RM.getFullURL( url, { ignore_proxy: this.ignore_proxy  } );
 
 	if( this._url_loading == final_url && !force )
 		return;
@@ -262,6 +261,7 @@ MediaPlayer.prototype.load = function( url, force )
 
 MediaPlayer.prototype.bindVideoEvents = function( video )
 {
+	var that = this;
 	video._component = this;
 
 	if(video.has_litescene_events)
@@ -277,8 +277,9 @@ MediaPlayer.prototype.bindVideoEvents = function( video )
 		this.height = this.videoHeight;
 		if(!this._component)
 			return;
+		LEvent.trigger(this._component,"loaded");
 		var scene = this._component._root ? this._component._root.scene : null;
-		if(scene && scene.state === LS.RUNNING && this._component._autoplay)
+		if(scene && scene.state === ONE.RUNNING && this._component._autoplay)
 			this._component.play();
 	});
 
@@ -311,9 +312,10 @@ MediaPlayer.prototype.bindVideoEvents = function( video )
 	this._media.addEventListener("ended",function(e) {
 		if(!this._component)
 			return;
-		console.log("Ended.");
+		console.log("Media Ended");
+		LEvent.trigger(that,"end");
 		var scene = this._component._root ? this._component._root.scene : null;
-		if(scene && scene.state === LS.RUNNING && this._component._autoplay)
+		if(scene && scene.state === ONE.RUNNING && this._component._autoplay)
 		{
 			this.currentTime = 0;
 			this._component.play(); //loop
@@ -324,7 +326,10 @@ MediaPlayer.prototype.bindVideoEvents = function( video )
 MediaPlayer.prototype.play = function()
 {
 	if(this._media.duration)
+	{
+		LEvent.trigger(this,"play");
 		this._media.play();
+	}
 }
 
 MediaPlayer.prototype.playPause = function()
@@ -383,7 +388,7 @@ MediaPlayer.prototype.onBeforeRender = function(e)
 
 	//make texture available to all the system
 	if(this.texture_name)
-		LS.RM.registerResource( this.texture_name, this._texture );
+		ONE.RM.registerResource( this.texture_name, this._texture );
 
 	//assign to material color texture
 	if(this.render_mode == MediaPlayer.TO_MATERIAL)
@@ -417,11 +422,11 @@ MediaPlayer.prototype.onCollectInstances = function( e, RIs )
 		return;
 
 	if( !this._material )
-		this._material = new LS.StandardMaterial({ flags: { ignore_lights: true, two_sided: true }});
+		this._material = new ONE.StandardMaterial({ flags: { ignore_lights: true, two_sided: true }});
 
 	if(!this._plane_ri)
 	{
-		var RI = this._plane_ri = new LS.RenderInstance();
+		var RI = this._plane_ri = new ONE.RenderInstance();
 		var mesh = GL.Mesh.plane();
 		RI.setMesh( mesh );
 		RI.setMaterial( this._material );
@@ -432,4 +437,9 @@ MediaPlayer.prototype.onCollectInstances = function( e, RIs )
 	RIs.push( this._plane_ri);
 }
 
-LS.registerComponent( MediaPlayer );
+MediaPlayer.prototype.getEvents = function()
+{
+	return { "loaded": "event", "play": "event", "end": "event" };
+}
+
+ONE.registerComponent( MediaPlayer );

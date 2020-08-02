@@ -10,7 +10,7 @@ function Spline( o )
 {
 	this.enabled = true;
 	this._render_in_viewport = false;
-	this.path = new LS.Path();
+	this.path = new ONE.Path();
 	this._must_update = false;
 	this._subdivisions = 20;
 	this.preserve_tangents = true; //for bezier
@@ -24,7 +24,7 @@ function Spline( o )
 }
 
 Spline["@subdivisions"] = { type: "number", step:1, min:1, max:100, precision:0 };
-Spline["@type"] = { type: "enum", values: { line: LS.LINEAR, bezier: LS.BEZIER, hermite: LS.HERMITE } };
+Spline["@type"] = { type: "enum", values: { line: ONE.LINEAR, bezier: ONE.BEZIER, hermite: ONE.HERMITE } };
 
 Spline.prototype.serialize = function()
 {
@@ -135,7 +135,7 @@ Spline.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+		this._render_instance = RI = new ONE.RenderInstance(this._root, this);
 
 	RI.fromNode( this._root );
 	RI.setMesh( this._mesh, gl.LINE_STRIP );
@@ -155,7 +155,7 @@ Spline.prototype.updateMesh = function()
 
 	var total = 0;
 
-	if( this.path.type == LS.LINEAR )
+	if( this.path.type == ONE.LINEAR )
 		total = this.path.getSegments() + 1;
 	else
 		total = this.path.getSegments() * this._subdivisions; //20 points per segment
@@ -236,22 +236,22 @@ Spline.prototype.renderEditor = function( is_selected )
 		return;
 
 	gl.disable( gl.DEPTH_TEST );
-	LS.Draw.push();
+	ONE.Draw.push();
 
 	if( this._root.transform )
-		LS.Draw.setMatrix( this._root.transform.getGlobalMatrixRef(true) );
+		ONE.Draw.setMatrix( this._root.transform.getGlobalMatrixRef(true) );
 
 	//draw points
 	if(is_selected)
 	{
-		LS.Draw.setColor(0.9,0.5,0.9,1);
-		LS.Draw.setPointSize( 9 );
-		LS.Draw.renderRoundPoints( path.points );
+		ONE.Draw.setColor(0.9,0.5,0.9,1);
+		ONE.Draw.setPointSize( 9 );
+		ONE.Draw.renderRoundPoints( path.points );
 	}
 
 	if(this._render_in_viewport) //already rendered in the 
 	{
-		LS.Draw.pop();
+		ONE.Draw.pop();
 		gl.enable( gl.DEPTH_TEST );
 		return;
 	}
@@ -261,9 +261,9 @@ Spline.prototype.renderEditor = function( is_selected )
 	{
 		var index = SelectionModule.selection.info;
 		var point = this.points[ index ];
-		LS.Draw.setColor(1,1,0.4,1);
-		LS.Draw.setPointSize( 14 );
-		LS.Draw.renderRoundPoints( point );
+		ONE.Draw.setColor(1,1,0.4,1);
+		ONE.Draw.setPointSize( 14 );
+		ONE.Draw.renderRoundPoints( point );
 	}
 
 	//draw line
@@ -271,12 +271,12 @@ Spline.prototype.renderEditor = function( is_selected )
 		this.updateMesh();
 
 	if(!is_selected)
-		LS.Draw.setColor(0.6,0.5,0.4,0.5);
+		ONE.Draw.setColor(0.6,0.5,0.4,0.5);
 	else
-		LS.Draw.setColor(0.6,0.6,0.6,0.8);
-	LS.Draw.renderMesh( this._mesh, GL.LINE_STRIP, null,null, 0, this._range );
+		ONE.Draw.setColor(0.6,0.6,0.6,0.8);
+	ONE.Draw.renderMesh( this._mesh, GL.LINE_STRIP, null,null, 0, this._range );
 	gl.enable( gl.DEPTH_TEST );
-	LS.Draw.pop();
+	ONE.Draw.pop();
 }
 
 //used to allow the editor to edit the points ****************
@@ -291,7 +291,7 @@ Spline.prototype.renderPicking = function( ray )
 		var pos = path.points[i];
 		if( this._root.transform )
 			pos = mat4.multiplyVec3( vec3.create(), model, pos );
-		LS.Picking.addPickingPoint( pos, 9, { instance: this, info: i } );
+		ONE.Picking.addPickingPoint( pos, 9, { instance: this, info: i } );
 	}
 }
 
@@ -320,7 +320,7 @@ Spline.prototype.getTransformMatrix = function( info )
 }
 
 
-LS.registerComponent( Spline );
+ONE.registerComponent( Spline );
 
 
 
@@ -346,7 +346,7 @@ function FollowSpline( o )
 		this.configure(o);
 }
 
-FollowSpline["@spline"] = { type: LS.TYPES.COMPONENT_ID };
+FollowSpline["@spline"] = { type: ONE.TYPES.COMPONENT_ID };
 FollowSpline["@factor"] = { type: "number", step:0.001, precision:3 };
 
 FollowSpline.prototype.serialize = function()
@@ -381,7 +381,7 @@ FollowSpline.prototype.onUpdate = function(e, dt)
 	if(!node || !node.transform )
 		return;
 
-	var spline = LS.GlobalScene.findComponentByUId( this.spline );
+	var spline = ONE.GlobalScene.findComponentByUId( this.spline );
 	if(!spline)
 		return;
 
@@ -406,18 +406,18 @@ FollowSpline.prototype.onUpdate = function(e, dt)
 		return;
 	}
 
-	node.transform.lookAt( pos, pos2, LS.TOP );
+	node.transform.lookAt( pos, pos2, ONE.TOP );
 
 	/*
 	//pos
 	node.transform.setPosition(pos);
 
 	//rot
-	var mat = mat4.lookAt( mat4.create(), pos, pos2, LS.TOP );
+	var mat = mat4.lookAt( mat4.create(), pos, pos2, ONE.TOP );
 	//mat4.invert(mat,mat);
 	quat.fromMat4( rot, mat );
 	node.transform.rotation = rot;
 	*/
 }
 
-LS.registerComponent( FollowSpline );
+ONE.registerComponent( FollowSpline );

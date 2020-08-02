@@ -4,7 +4,7 @@
 * It complements a MeshRenderer to add Morph Targets (Blend Shapes) to deform meshes.
 * Morph Targets of a mesh must have the same topology and number of vertex, otherwise it won't work.
 * @class MorphDeformer
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -33,6 +33,9 @@ function MorphDeformer(o)
 	*/
 	this.morph_targets = [];
 
+	//used to speed up search of morphs by its name instead of index
+	this._morph_targets_by_name = {};
+
 	if(global.gl)
 	{
 		if(MorphDeformer.max_supported_vertex_attribs === undefined)
@@ -40,7 +43,6 @@ function MorphDeformer(o)
 		if(MorphDeformer.max_supported_morph_targets_using_streams === undefined)
 			MorphDeformer.max_supported_morph_targets_using_streams = (gl.getParameter( gl.MAX_VERTEX_ATTRIBS ) - 6) / 2; //6 reserved for vertex, normal, uvs, uvs2, weights, bones. 
 	}
-
 	
 	this._stream_weights = new Float32Array( 4 );
 	this._uniforms = { u_morph_weights: this._stream_weights, u_morph_info: 0 };
@@ -63,8 +65,53 @@ MorphDeformer.prototype.onAddedToNode = function(node)
 	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
 }
 
+MorphDeformer.prototype.onConfigure = function(o)
+{
+	this.updateNamesIndex();
+}
+
+MorphDeformer.prototype.updateNamesIndex = function()
+{
+	for(var i = 0; i < this.morph_targets.length; ++i)
+	{
+		var morph = this.morph_targets[i];
+		if(morph.name)
+			this._morph_targets_by_name[ morph.name ] = morph;
+	}
+}
+
 //object with name:weight
 Object.defineProperty( MorphDeformer.prototype, "name_weights", {
+	set: function(v) {
+		if(!v)
+			return;
+		for(var i = 0; i < this.morph_targets.length; ++i)
+		{
+			var m = this.morph_targets[i];
+			if(v[m.name] !== undefined)
+			{
+				var weight = Number(v[m.name]);
+				if(!isNaN(weight))	
+					m.weight = weight;
+			}
+		}
+	},
+	get: function()
+	{
+		var result = {};
+		for(var i = 0; i < this.morph_targets.length; ++i)
+		{
+			var m = this.morph_targets[i];
+			if(m.name)
+				result[ m.name ] = m.weight;
+		}
+		return result;
+	},
+	enumeration: false
+});
+
+//object with mesh:weight
+Object.defineProperty( MorphDeformer.prototype, "mesh_weights", {
 	set: function(v) {
 		if(!v)
 			return;
@@ -228,7 +275,7 @@ MorphDeformer.prototype.computeValidMorphs = function( valid_morphs, base_mesh )
 		var morph = morph_targets[i];
 		if(!morph.mesh || Math.abs(morph.weight) < 0.001)
 			continue;
-		var morph_mesh = LS.ResourcesManager.resources[ morph.mesh ];
+		var morph_mesh = ONE.ResourcesManager.resources[ morph.mesh ];
 		if(!morph_mesh || morph_mesh.constructor !== GL.Mesh)
 			continue;
 		if(!morph_mesh.info)
@@ -282,12 +329,12 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 	for(var i in morphs_buffers)
 		RI.vertex_buffers[i] = morphs_buffers[i];
 
-	if(RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ])
+	if(RI.samplers[ ONE.Renderer.MORPHS_TEXTURE_SLOT ])
 	{
 		delete RI.uniforms["u_morph_vertices_texture"];
 		delete RI.uniforms["u_morph_normals_texture"];
-		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
-		RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
+		RI.samplers[ ONE.Renderer.MORPHS_TEXTURE_SLOT ] = null;
+		RI.samplers[ ONE.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
 	}
 
 	var weights = this._stream_weights;
@@ -304,8 +351,8 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 
 	//SHADER BLOCK
 	RI.addShaderBlock( MorphDeformer.shader_block ); //global
-	RI.addShaderBlock( LS.MorphDeformer.morphing_streams_block, this._uniforms );
-	RI.removeShaderBlock( LS.MorphDeformer.morphing_texture_block );
+	RI.addShaderBlock( ONE.MorphDeformer.morphing_streams_block, this._uniforms );
+	RI.removeShaderBlock( ONE.MorphDeformer.morphing_texture_block );
 }
 
 MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
@@ -320,8 +367,8 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	if(!base_normals_buffer._texture)
 		base_normals_buffer._texture = this.createGeometryTexture( base_normals_buffer );
 
-	//LS.RM.textures[":debug_base_vertex"] = base_vertices_buffer._texture;
-	//LS.RM.textures[":debug_base_normal"] = base_normals_buffer._texture;
+	//ONE.RM.textures[":debug_base_vertex"] = base_vertices_buffer._texture;
+	//ONE.RM.textures[":debug_base_normal"] = base_normals_buffer._texture;
 
 
 	var morphs_textures = [];
@@ -336,8 +383,8 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 		this._texture_size = vec4.fromValues( this._morphtarget_vertices_texture.width, this._morphtarget_vertices_texture.height, 
 			1 / this._morphtarget_vertices_texture.width, 1 / this._morphtarget_vertices_texture.height );
 
-		//LS.RM.textures[":debug_morph_vertex"] = this._morphtarget_vertices_texture;
-		//LS.RM.textures[":debug_morph_normal"] = this._morphtarget_normals_texture;
+		//ONE.RM.textures[":debug_morph_vertex"] = this._morphtarget_vertices_texture;
+		//ONE.RM.textures[":debug_morph_normal"] = this._morphtarget_normals_texture;
 	}
 
 	//prepare morph targets
@@ -359,8 +406,8 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 		if(!normals_buffer._texture)
 			normals_buffer._texture = this.createGeometryTexture( normals_buffer );
 
-		//LS.RM.textures[":debug_morph_vertex_" + i] = vertices_buffer._texture;
-		//LS.RM.textures[":debug_morph_normal_" + i] = normals_buffer._texture;
+		//ONE.RM.textures[":debug_morph_vertex_" + i] = vertices_buffer._texture;
+		//ONE.RM.textures[":debug_morph_normal_" + i] = normals_buffer._texture;
 		morphs_textures.push( { weight: morph.weight, vertices: vertices_buffer._texture, normals: normals_buffer._texture } );
 	}
 
@@ -416,11 +463,11 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	}
 
 	//modify the RI to have the displacement texture
-	RI.uniforms["u_morph_vertices_texture"] = LS.Renderer.MORPHS_TEXTURE_SLOT;
-	RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = this._morphtarget_vertices_texture;
+	RI.uniforms["u_morph_vertices_texture"] = ONE.Renderer.MORPHS_TEXTURE_SLOT;
+	RI.samplers[ ONE.Renderer.MORPHS_TEXTURE_SLOT ] = this._morphtarget_vertices_texture;
 
-	RI.uniforms["u_morph_normals_texture"] = LS.Renderer.MORPHS_TEXTURE2_SLOT;
-	RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = this._morphtarget_normals_texture;
+	RI.uniforms["u_morph_normals_texture"] = ONE.Renderer.MORPHS_TEXTURE2_SLOT;
+	RI.samplers[ ONE.Renderer.MORPHS_TEXTURE2_SLOT ] = this._morphtarget_normals_texture;
 
 	RI.uniforms["u_morph_texture_size"] = this._texture_size;
 
@@ -429,12 +476,12 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 
 	//SHADER BLOCK
 	RI.addShaderBlock( MorphDeformer.shader_block );
-	RI.addShaderBlock( LS.MorphDeformer.morphing_texture_block, { 
-				u_morph_vertices_texture: LS.Renderer.MORPHS_TEXTURE_SLOT, 
-				u_morph_normals_texture: LS.Renderer.MORPHS_TEXTURE2_SLOT, 
+	RI.addShaderBlock( ONE.MorphDeformer.morphing_texture_block, { 
+				u_morph_vertices_texture: ONE.Renderer.MORPHS_TEXTURE_SLOT, 
+				u_morph_normals_texture: ONE.Renderer.MORPHS_TEXTURE2_SLOT, 
 				u_morph_texture_size: this._texture_size 
 			});
-	RI.removeShaderBlock( LS.MorphDeformer.morphing_streams_block );
+	RI.removeShaderBlock( ONE.MorphDeformer.morphing_streams_block );
 }
 
 
@@ -443,17 +490,17 @@ MorphDeformer.prototype.disableMorphingGPU = function( RI )
 	if( !RI )
 		return;
 	
-	if( RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] )
+	if( RI.samplers[ ONE.Renderer.MORPHS_TEXTURE_SLOT ] )
 	{
-		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
-		RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
+		RI.samplers[ ONE.Renderer.MORPHS_TEXTURE_SLOT ] = null;
+		RI.samplers[ ONE.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
 		delete RI.uniforms["u_morph_vertices_texture"];
 		delete RI.uniforms["u_morph_normals_texture"];
 	}
 
-	RI.removeShaderBlock( LS.MorphDeformer.shader_block );
-	RI.removeShaderBlock( LS.MorphDeformer.morphing_streams_block );
-	RI.removeShaderBlock( LS.MorphDeformer.morphing_texture_block );
+	RI.removeShaderBlock( ONE.MorphDeformer.shader_block );
+	RI.removeShaderBlock( ONE.MorphDeformer.morphing_streams_block );
+	RI.removeShaderBlock( ONE.MorphDeformer.morphing_texture_block );
 }
 
 MorphDeformer.prototype.applyMorphBySoftware = function( RI, valid_morphs )
@@ -675,16 +722,48 @@ MorphDeformer.prototype.recomputeGeometryTextures = function()
 /**
 * returns the index of the morph target that uses this mesh
 * @method getMorphIndex
+* @param {String} name the name or the mesh url (filename) 
+* @return {number} the index
+*/
+MorphDeformer.prototype.getMorphIndex = function( name )
+{
+	//check precomputed index
+	var morph = this._morph_targets_by_name[ name ];
+	if( morph )
+	{
+		var index = this.morph_targets.indexOf( morph );
+		if(index != -1)
+			return index;
+	}
+
+	//search manually
+	for(var i = 0; i < this.morph_targets.length; ++i)
+	{
+		if (this.morph_targets[i].mesh == mesh_name )
+			return i;
+	}
+	return -1;
+}
+
+/**
+* returns the index of the morph target that uses this mesh
+* @method getMorphIndex
 * @param {String} mesh_name the name (filename) of the mesh in the morph target
 * @return {number} the index
 */
-MorphDeformer.prototype.getMorphIndex = function(mesh_name)
+MorphDeformer.prototype.removeMorph = function( index )
 {
-	for(var i = 0; i < this.morph_targets.length; ++i)
-		if (this.morph_targets[i].mesh == mesh_name )
-			return i;
-	return -1;
+	if(index >= this.morph_targets.length)
+		return;
+	var morph = this.morph_targets[index];
+	if(morph)
+	{
+		this.morph_targets.splice( index, 1 );
+		if(morph.name)
+			delete this._morph_targets_by_name[ morph.name];
+	}
 }
+
 
 /**
 * sets the mesh for a morph target
@@ -696,7 +775,7 @@ MorphDeformer.prototype.setMorphMesh = function(index, value)
 {
 	if(index >= this.morph_targets.length)
 		return;
-	this.morph_targets[index].mesh = value;
+	this.morph_targets[ index ].mesh = value;
 }
 
 /**
@@ -709,9 +788,30 @@ MorphDeformer.prototype.setMorphWeight = function(index, value)
 {
 	if( index >= this.morph_targets.length || isNaN(value) )
 		return;
-	this.morph_targets[index].weight = value;
+	this.morph_targets[ index ].weight = value;
 }
 
+/**
+* sets a special name for the morph target, used when matching morph targets between nodes
+* @method setMorphName
+* @param {number} index the index of the morph target
+* @param {String} name
+*/
+MorphDeformer.prototype.setMorphName = function(index, value)
+{
+	if( index >= this.morph_targets.length )
+		return;
+	var morph = this.morph_targets[ index ];
+	if(!morph || morph.name == value)
+		return;
+
+	if( this._morph_targets_by_name[ value ] && this._morph_targets_by_name[ value ] != morph )
+		console.warn("There is already a morph target with that name: ", value );
+	morph.name = value;
+	this._morph_targets_by_name[ value ] = morph;
+}
+
+//computes a name shorter than the mesh url based on the common info
 MorphDeformer.prototype.getPrettyName = function( info, locator, locator_path )
 {
 	//console.log(locator_path);
@@ -817,6 +917,8 @@ MorphDeformer.prototype.setProperty = function(name, value)
 		this.weights = value;
 	else if( name == "name_weights" )
 		this.name_weights = value;
+	else if( name == "mesh_weights" )
+		this.mesh_weights = value;
 }
 
 MorphDeformer.prototype.getProperty = function(name)
@@ -843,7 +945,8 @@ MorphDeformer.prototype.getPropertiesInfo = function()
 	var properties = {
 		enabled: "boolean",
 		weights: "array",
-		name_weights: "object"
+		name_weights: "object",
+		mesh_weights: "object"
 	};
 
 	for(var i = 0; i < this.morph_targets.length; i++)
@@ -865,9 +968,9 @@ MorphDeformer.prototype.getBaseMesh = function()
 		return null;
 	if( this._last_base_mesh )
 		return this._last_base_mesh;
-	var mesh_renderer = this._root.getComponent( LS.Components.MeshRenderer );
+	var mesh_renderer = this._root.getComponent( ONE.Components.MeshRenderer );
 	if( mesh_renderer )
-		return LS.ResourcesManager.resources[ mesh_renderer.mesh ];
+		return ONE.ResourcesManager.resources[ mesh_renderer.mesh ];
 	return null;
 }
 
@@ -885,7 +988,7 @@ MorphDeformer.prototype.optimizeMorphTargets = function()
 	for(var i = 0; i < morph_targets.length; ++i)
 	{
 		var morph = morph_targets[i];
-		var mesh = LS.ResourcesManager.meshes[ morph.mesh ];
+		var mesh = ONE.ResourcesManager.meshes[ morph.mesh ];
 		if(!mesh)
 			continue;
 		
@@ -904,11 +1007,11 @@ MorphDeformer.prototype.optimizeMorphTargets = function()
 				console.log("morph target is too similar to base mesh, removing it: " + mesh_fullpath );
 				var index = this.morph_targets.indexOf( morph );
 				this.morph_targets.splice( index,1 );
-				LS.ResourcesManager.unregisterResource( mesh_fullpath );
+				ONE.ResourcesManager.unregisterResource( mesh_fullpath );
 				var container_fullpath = mesh.from_pack || mesh.from_prefab;
 				if( container_fullpath )
 				{
-					var container = LS.ResourcesManager.resources[ container_fullpath ];
+					var container = ONE.ResourcesManager.resources[ container_fullpath ];
 					if(container)
 						container.removeResource( mesh_fullpath );
 				}
@@ -916,7 +1019,7 @@ MorphDeformer.prototype.optimizeMorphTargets = function()
 			}
 		}
 
-		LS.ResourcesManager.resourceModified( mesh );
+		ONE.ResourcesManager.resourceModified( mesh );
 	}
 
 	console.log("Morph targets optimized");
@@ -940,6 +1043,7 @@ MorphDeformer.computeMeshDifference = function( mesh_a, mesh_b )
 	return diff;
 }
 
+//show in the graphcanvas
 MorphDeformer.prototype.onInspectNode = function( inspector, graphnode )
 {
 	var that = this;
@@ -954,8 +1058,8 @@ MorphDeformer.prototype.onInspectNode = function( inspector, graphnode )
 	}});
 }
 
-LS.registerComponent( MorphDeformer );
-LS.MorphDeformer = MorphDeformer;
+ONE.registerComponent( MorphDeformer );
+ONE.MorphDeformer = MorphDeformer;
 
 //SHADER BLOCKS ******************************************
 
@@ -1032,18 +1136,18 @@ MorphDeformer.morph_enabled_shader_code = "\n\
 MorphDeformer.morph_disabled_shader_code = "\nvoid applyMorphing( inout vec4 position, inout vec3 normal ) {}\n";
 
 // ShaderBlocks used to inject to shader in runtime
-var morphing_block = new LS.ShaderBlock("morphing");
+var morphing_block = new ONE.ShaderBlock("morphing");
 morphing_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 morphing_block.register();
 MorphDeformer.shader_block = morphing_block;
 
-var morphing_streams_block = new LS.ShaderBlock("morphing_streams");
+var morphing_streams_block = new ONE.ShaderBlock("morphing_streams");
 morphing_streams_block.defineContextMacros( { "morphing_mode": "morphing_streams"} );
 morphing_streams_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_streams_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 morphing_streams_block.register();
 MorphDeformer.morphing_streams_block = morphing_streams_block;
 
-var morphing_texture_block = new LS.ShaderBlock("morphing_texture");
+var morphing_texture_block = new ONE.ShaderBlock("morphing_texture");
 morphing_texture_block.defineContextMacros( { "morphing_mode": "morphing_texture"} );
 morphing_texture_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_texture_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 morphing_texture_block.register();

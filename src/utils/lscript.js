@@ -283,7 +283,7 @@ LScript.expandCode = function(code)
 				var array_index = type.indexOf('[]');
 				if( array_index != -1 )
 				{
-					type_options.type = LS.TYPES.ARRAY;
+					type_options.type = ONE.TYPES.ARRAY;
 					type_options.data_type = type.substr( 0, array_index );
 					if(!value || value === "undefined")
 						value = "[]";
@@ -293,24 +293,24 @@ LScript.expandCode = function(code)
 					type_options.type = type;
 				}
 
-				if( LS.Components[ type ] ) //for components
+				if( ONE.Components[ type ] ) //for components
 				{
 					type_options.component_class = type;
-					type_options.type = LS.TYPES.COMPONENT;
+					type_options.type = ONE.TYPES.COMPONENT;
 					if(!value)
 						value = "null";
 				}
-				else if( LS.ResourceClasses[ type ] ) //for resources
+				else if( ONE.ResourceClasses[ type ] ) //for resources
 				{
 					type_options.resource_classname = type;
-					type_options.type = LS.TYPES.RESOURCE;
+					type_options.type = ONE.TYPES.RESOURCE;
 					if(!value)
 						value = "null";
 				}
 				else if( type == "int" || type == "integer")
 				{
 					type_options.step = 1;
-					type_options.type = LS.TYPES.NUMBER;
+					type_options.type = ONE.TYPES.NUMBER;
 					if(!value)
 						value = 0;
 				}

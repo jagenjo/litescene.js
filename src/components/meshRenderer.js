@@ -2,7 +2,7 @@
 /**
 * Renders one mesh, it allows to configure the rendering primitive, the submesh (range of mesh) and a level of detail mesh
 * @class MeshRenderer
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -30,7 +30,7 @@ function MeshRenderer(o)
 	if(o)
 		this.configure(o);
 
-	this._RI = new LS.RenderInstance( null, this );
+	this._RI = new ONE.RenderInstance( null, this );
 	//this._RIs = [];
 	this._is_attached = false;
 }
@@ -146,7 +146,7 @@ MeshRenderer["@submesh_id"] = { type:"enum", values: function() {
 	return t;
 }};
 
-MeshRenderer["@use_submaterials"] = { type: LS.TYPES.BOOLEAN, widget: null }; //avoid widget
+MeshRenderer["@use_submaterials"] = { type: ONE.TYPES.BOOLEAN, widget: null }; //avoid widget
 MeshRenderer["@submaterials"] = { widget: null }; //avoid 
 
 //we bind to onAddedToNode because the event is triggered per node so we know which RIs belong to which node
@@ -234,7 +234,7 @@ MeshRenderer.prototype.getMesh = function() {
 		return null;
 
 	if( this.mesh.constructor === String )
-		return LS.ResourcesManager.meshes[ this.mesh ];
+		return ONE.ResourcesManager.meshes[ this.mesh ];
 	return this.mesh;
 }
 
@@ -243,7 +243,7 @@ MeshRenderer.prototype.getLODMesh = function() {
 		return null;
 
 	if( this.lod_mesh.constructor === String )
-		return LS.ResourcesManager.meshes[ this.lod_mesh ];
+		return ONE.ResourcesManager.meshes[ this.lod_mesh ];
 
 	return null;
 }
@@ -259,13 +259,13 @@ MeshRenderer.prototype.getResources = function(res)
 	if( this.lod_mesh && this.lod_mesh.constructor === String )
 		res[this.lod_mesh] = GL.Mesh;
 	if( this.material && this.material.constructor === String )
-		res[this.material] = LS.Material;
+		res[this.material] = ONE.Material;
 
 	if(this.use_submaterials)
 	{
 		for(var i  = 0; i < this.submaterials.length; ++i)
 			if(this.submaterials[i])
-				res[this.submaterials[i]] = LS.Material;
+				res[this.submaterials[i]] = ONE.Material;
 	}
 	return res;
 }
@@ -330,7 +330,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	RI.layers = this._root.layers;
 
 	//optimize
-	//if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
+	//if( is_static && ONE.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
 	//	return instances.push( RI );
 
 	//assigns matrix, layers
@@ -339,7 +339,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//material (after flags because it modifies the flags)
 	var material = null;
 	if(this.material)
-		material = LS.ResourcesManager.getResource( this.material );
+		material = ONE.ResourcesManager.getResource( this.material );
 	else
 		material = this._root.getMaterial();
 	RI.setMaterial( material );
@@ -365,7 +365,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.lod_mesh)
 	{
 		if( this.lod_mesh.constructor === String )
-			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
+			RI.collision_mesh = ONE.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
 		//RI.setLODMesh( RI.collision_mesh );
@@ -375,7 +375,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 		RI.collision_mesh = mesh;
 
 	//mark it as ready once no more changes should be applied
-	if( is_static && LS.allow_static && !this.isLoading() )
+	if( is_static && ONE.allow_static && !this.isLoading() )
 	{
 		this._must_update_static = false;
 		this._transform_version = transform ? transform._version : 0;
@@ -399,7 +399,7 @@ MeshRenderer.prototype.updateRIs = function()
 	var transform = this._root.transform;
 
 	//optimize: TODO
-	//if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
+	//if( is_static && ONE.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
 	//	return instances.push( RI );
 
 	//assigns matrix, layers
@@ -408,13 +408,13 @@ MeshRenderer.prototype.updateRIs = function()
 	//material (after flags because it modifies the flags)
 	var material = null;
 	if(this.material)
-		material = LS.ResourcesManager.getResource( this.material );
+		material = ONE.ResourcesManager.getResource( this.material );
 	else
 		material = this._root.getMaterial();
 	RI.setMaterial( material );
 
 	//buffers from mesh and bounding
-	var mesh = LS.ResourcesManager.getMesh( this._mesh );
+	var mesh = ONE.ResourcesManager.getMesh( this._mesh );
 	if( mesh )
 	{
 		RI.setMesh( mesh, this.primitive );
@@ -432,14 +432,14 @@ MeshRenderer.prototype.updateRIs = function()
 		RI.setMesh( null );
 		RI.setRange(0,-1);
 		if(this._once_binding_index != null)
-			this._once_binding_index = LS.ResourcesManager.onceLoaded( this._mesh, this.updateRIs.bind(this ) );
+			this._once_binding_index = ONE.ResourcesManager.onceLoaded( this._mesh, this.updateRIs.bind(this ) );
 	}
 
 	//used for raycasting
 	if(this.lod_mesh)
 	{
 		if( this.lod_mesh.constructor === String )
-			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
+			RI.collision_mesh = ONE.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
 		//RI.setLODMesh( RI.collision_mesh );
@@ -448,7 +448,7 @@ MeshRenderer.prototype.updateRIs = function()
 		RI.collision_mesh = mesh;
 
 	//mark it as ready once no more changes should be applied
-	if( is_static && LS.allow_static && !this.isLoading() )
+	if( is_static && ONE.allow_static && !this.isLoading() )
 	{
 		this._must_update_static = false;
 		this._transform_version = transform ? transform._version : 0;
@@ -473,7 +473,7 @@ MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)
 
 	var global = this._root.transform._global_matrix;
 	var center = vec3.create();
-	mat4.multiplyVec3( center, global, LS.ZEROS );
+	mat4.multiplyVec3( center, global, ONE.ZEROS );
 	var first_RI = null;
 
 	for(var i = 0; i < this.submaterials.length; ++i)
@@ -484,13 +484,13 @@ MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)
 		var group = groups[i];
 		if(!group)
 			continue;
-		var material = LS.ResourcesManager.getResource( submaterial_name );
+		var material = ONE.ResourcesManager.getResource( submaterial_name );
 		if(!material)
 			continue;
 
 		var RI = this._RIs[i];
 		if(!RI)
-			RI = this._RIs[i] = new LS.RenderInstance(this._root,this);
+			RI = this._RIs[i] = new ONE.RenderInstance(this._root,this);
 
 		if(!first_RI)
 			RI.setMatrix( this._root.transform._global_matrix );
@@ -513,13 +513,13 @@ MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)
 //test if any of the assets is being loaded
 MeshRenderer.prototype.isLoading = function()
 {
-	if( this.mesh && LS.ResourcesManager.isLoading( this.mesh ))
+	if( this.mesh && ONE.ResourcesManager.isLoading( this.mesh ))
 		return true;
-	if( this.lod_mesh && LS.ResourcesManager.isLoading( this.lod_mesh ))
+	if( this.lod_mesh && ONE.ResourcesManager.isLoading( this.lod_mesh ))
 		return true;
-	if( this.material && LS.ResourcesManager.isLoading( this.material ))
+	if( this.material && ONE.ResourcesManager.isLoading( this.material ))
 		return true;
-	if(this._root && this._root.material && this._root.material.constructor === String && LS.ResourcesManager.isLoading( this._root.material ))
+	if(this._root && this._root.material && this._root.material.constructor === String && ONE.ResourcesManager.isLoading( this._root.material ))
 		return true;
 	return false;
 }
@@ -539,14 +539,14 @@ MeshRenderer.prototype.explodeSubmeshesToChildNodes = function() {
 	for(var i = 0; i < mesh.info.groups.length; ++i)
 	{
 		var group = mesh.info.groups[i];
-		var child_node = new LS.SceneNode();
+		var child_node = new ONE.SceneNode();
 		node.addChild( child_node );
-		var comp = new LS.Components.MeshRenderer({ mesh: this.mesh, submesh_id: i, material: group.material });
+		var comp = new ONE.Components.MeshRenderer({ mesh: this.mesh, submesh_id: i, material: group.material });
 		child_node.addComponent( comp );	
 	}
 
-	LS.GlobalScene.refresh();
+	ONE.GlobalScene.refresh();
 }
 
-LS.registerComponent( MeshRenderer );
-LS.MeshRenderer = MeshRenderer;
+ONE.registerComponent( MeshRenderer );
+ONE.MeshRenderer = MeshRenderer;

@@ -123,13 +123,13 @@ var Shaders = {
 		var scs = [];
 
 		//get all shadercodes...
-		var shadercodes = LS.StandardMaterial.shader_codes;
+		var shadercodes = ONE.StandardMaterial.shader_codes;
 		for(var i in shadercodes)
 			scs.push( shadercodes[i] );
 
-		var res = LS.ResourcesManager.resources;
+		var res = ONE.ResourcesManager.resources;
 		for(var i in res)
-			if( res[i].constructor === LS.ShaderCode )
+			if( res[i].constructor === ONE.ShaderCode )
 				scs.push( res[i] );
 
 		//clear caches
@@ -188,7 +188,7 @@ var Shaders = {
 	*
 	* @method registerShaderBlock
 	* @param {string} id
-	* @param {LS.ShaderBlock} shader_block
+	* @param {ONE.ShaderBlock} shader_block
 	*/
 	registerShaderBlock: function( id, shader_block, ignore_warning )
 	{
@@ -216,7 +216,7 @@ var Shaders = {
 	*
 	* @method getShaderBlock
 	* @param {string|Number} id
-	* @return {LS.ShaderBlock} shader_block
+	* @return {ONE.ShaderBlock} shader_block
 	*/
 	getShaderBlock: function( id )
 	{
@@ -240,7 +240,7 @@ var Shaders = {
 
 };
 
-LS.Shaders = Shaders;
+ONE.Shaders = Shaders;
 
 /**
 * A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
@@ -290,8 +290,8 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 	//this.checkDependencies( disabled_code );
 
 	var info = { 
-		enabled: new LS.GLSLCode( enabled_code ),
-		disabled: new LS.GLSLCode( disabled_code ),
+		enabled: new ONE.GLSLCode( enabled_code ),
+		disabled: new ONE.GLSLCode( disabled_code ),
 		macros: macros
 	};
 	this.code_map.set( shader_type, info );
@@ -334,13 +334,13 @@ ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context
 }
 
 /**
-* Registers this shaderblock in the global LS.Shaders container
+* Registers this shaderblock in the global ONE.Shaders container
 *
 * @method register
 **/
 ShaderBlock.prototype.register = function( overwrite )
 {
-	LS.Shaders.registerShaderBlock(this.name, this, overwrite );
+	ONE.Shaders.registerShaderBlock(this.name, this, overwrite );
 }
 
 ShaderBlock.prototype.checkDependencies = function( code )
@@ -349,7 +349,7 @@ ShaderBlock.prototype.checkDependencies = function( code )
 }
 
 
-LS.ShaderBlock = ShaderBlock;
+ONE.ShaderBlock = ShaderBlock;
 
 
 
@@ -375,7 +375,7 @@ function GLSLCode( code )
 		this.parse();
 }
 
-LS.GLSLCode = GLSLCode;
+ONE.GLSLCode = GLSLCode;
 
 GLSLCode.pragma_methods = {};
 
@@ -452,7 +452,7 @@ GLSLCode.prototype.parse = function()
 			current_fragment.length = 0;
 			var pragma_info = { type: GLSLCode.PRAGMA, line: line, action: action, param: t[2] };
 
-			var method = LS.GLSLCode.pragma_methods[ action ];
+			var method = ONE.GLSLCode.pragma_methods[ action ];
 			if( !method || !method.parse )
 			{
 				console.warn("#pragma action unknown: ", action );
@@ -534,18 +534,19 @@ GLSLCode.pragma_methods["include"] = {
 		pragma_info.include_subfile = subfile;
 		this.includes[ pragma_info.include ] = true;
 	},
+
 	getCode: function( shader_type, fragment, block_flags, context )
 	{
 		var extra_code = "";
 
 		var filename = fragment.include;
-		var ext = LS.ResourcesManager.getExtension( filename );
+		var ext = ONE.ResourcesManager.getExtension( filename );
 		if(ext)
 		{
-			var extra_shadercode = LS.ResourcesManager.getResource( filename, LS.ShaderCode );
+			var extra_shadercode = ONE.ResourcesManager.getResource( filename, ONE.ShaderCode );
 			if(!extra_shadercode)
 			{
-				LS.ResourcesManager.load( filename ); //force load
+				ONE.ResourcesManager.load( filename ); //force load
 				return null;
 			}
 			if(!fragment.include_subfile)
@@ -560,7 +561,7 @@ GLSLCode.pragma_methods["include"] = {
 		}
 		else
 		{
-			var snippet_code = LS.Shaders.getSnippet( filename );
+			var snippet_code = ONE.Shaders.getSnippet( filename );
 			if( !snippet_code )
 				return null; //snippet not found
 			extra_code = "\n" + snippet_code.code + "\n";
@@ -632,7 +633,7 @@ GLSLCode.pragma_methods["shaderblock"] = {
 			}
 		}
 		
-		var shader_block = LS.Shaders.getShaderBlock( shader_block_name );
+		var shader_block = ONE.Shaders.getShaderBlock( shader_block_name );
 		if(!shader_block)
 		{
 			//console.error("ShaderCode uses unknown ShaderBlock: ", fragment.shader_block);
@@ -668,7 +669,7 @@ GLSLCode.pragma_methods["snippet"] = {
 	},
 	getCode: function( shader_type, fragment, block_flags, context )
 	{
-		var snippet = LS.Shaders.getSnippet( fragment.snippet );
+		var snippet = ONE.Shaders.getSnippet( fragment.snippet );
 		if(!snippet)
 		{
 			console.error("ShaderCode uses unknown Snippet: ", fragment.snippet);
@@ -696,9 +697,9 @@ GLSLCode.pragma_methods["event"] = {
 		//dispatch event
 		var code = "\n";
 		var mask = 1;
-		for(var i = 0, l = LS.Shaders.shader_blocks.length; i < l; ++i)
+		for(var i = 0, l = ONE.Shaders.shader_blocks.length; i < l; ++i)
 		{
-			var block = LS.Shaders.shader_blocks[i];
+			var block = ONE.Shaders.shader_blocks[i];
 			if(block_flags & block.flag_mask)
 			{
 				if(!block.events)
@@ -743,7 +744,7 @@ GLSLCode.breakLines = function(lines)
 
 // shaders
 
-LS.Shaders.registerSnippet("input","\n\
+ONE.Shaders.registerSnippet("input","\n\
 			#ifndef SNIPPET_INPUT\n\
 			#define SNIPPET_INPUT\n\
 			//used to store topology input information\n\
@@ -777,14 +778,14 @@ LS.Shaders.registerSnippet("input","\n\
 				IN.viewDir /= IN.camDist;\n\
 				IN.worldPos = v_pos;\n\
 				IN.worldNormal = normalize(v_normal);\n\
-				//IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all\n\
-				IN.screenPos = vec4( (gl_FragCoord.xy / gl_FragCoord.w) * 0.5 + vec2(0.5), gl_FragCoord.zw );  //sometimes we need also z and w, thats why we pass all\n\
+				IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all\n\
+				//IN.screenPos = vec4( (gl_FragCoord.xy / gl_FragCoord.w) * 0.5 + vec2(0.5), gl_FragCoord.zw );  //sometimes we need also z and w, thats why we pass all\n\
 				return IN;\n\
 			}\n\
 			#endif\n\
 	");
 
-LS.Shaders.registerSnippet("structs","\n\
+ONE.Shaders.registerSnippet("structs","\n\
 			//used to store topology input information\n\
 			struct Input {\n\
 				vec4 color;\n\
@@ -828,7 +829,7 @@ LS.Shaders.registerSnippet("structs","\n\
 			};\n\
 	");
 
-LS.Shaders.registerSnippet("spotFalloff","\n\
+ONE.Shaders.registerSnippet("spotFalloff","\n\
 			float spotFalloff(vec3 spotDir, vec3 lightDir, float angle_phi, float angle_theta)\n\
 			{\n\
 				float sqlen = dot(lightDir,lightDir);\n\
@@ -850,7 +851,7 @@ LS.Shaders.registerSnippet("spotFalloff","\n\
 			}\n\
 	");
 
-LS.Shaders.registerSnippet("getFlatNormal","\n\
+ONE.Shaders.registerSnippet("getFlatNormal","\n\
 			#ifdef STANDARD_DERIVATIVES\n\
 				vec3 getFlatNormal(vec3 pos)\n\
 				{\n\
@@ -867,7 +868,7 @@ LS.Shaders.registerSnippet("getFlatNormal","\n\
 	");
 
 
-LS.Shaders.registerSnippet("PackDepth32","\n\
+ONE.Shaders.registerSnippet("PackDepth32","\n\
 			\n\
 			float linearDepth(float z, float near, float far)\n\
 			{\n\
@@ -891,7 +892,7 @@ LS.Shaders.registerSnippet("PackDepth32","\n\
 ");
 
 
-LS.Shaders.registerSnippet("perturbNormal","\n\
+ONE.Shaders.registerSnippet("perturbNormal","\n\
 				mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)\n\
 				{\n\
 					// get edge vectors of the pixel triangle\n\
@@ -933,7 +934,7 @@ LS.Shaders.registerSnippet("perturbNormal","\n\
 				}\n\
 		");
 
-LS.Shaders.registerSnippet("bumpNormal","\n\
+ONE.Shaders.registerSnippet("bumpNormal","\n\
 				\n\
 				// Calculate the surface normal using screen-space partial derivatives of the height field\n\
 				vec3 bumpNormal(vec3 position, vec3 normal, sampler2D texture, vec2 uvs, float factor)\n\
@@ -958,7 +959,7 @@ LS.Shaders.registerSnippet("bumpNormal","\n\
 				}\n\
 		");
 
-LS.Shaders.registerSnippet("testClippingPlane","\n\
+ONE.Shaders.registerSnippet("testClippingPlane","\n\
 			float testClippingPlane(vec4 plane, vec3 p)\n\
 			{\n\
 				if(plane.x == 0.0 && plane.y == 0.0 && plane.z == 0.0)\n\
@@ -967,7 +968,7 @@ LS.Shaders.registerSnippet("testClippingPlane","\n\
 			}\n\
 	");
 
-LS.Shaders.registerSnippet("computePointSize","\n\
+ONE.Shaders.registerSnippet("computePointSize","\n\
 			float computePointSize(float radius, float w)\n\
 			{\n\
 				if(radius < 0.0)\n\
@@ -976,7 +977,7 @@ LS.Shaders.registerSnippet("computePointSize","\n\
 			}\n\
 	");
 
-LS.Shaders.registerSnippet("vec3ToCubemap2D","\n\
+ONE.Shaders.registerSnippet("vec3ToCubemap2D","\n\
 	vec2 vec3ToCubemap2D( vec3 v )\n\
 	{\n\
 		vec3 abs_ = abs(v);\n\
@@ -996,49 +997,49 @@ LS.Shaders.registerSnippet("vec3ToCubemap2D","\n\
 //base blocks that behave more like booleans 
 
 //used to have the BLOCK_FIRSTPASS macro
-var firstpass_block = LS.Shaders.firstpass_block = new LS.ShaderBlock("firstPass");
+var firstpass_block = ONE.Shaders.firstpass_block = new ONE.ShaderBlock("firstPass");
 firstpass_block.addCode( GL.FRAGMENT_SHADER, "", "" );
 firstpass_block.register();
 
 //used to have the BLOCK_LASTPASS macro
-var lastpass_block = LS.Shaders.lastpass_block = new LS.ShaderBlock("lastPass");
+var lastpass_block = ONE.Shaders.lastpass_block = new ONE.ShaderBlock("lastPass");
 lastpass_block.addCode( GL.FRAGMENT_SHADER, "", "" );
 lastpass_block.register();
 
 //used when a mesh contains color info by vertex
-var vertex_color_block = LS.Shaders.vertex_color_block = new LS.ShaderBlock("vertex_color");
+var vertex_color_block = ONE.Shaders.vertex_color_block = new ONE.ShaderBlock("vertex_color");
 vertex_color_block.register();
 
 //used when a mesh contains extra uv set
-var coord1_block = LS.Shaders.coord1_block = new LS.ShaderBlock("coord1");
+var coord1_block = ONE.Shaders.coord1_block = new ONE.ShaderBlock("coord1");
 coord1_block.register();
 
 //used when a mesh contains extra buffers
-var extra2_block = LS.Shaders.extra2_block = new LS.ShaderBlock("extra2");
+var extra2_block = ONE.Shaders.extra2_block = new ONE.ShaderBlock("extra2");
 extra2_block.bindEvent("vs_attributes", "attribute vec2 a_extra2;\n");
 extra2_block.register();
 
 //used when a mesh contains extra buffers
-var extra3_block = LS.Shaders.extra3_block = new LS.ShaderBlock("extra3");
+var extra3_block = ONE.Shaders.extra3_block = new ONE.ShaderBlock("extra3");
 extra3_block.bindEvent("vs_attributes", "attribute vec3 a_extra3;\n");
 extra3_block.register();
 
 //used when a mesh contains extra buffers
-var extra4_block = LS.Shaders.extra4_block = new LS.ShaderBlock("extra4");
+var extra4_block = ONE.Shaders.extra4_block = new ONE.ShaderBlock("extra4");
 extra4_block.bindEvent("vs_attributes", "attribute vec4 a_extra4;\n");
 extra4_block.register();
 
 //used to render normalinfo to buffer
-var normalbuffer_block = LS.Shaders.normalbuffer_block = new LS.ShaderBlock("normalBuffer");
+var normalbuffer_block = ONE.Shaders.normalbuffer_block = new ONE.ShaderBlock("normalBuffer");
 normalbuffer_block.addCode( GL.FRAGMENT_SHADER, "", "" );
 normalbuffer_block.register();
 
 //used when a mesh contains extra buffers
-var instancing_block = LS.Shaders.instancing_block = new LS.ShaderBlock("instancing");
+var instancing_block = ONE.Shaders.instancing_block = new ONE.ShaderBlock("instancing");
 instancing_block.register();
 
 //@point size with perspective
-var pointparticles_block = new LS.ShaderBlock("pointparticles");
+var pointparticles_block = new ONE.ShaderBlock("pointparticles");
 pointparticles_block.bindEvent("vs_final", "\n\
 	gl_PointSize = u_point_size * u_viewport.w * u_camera_perspective.z / gl_Position.w;\n\
 	#ifdef EXTRA2_BLOCK\n\
@@ -1048,7 +1049,7 @@ pointparticles_block.bindEvent("vs_final", "\n\
 pointparticles_block.register();
 
 
-LS.Shaders.registerSnippet("snoise","\n\
+ONE.Shaders.registerSnippet("snoise","\n\
 //	Simplex 3D Noise \n\
 //	by Ian McEwan, Ashima Arts\n\
 vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}\n\

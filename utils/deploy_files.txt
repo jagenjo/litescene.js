@@ -43,7 +43,7 @@
 ../src/graph/fx.js
 ../src/graph/actions.js
 ../src/graph/helpers.js
-../src/graph/shader.js
+../src/graph/shaders.js
 
 ../src/helpers/path.js
 ../src/helpers/FXstack.js
@@ -53,7 +53,6 @@
 
 ../src/render/renderSettings.js
 ../src/render/renderState.js
-../src/render/renderCall.js
 ../src/render/renderInstance.js
 ../src/render/renderFrameContext.js
 ../src/render/renderQueue.js

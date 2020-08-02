@@ -219,7 +219,7 @@ CompositePattern.prototype.serializeChildren = function( simplified )
 * @method configureChildren
 * @return {Array} o array containing all serialized data 
 */
-CompositePattern.prototype.configureChildren = function(o)
+CompositePattern.prototype.configureChildren = function( o, components_aside )
 {
 	if(!o.children)
 		return;
@@ -238,7 +238,7 @@ CompositePattern.prototype.configureChildren = function(o)
 		//add before configure, so every child has a scene tree
 		this.addChild(node);
 		//we configure afterwards otherwise children wouldnt have a scene tree to bind anything
-		node.configure(c);
+		node.configure(c, components_aside);
 	}
 }
 
@@ -345,7 +345,7 @@ Object.defineProperty( CompositePattern.prototype, "parentNode", {
 		return this._parentNode;
 	},
 	set: function(v) {
-		//TODO
+		throw("parentNode cannot be assigned, use parent.addChild(node) instead.");
 	}
 });
 
@@ -482,7 +482,7 @@ CompositePattern.prototype.findNode = function( name_or_uid )
 		return this;
 	if(!name_or_uid)
 		return null;
-	if(name_or_uid.charAt(0) != LS._uid_prefix)
+	if(name_or_uid.charAt(0) != ONE._uid_prefix)
 		return this.findNodeByName( name_or_uid );
 	return this.findNodeByUId( name_or_uid );
 }

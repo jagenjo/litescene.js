@@ -4,7 +4,7 @@
 /**
 * This component allow to integrate with WebVR to use VR Headset
 * @class VRCameraController
-* @namespace LS.Components
+* @namespace ONE.Components
 * @param {Object} o object with the serialized info
 */
 function VRCameraController(o)
@@ -55,8 +55,8 @@ VRCameraController.prototype.onCollectCameras = function(e, cameras)
 
 	if(!this._left_camera)
 	{
-		this._left_camera = new LS.Camera();
-		this._right_camera = new LS.Camera();
+		this._left_camera = new ONE.Camera();
+		this._right_camera = new ONE.Camera();
 	}
 
 	var main_info = main_camera.serialize();
@@ -131,17 +131,17 @@ VRCameraController.prototype.onBeforeRender = function(e,dt)
 	if(!this._color_texture || this._color_texture.width != width || this._color_texture.height != height)
 	{
 		this._color_texture = new GL.Texture( width, height,{ format: gl.RGB, filter: gl.LINEAR });
-		LS.ResourcesManager.textures[":vr_color_buffer"] = this._color_texture;
+		ONE.ResourcesManager.textures[":vr_color_buffer"] = this._color_texture;
 	}
 
 	//CHANGE THIS TO USE RENDERFRAMECONTEXT
 	if(this.enabled)
 	{
-		LS.Renderer.color_rendertarget = this._color_texture;
+		ONE.Renderer.color_rendertarget = this._color_texture;
 	}
 	else
 	{
-		LS.Renderer.color_rendertarget = null;
+		ONE.Renderer.color_rendertarget = null;
 	}
 
 	//Renderer.disable_main_render
@@ -155,7 +155,7 @@ VRCameraController.prototype.onAfterRender = function(e,dt)
 }
 
 /* not finished
-LS.registerComponent(VRCameraController);
+ONE.registerComponent(VRCameraController);
 window.VRCameraController = VRCameraController;
 */
 

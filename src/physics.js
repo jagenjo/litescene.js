@@ -29,7 +29,7 @@ function Collision( node, instance, position, distance, normal, hit )
 
 Collision.isCloser = function(a,b) { return a.distance - b.distance; }
 
-LS.Collision = Collision;
+ONE.Collision = Collision;
 
 
 
@@ -44,7 +44,7 @@ LS.Collision = Collision;
 */
 function PhysicsInstance( node, component )
 {
-	this.uid = LS.generateUId("PHSX"); //unique identifier for this RI
+	this.uid = ONE.generateUId("PHSX"); //unique identifier for this RI
 	this.layers = 3|0;
 
 	this.type = PhysicsInstance.BOX; //SPHERE, MESH
@@ -87,7 +87,7 @@ PhysicsInstance.prototype.setMesh = function(mesh)
 	BBox.setCenterHalfsize( this.oobb, BBox.getCenter( mesh.bounding ), BBox.getHalfsize( mesh.bounding ) );
 }
 
-LS.PhysicsInstance = PhysicsInstance;
+ONE.PhysicsInstance = PhysicsInstance;
 
 
 
@@ -107,7 +107,7 @@ var Physics = {
 	* @param {vec3} origin in world space
 	* @param {vec3} direction in world space
 	* @param {Object} options ( max_dist maxium distance, layers which layers to check, scene, first_collision )
-	* @return {Array} Array of Collision objects containing all the nodes that collided with the ray or null in the form of a LS.Collision
+	* @return {Array} Array of Collision objects containing all the nodes that collided with the ray or null in the form of a ONE.Collision
 	*/
 	raycast: function( origin, direction, options )
 	{
@@ -120,7 +120,7 @@ var Physics = {
 		if(layers === undefined)
 			layers = 0xFFFF;
 		var max_distance = options.max_distance || Number.MAX_VALUE;
-		var scene = options.scene || LS.GlobalScene;
+		var scene = options.scene || ONE.GlobalScene;
 		var first_collision = options.first_collision;
 
 		var colliders = options.colliders || scene._colliders;
@@ -137,7 +137,7 @@ var Physics = {
 		//for every instance
 		for(var i = 0; i < colliders.length; ++i)
 		{
-			var instance = colliders[i]; //of LS.Collider
+			var instance = colliders[i]; //of ONE.Collider
 
 			if( (layers & instance.layers) === 0 )
 				continue;
@@ -201,7 +201,7 @@ var Physics = {
 			}
 
 			var distance = vec3.distance( origin, collision_point );
-			collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal, hit ));
+			collisions.push( new ONE.Collision( instance.node, instance, collision_point, distance, collision_normal, hit ));
 
 			if(first_collision)
 				return collisions;
@@ -226,7 +226,7 @@ var Physics = {
 		var layers = options.layers;
 		if(layers === undefined)
 			layers = 0xFFFF;
-		var scene = options.scene || LS.GlobalScene;
+		var scene = options.scene || ONE.GlobalScene;
 
 		var colliders = options.colliders || scene._colliders;
 		var collisions = [];
@@ -255,7 +255,7 @@ var Physics = {
 			mat4.multiplyVec3( local_origin, inv, origin);
 
 			//test in world space, is cheaper
-			if( instance.type == LS.PhysicsInstance.SPHERE)
+			if( instance.type == ONE.PhysicsInstance.SPHERE)
 			{
 				if( vec3.distance( origin, local_origin ) > (radius + BBox.getRadius(instance.oobb)) )
 					continue;
@@ -266,7 +266,7 @@ var Physics = {
 				if( !geo.testSphereBBox( local_origin, radius, instance.oobb) )
 					continue;
 
-				if( instance.type == LS.PhysicsInstance.MESH )
+				if( instance.type == ONE.PhysicsInstance.MESH )
 				{
 					var octree = instance.mesh.octree;
 					if(!octree)
@@ -312,7 +312,7 @@ var Physics = {
 	{
 		if(layers === undefined)
 			layers = 0xFFFF;
-		scene = scene || LS.GlobalScene;
+		scene = scene || ONE.GlobalScene;
 
 		var colliders = scene._colliders;
 		var l = colliders.length;
@@ -361,7 +361,7 @@ var Physics = {
 		if(layers === undefined)
 			layers = 0xFFFF;
 		var max_distance = options.max_distance || Number.MAX_VALUE;
-		var scene = options.scene || LS.GlobalScene;
+		var scene = options.scene || ONE.GlobalScene;
 
 		var triangle_collision = !!options.triangle_collision;
 		var first_collision = !!options.first_collision;
@@ -390,7 +390,7 @@ var Physics = {
 
 			if( !instance.use_bounding && options.add_instances_without_aabb)
 			{
-				collisions.push( new LS.Collision( instance.node, instance, vec3.clone(origin), 0, vec3.clone(direction), null ) );
+				collisions.push( new ONE.Collision( instance.node, instance, vec3.clone(origin), 0, vec3.clone(direction), null ) );
 				continue;
 			}
 
@@ -434,13 +434,13 @@ var Physics = {
 			//compute distance
 			var distance = vec3.distance( origin, collision_point );
 			if(distance < max_distance)
-				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal, hit ) );
+				collisions.push( new ONE.Collision( instance.node, instance, collision_point, distance, collision_normal, hit ) );
 
 			if(first_collision)
 				return collisions;
 		}
 
-		collisions.sort( LS.Collision.isCloser );
+		collisions.sort( ONE.Collision.isCloser );
 		return collisions;
 	},
 
@@ -450,7 +450,7 @@ var Physics = {
 	* @method raycastRenderInstances
 	* @param {vec3} origin in world space
 	* @param {vec3} direction in world space
-	* @param {LS.SceneNode} node 
+	* @param {ONE.SceneNode} node 
 	* @param {Object} options ( triangle_collision: true if you want to test against triangles, max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) )
 	* @return {Array} array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]
 	*/
@@ -463,4 +463,4 @@ var Physics = {
 }
 
 
-LS.Physics = Physics;
+ONE.Physics = Physics;

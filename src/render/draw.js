@@ -3,7 +3,7 @@
 //carefull, it is very slow
 
 /**
-* LS.Draw allows to render basic primitives, similar to the OpenGL Fixed pipeline.
+* ONE.Draw allows to render basic primitives, similar to the OpenGL Fixed pipeline.
 * It reuses local meshes when possible to avoid fragmenting the VRAM.
 * @class Draw
 * @constructor
@@ -371,9 +371,9 @@ var Draw = {
 	},
 
 	/**
-	* Sets the camera to use during the rendering, this is already done by LS.Renderer
+	* Sets the camera to use during the rendering, this is already done by ONE.Renderer
 	* @method setCamera
-	* @param {LS.Camera} camera
+	* @param {ONE.Camera} camera
 	*/
 	setCamera: function( camera )
 	{
@@ -809,7 +809,7 @@ var Draw = {
 	renderPlane: function( position, size, texture, shader)
 	{
 		if(!position || !size)
-			throw("LS.Draw.renderPlane param missing");
+			throw("ONE.Draw.renderPlane param missing");
 
 		this.push();
 		this.translate(position);
@@ -943,14 +943,14 @@ var Draw = {
 	renderImage: function( position, image, size, fixed_size )
 	{
 		if(!position || !image)
-			throw("LS.Draw.renderImage param missing");
+			throw("ONE.Draw.renderImage param missing");
 		size = size || 10;
 		var texture = null;
 
 		if(typeof(image) == "string")
 		{
 			if(window.LS)
-				texture = LS.ResourcesManager.textures[image];
+				texture = ONE.ResourcesManager.textures[image];
 			if(!texture)
 				texture = this.images[image];
 			if(texture == null)
@@ -1015,7 +1015,7 @@ var Draw = {
 		if(!this.ready)
 			throw ("Draw.js not initialized, call Draw.init()");
 		if(!mesh)
-			throw ("LS.Draw.renderMesh mesh cannot be null");
+			throw ("ONE.Draw.renderMesh mesh cannot be null");
 
 		if(!shader)
 		{
@@ -1065,7 +1065,7 @@ var Draw = {
 			if(!this.ready)
 				throw ("Draw.js not initialized, call Draw.init()");
 			if(!mesh)
-				throw ("LS.Draw.renderMeshesInstanced mesh cannot be null");
+				throw ("ONE.Draw.renderMeshesInstanced mesh cannot be null");
 
 			if( gl.webgl_version == 1 && !gl.extensions.ANGLE_instanced_arrays )
 				return null; //instancing not supported
@@ -1101,18 +1101,22 @@ var Draw = {
 	* @method renderText
 	* @param {string} text
 	* @param {vec3} position [optional] 3D coordinate in relation to matrix
+	* @param {number} scale [optional] scale modifier, default 1
 	*/
-	renderText: function( text, position )
+	renderText: function( text, position, scale )
 	{
-		position = position || LS.ZEROS;
+		position = position || ONE.ZEROS;
+		scale = scale || 1;
+		var l = text.length;
+		if(l==0 || scale == 0)
+			return;
 
 		if(!Draw.font_atlas)
 			this.createFontAtlas();
 		var atlas = this.font_atlas;
-		var l = text.length;
-		var char_size = atlas.atlas.char_size;
+		var char_size = atlas.atlas.char_size * scale;
 		var i_char_size = 1 / atlas.atlas.char_size;
-		var spacing = atlas.atlas.spacing;
+		var spacing = atlas.atlas.spacing * scale;
 
 		var num_valid_chars = 0;
 		for(var i = 0; i < l; ++i)
@@ -1164,7 +1168,7 @@ var Draw = {
 	/*
 	renderText2D: function( text, position )
 	{
-		position = position || LS.ZEROS;
+		position = position || ONE.ZEROS;
 		if(!Draw.font_atlas)
 			this.createFontAtlas();
 		var atlas = this.font_atlas;
@@ -1578,4 +1582,4 @@ Draw.fragment_shader_code = '\
 
 
 if(typeof(LS) != "undefined")
-	LS.Draw = Draw;
+	ONE.Draw = Draw;

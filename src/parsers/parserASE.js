@@ -170,11 +170,11 @@ var parserASE = {
 		}
 
 		//extra info
-		mesh.bounding = LS.Formats.computeMeshBounding( mesh.vertices );
+		mesh.bounding = ONE.Formats.computeMeshBounding( mesh.vertices );
 		if(groups.length > 1)
 			mesh.info.groups = groups;
 		return mesh;
 	}
 };
 
-LS.Formats.addSupportedFormat( "ase", parserASE );
+ONE.Formats.addSupportedFormat( "ase", parserASE );

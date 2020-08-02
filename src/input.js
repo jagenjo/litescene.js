@@ -201,7 +201,7 @@ var Input = {
 		return !!document.pointerLockElement;
 	},
 
-	//called from LS.Player when onmouse
+	//called from ONE.Player when onmouse (or from RenderModule in editor)
 	//returns true if the event was blocked
 	onMouse: function(e)
 	{
@@ -223,28 +223,34 @@ var Input = {
 		//save it in case we need to know where was the last click
 		if(e.type == "mousedown")
 		{
+			if(e.button == 0)
+				this.last_click = e;
 			this.current_click = e;
-			LS.triggerCoroutines( "click", e );
+			ONE.triggerCoroutines( "click", e );
 		}
 		else if(e.type == "mouseup")
+		{
+			//if(e.button == 0) //last click is the last position clicked
+			//	this.last_click = null;
 			this.current_click = null;
+		}
 
 		//we test if this event should be sent to the components or it was blocked by the GUI
-		return LS.GUI.testEventInBlockedArea(e);
+		return ONE.GUI.testEventInBlockedArea(e);
 	},
 
-	//called from LS.Player when onkey
+	//called from ONE.Player when onkey
 	onKey: function(e)
 	{
-		//Info: this.Keyboard is not updated here, litegl already does it and stores it in gl.keys which is the same object as LS.Input.Keyboard
+		//Info: this.Keyboard is not updated here, litegl already does it and stores it in gl.keys which is the same object as ONE.Input.Keyboard
 
 		if(e.type == "keydown")
 		{
 			this.current_key = e;
-			if( LS.Renderer._frame != this._last_frame )
+			if( ONE.Renderer._frame != this._last_frame )
 			{
 				this.keys_buffer.length = 0;
-				LS.Renderer._frame = this._last_frame;
+				ONE.Renderer._frame = this._last_frame;
 			}
 			if( this.keys_buffer.length < 10 ) //safety first!
 				this.keys_buffer.push(e);
@@ -394,7 +400,7 @@ var Input = {
 	mouseClick: function()
 	{
 		return new Promise(function(resolve){
-			LS.addWaitingCoroutine( resolve, "click" );
+			ONE.addWaitingCoroutine( resolve, "click" );
 		});
 	}
 };
@@ -402,7 +408,7 @@ var Input = {
 
 Object.defineProperty( MouseEvent.prototype, "getRay", { value: function(){
 		//get camera under position
-		var camera = LS.Renderer.getCameraAtPosition( this.mousex, this.mousey, LS.Renderer._visible_cameras );
+		var camera = ONE.Renderer.getCameraAtPosition( this.mousex, this.mousey, ONE.Renderer._visible_cameras );
 		if(!camera)
 			return null;
 		//get ray
@@ -411,4 +417,4 @@ Object.defineProperty( MouseEvent.prototype, "getRay", { value: function(){
 	enumerable: false 
 });
 
-LS.Input = Input;
+ONE.Input = Input;

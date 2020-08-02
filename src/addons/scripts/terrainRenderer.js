@@ -69,7 +69,7 @@ TerrainRenderer.prototype.updateMesh = function()
 	if(!this.heightmap) 
 		return;
 
-	var heightmap = LS.ResourcesManager.textures[ this.heightmap ];
+	var heightmap = ONE.ResourcesManager.textures[ this.heightmap ];
 	if(!heightmap) 
 		return;
 
@@ -167,7 +167,7 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+		this._render_instance = RI = new ONE.RenderInstance(this._root, this);
 
 	if(!this._mesh)
 	{
@@ -187,4 +187,4 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 	instances.push(RI);
 }
 
-LS.registerComponent(TerrainRenderer);
+ONE.registerComponent(TerrainRenderer);

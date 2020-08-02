@@ -1,56 +1,59 @@
 ///@INFO: GRAPHS
 /* Requires LiteGraph.js ******************************/
-
-//on include, link to resources manager
-if(typeof(LGraphTexture) != "undefined")
-{
-	//link LGraph textures system with LiteScene
-	LGraphTexture.getTexturesContainer = function() { return LS.ResourcesManager.textures };
-	LGraphTexture.storeTexture = function(name, texture) { return LS.ResourcesManager.registerResource(name, texture); };
-	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
-
-	LiteGraph.allow_scripts = LS.allow_scripts; //let graphs that contain code execute it
-}
-
-if(typeof(LiteGraph.LGraphRender) != "undefined")
-{
-	LiteGraph.LGraphRender.onRequestCameraMatrices = function(view,proj,viewproj)
-	{
-		var camera = LS.Renderer.getCurrentCamera();
-		if(!camera)
-			return;
-		view.set( camera._view_matrix );
-		proj.set( camera._projection_matrix );
-		viewproj.set( camera._viewprojection_matrix );
-	}
-}
-
-
-if( typeof(LGAudio) != "undefined" )
-{
-	LGAudio.onProcessAudioURL = function(url)
-	{
-		return LS.RM.getFullURL(url);
-	}
-}
-
 if(typeof(LiteGraph) != "undefined")
 {
-	LiteGraph.onNodeTypeReplaced = function(name,ctor,old)
+	//on include, link to resources manager
+	if(typeof(LGraphTexture) != "undefined")
 	{
-		var comps = LS.GlobalScene.findNodeComponents( LS.Components.GraphComponent );
-		comps = comps.concat( LS.GlobalScene.findNodeComponents( LS.Components.FXGraphComponent ) );
-		for(var i = 0; i < comps.length; ++i)
-			comps[i].graph.checkNodeTypes();
+		//link LGraph textures system with LiteScene
+		LGraphTexture.getTexturesContainer = function() { return ONE.ResourcesManager.textures };
+		LGraphTexture.storeTexture = function(name, texture) { return ONE.ResourcesManager.registerResource(name, texture); };
+		LGraphTexture.loadTexture = ONE.ResourcesManager.load.bind( ONE.ResourcesManager );
+
+		LiteGraph.allow_scripts = ONE.allow_scripts; //let graphs that contain code execute it
+	}
+
+	if(typeof(LiteGraph.LGraphRender) != "undefined")
+	{
+		LiteGraph.LGraphRender.onRequestCameraMatrices = function(view,proj,viewproj)
+		{
+			var camera = ONE.Renderer.getCurrentCamera();
+			if(!camera)
+				return;
+			view.set( camera._view_matrix );
+			proj.set( camera._projection_matrix );
+			viewproj.set( camera._viewprojection_matrix );
+		}
+	}
+
+
+	if( typeof(LGAudio) != "undefined" )
+	{
+		LGAudio.onProcessAudioURL = function(url)
+		{
+			return ONE.RM.getFullURL(url);
+		}
+	}
+
+	if(typeof(LiteGraph) != "undefined")
+	{
+		LiteGraph.onNodeTypeReplaced = function(name,ctor,old)
+		{
+			var comps = ONE.GlobalScene.findNodeComponents( ONE.Components.GraphComponent );
+			comps = comps.concat( ONE.GlobalScene.findNodeComponents( ONE.Components.FXGraphComponent ) );
+			for(var i = 0; i < comps.length; ++i)
+				comps[i].graph.checkNodeTypes();
+		}
 	}
 }
-
+else
+	console.warn("Litegraph.js not present, graph nodes would not be available.");
 
 
 /**
 * This component allow to integrate a behaviour graph on any object
 * @class GraphComponent
-* @namespace LS.Components
+* @namespace ONE.Components
 * @param {Object} o object with the serialized info
 */
 function GraphComponent(o)
@@ -71,7 +74,7 @@ function GraphComponent(o)
 
 	this._graph_version = -1;
 	this._graph = new LGraph();
-	this._graph.getScene = function() { return this._scene || LS.GlobalScene; } //this OR is ugly
+	this._graph.getScene = function() { return this._scene || ONE.GlobalScene; } //this OR is ugly
 	this._graph._scenenode = null;
 	this._loading = false;
 
@@ -110,7 +113,7 @@ Object.defineProperty( GraphComponent.prototype, "filename", {
 		if(this._filename == v)
 			return;
 		if(v) //to avoid double slashes
-			v = LS.ResourcesManager.cleanFullpath( v );
+			v = ONE.ResourcesManager.cleanFullpath( v );
 		this.from_file = true;
 		this._filename = v;
 		this._loading = false;
@@ -177,14 +180,14 @@ GraphComponent.prototype.configure = function(o)
 	else if(o.graph_data)
 	{
 		this.from_file = false;
-		if(LS.catch_exceptions)
+		if(ONE.catch_exceptions)
 		{
 			try
 			{
 				var obj = JSON.parse( o.graph_data );
 				if( this._graph.configure( obj ) == true ) //has errors
 				{
-					LS.GlobalScene.has_errors = true;
+					ONE.GlobalScene.has_errors = true;
 				}
 			}
 			catch (err)
@@ -197,7 +200,7 @@ GraphComponent.prototype.configure = function(o)
 			var obj = JSON.parse( o.graph_data );
 			if( this._graph.configure( obj ) == true ) //has errors
 			{
-				LS.GlobalScene.has_errors = true;
+				ONE.GlobalScene.has_errors = true;
 			}
 		}
 	}
@@ -235,53 +238,53 @@ GraphComponent.prototype.getResources = function(res)
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	if( this._default_node )
-		this._default_node.properties.node_id = node.uid;
+	//if( this._default_node )
+	//	this._default_node.properties.node_id = node.uid;
 	//catch the global rendering
-	//LEvent.bind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
+	//LEvent.bind( ONE.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
 	this._graph._scenenode = null;
-	//LEvent.unbind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
+	//LEvent.unbind( ONE.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 GraphComponent.prototype.onAddedToScene = function( scene )
 {
 	this._graph._scene = scene;
 
-	LEvent.bind( scene, LS.EVENT.INIT, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.START, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.PAUSE, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.UNPAUSE, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.FINISH, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.BEFORE_RENDER_MAIN_PASS, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.BEFORE_RENDER_SCENE, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.AFTER_RENDER_SCENE, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.UPDATE, this.onSceneEvent, this );
-	LEvent.bind( scene, LS.EVENT.RENDER_GUI, this.onRenderGUI, this );
-	LEvent.bind( scene, LS.EVENT.MOUSEDOWN, this.onMouse, this );
-	LEvent.bind( scene, LS.EVENT.MOUSEMOVE, this.onMouse, this );
-	LEvent.bind( scene, LS.EVENT.MOUSEUP, this.onMouse, this );
+	LEvent.bind( scene, ONE.EVENT.INIT, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.START, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.PAUSE, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.UNPAUSE, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.FINISH, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.BEFORE_RENDER_MAIN_PASS, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.BEFORE_RENDER_SCENE, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.AFTER_RENDER_SCENE, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.UPDATE, this.onSceneEvent, this );
+	LEvent.bind( scene, ONE.EVENT.RENDER_GUI, this.onRenderGUI, this );
+	LEvent.bind( scene, ONE.EVENT.MOUSEDOWN, this.onMouse, this );
+	LEvent.bind( scene, ONE.EVENT.MOUSEMOVE, this.onMouse, this );
+	LEvent.bind( scene, ONE.EVENT.MOUSEUP, this.onMouse, this );
 }
 
 GraphComponent.prototype.onRemovedFromScene = function( scene )
 {
 	this._graph._scene = null;
-	LEvent.unbind( scene, LS.EVENT.INIT, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.START, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.PAUSE, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.UNPAUSE, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.FINISH, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.BEFORE_RENDER_MAIN_PASS, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.BEFORE_RENDER_SCENE, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.AFTER_RENDER_SCENE, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.UPDATE, this.onSceneEvent, this );
-	LEvent.unbind( scene, LS.EVENT.RENDER_GUI, this.onRenderGUI, this );
-	LEvent.unbind( scene, LS.EVENT.MOUSEDOWN, this.onMouse, this );
-	LEvent.unbind( scene, LS.EVENT.MOUSEMOVE, this.onMouse, this );
-	LEvent.unbind( scene, LS.EVENT.MOUSEUP, this.onMouse, this );
+	LEvent.unbind( scene, ONE.EVENT.INIT, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.START, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.PAUSE, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.UNPAUSE, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.FINISH, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.BEFORE_RENDER_MAIN_PASS, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.BEFORE_RENDER_SCENE, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.AFTER_RENDER_SCENE, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.UPDATE, this.onSceneEvent, this );
+	LEvent.unbind( scene, ONE.EVENT.RENDER_GUI, this.onRenderGUI, this );
+	LEvent.unbind( scene, ONE.EVENT.MOUSEDOWN, this.onMouse, this );
+	LEvent.unbind( scene, ONE.EVENT.MOUSEMOVE, this.onMouse, this );
+	LEvent.unbind( scene, ONE.EVENT.MOUSEUP, this.onMouse, this );
 }
 
 GraphComponent.prototype.onResourceRenamed = function( old_name, new_name, resource )
@@ -353,7 +356,7 @@ GraphComponent.prototype.runGraph = function()
 	if(this.from_file && !this._graphcode)
 		return;
 
-	this._graph.runStep( 1, LS.catch_exceptions );
+	this._graph.runStep( 1, ONE.catch_exceptions );
 
 	if(this.force_redraw)
 		this._root.scene.requestFrame();
@@ -366,11 +369,11 @@ GraphComponent.prototype.processGraph = function( skip_events, on_complete )
 		return;
 
 	var that = this;
-	this._graphcode = LS.ResourcesManager.getResource( this._filename );
+	this._graphcode = ONE.ResourcesManager.getResource( this._filename );
 	if(!this._graphcode && !this._loading) //must be loaded
 	{
 		this._loading = true;
-		LS.ResourcesManager.load( this._filename, null, function( res, url ){
+		ONE.ResourcesManager.load( this._filename, null, function( res, url ){
 			this._loading = false;
 			if( url != that.filename )
 				return;
@@ -479,7 +482,7 @@ GraphComponent.prototype.getComponentTitle = function()
 }
 
 
-LS.registerComponent( GraphComponent );
+ONE.registerComponent( GraphComponent );
 
 
 
@@ -492,7 +495,7 @@ LS.registerComponent( GraphComponent );
 function FXGraphComponent(o)
 {
 	this.enabled = true;
-	this.frame = new LS.RenderFrameContext();
+	this.frame = new ONE.RenderFrameContext();
 	this.use_antialiasing = false;
 	this.use_node_camera = false;
 	this.title = null;
@@ -591,7 +594,7 @@ FXGraphComponent.prototype.configure = function(o)
 	var graph_data = JSON.parse( o.graph_data )
 	if( this._graph.configure( graph_data ) == true ) //has errors
 	{
-		LS.GlobalScene.has_error = true;
+		ONE.GlobalScene.has_error = true;
 	}
 
 	this._graph_frame_node = this._graph.findNodesByTitle("Rendered Frame")[0];
@@ -706,7 +709,7 @@ FXGraphComponent.prototype.onAddedToNode = function(node)
 		return;
 	this._graph._scenenode = node;
 	//catch the global rendering
-	//LEvent.bind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
+	//LEvent.bind( ONE.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
@@ -714,7 +717,7 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 	if(!this._graph) //in case it wasnt connected
 		return;
 	this._graph._scenenode = null;
-	//LEvent.unbind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
+	//LEvent.unbind( ONE.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 FXGraphComponent.prototype.onAddedToScene = function( scene )
@@ -722,10 +725,10 @@ FXGraphComponent.prototype.onAddedToScene = function( scene )
 	if(!this._graph) //in case it wasnt connected
 		return;
 	this._graph._scene = scene;
-	LEvent.bind( scene, LS.EVENT.BEFORE_RENDER, this.onBeforeRender, this );
-	LEvent.bind( scene, LS.EVENT.ENABLE_FRAME_CONTEXT, this.onEnableContext, this );
-	LEvent.bind( scene, LS.EVENT.SHOW_FRAME_CONTEXT, this.onAfterRender, this );
-	LEvent.bind( scene , LS.EVENT.RENDER_GUI, this.onRenderGUI, this );
+	LEvent.bind( scene, ONE.EVENT.BEFORE_RENDER, this.onBeforeRender, this );
+	LEvent.bind( scene, ONE.EVENT.ENABLE_FRAME_CONTEXT, this.onEnableContext, this );
+	LEvent.bind( scene, ONE.EVENT.SHOW_FRAME_CONTEXT, this.onAfterRender, this );
+	LEvent.bind( scene , ONE.EVENT.RENDER_GUI, this.onRenderGUI, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromScene = function( scene )
@@ -733,14 +736,14 @@ FXGraphComponent.prototype.onRemovedFromScene = function( scene )
 	if(!this._graph) //in case it wasnt connected
 		return;
 	this._graph._scene = null;
-	LEvent.unbind( scene, LS.EVENT.BEFORE_RENDER, this.onBeforeRender, this );
-	LEvent.unbind( scene, LS.EVENT.ENABLE_FRAME_CONTEXT, this.onEnableContext, this );
-	LEvent.unbind( scene, LS.EVENT.SHOW_FRAME_CONTEXT, this.onAfterRender, this );
-	LEvent.unbind( scene, LS.EVENT.RENDER_GUI, this.onRenderGUI, this );
+	LEvent.unbind( scene, ONE.EVENT.BEFORE_RENDER, this.onBeforeRender, this );
+	LEvent.unbind( scene, ONE.EVENT.ENABLE_FRAME_CONTEXT, this.onEnableContext, this );
+	LEvent.unbind( scene, ONE.EVENT.SHOW_FRAME_CONTEXT, this.onAfterRender, this );
+	LEvent.unbind( scene, ONE.EVENT.RENDER_GUI, this.onRenderGUI, this );
 
-	LS.ResourcesManager.unregisterResource( ":color_" + this.uid );
-	LS.ResourcesManager.unregisterResource( ":depth_" + this.uid );
-	LS.ResourcesManager.unregisterResource( ":extra_" + this.uid );
+	ONE.ResourcesManager.unregisterResource( ":color_" + this.uid );
+	ONE.ResourcesManager.unregisterResource( ":depth_" + this.uid );
+	ONE.ResourcesManager.unregisterResource( ":extra_" + this.uid );
 }
 
 FXGraphComponent.prototype.onBeforeRender = function(e, render_settings)
@@ -751,7 +754,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_settings)
 
 FXGraphComponent.prototype.onEnableContext = function(e, render_settings)
 {
-	this._last_camera = LS.Renderer._main_camera; //LS.Renderer._current_camera;
+	this._last_camera = ONE.Renderer._main_camera; //ONE.Renderer._current_camera;
 
 	if(!this.enabled || !this._root.visible)
 	{
@@ -824,7 +827,7 @@ FXGraphComponent.prototype.enableGlobalFBO = function( render_settings )
 		return;
 
 	//configure
-	this.frame.enable( render_settings, null, LS.Renderer._main_camera );
+	this.frame.enable( render_settings, null, ONE.Renderer._main_camera );
 
 	if(this._graph)
 		this._graph.sendEventToAllNodes("onPreRenderExecute");
@@ -840,12 +843,12 @@ FXGraphComponent.prototype.showFBO = function()
 
 FXGraphComponent.prototype.applyGraphToRenderFrameContext = function( frame )
 {
-	LS.ResourcesManager.textures[":color_" + this.uid] = frame._color_texture;
-	LS.ResourcesManager.textures[":depth_" + this.uid] = frame._depth_texture;
+	ONE.ResourcesManager.textures[":color_" + this.uid] = frame._color_texture;
+	ONE.ResourcesManager.textures[":depth_" + this.uid] = frame._depth_texture;
 	if(frame.num_extra_textures)
 	{
 		for(var i = 0; i < frame.num_extra_textures; ++i)
-			LS.ResourcesManager.textures[":extra"+ i +"_" + this.uid] = frame._textures[i+1];
+			ONE.ResourcesManager.textures[":extra"+ i +"_" + this.uid] = frame._textures[i+1];
 	}
 
 	if(this.use_node_camera && this._viewport)
@@ -876,6 +879,11 @@ FXGraphComponent.prototype.executeGraph = function( filter_textures )
 	this._graph_frame_node._camera = this._last_camera;
 	this._graph_frame_node._extra_texture = ":extra0_" + this.uid;
 
+	//force depth texture rendering if the graph requires it
+	//take into account that because at this moment the rendering is already done, it wont have effect till next frame
+	if( this._graph_frame_node.isOutputConnected(1) )
+		this.frame.use_depth_texture = true;
+
 	if(this._graph_viewport_node) //force antialiasing
 	{
 		this._graph_viewport_node.properties.filter = filter_textures;
@@ -883,12 +891,12 @@ FXGraphComponent.prototype.executeGraph = function( filter_textures )
 	}
 
 	//execute graph
-	this._graph.runStep(1, LS.catch_exceptions );
+	this._graph.runStep(1, ONE.catch_exceptions );
 }
 
 FXGraphComponent.prototype.getComponentTitle = GraphComponent.prototype.getComponentTitle;
 
-LS.registerComponent( FXGraphComponent );
+ONE.registerComponent( FXGraphComponent );
 
 
 

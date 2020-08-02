@@ -127,7 +127,7 @@ Button.prototype.onDraw = function(ctx, area)
 
 global.SimpleGUI = SimpleGUI;
 if(typeof(global.LS) !== "undefined")
-	LS.SimpleGUI = SimpleGUI;
+	ONE.SimpleGUI = SimpleGUI;
 
 })(typeof(global) !== "undefined" ? global : window );
 

@@ -4,7 +4,7 @@
 /**
 * Camera contains the info about a camera (matrices, near far planes, clear color, etc)
 * @class Camera
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -491,14 +491,14 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 			return;
 		}
 		if(!this._frame)
-			this._frame = new LS.RenderFrameContext();
+			this._frame = new ONE.RenderFrameContext();
 	},
 	enumerable: true
 });
 
 /**
 * contains the RenderFrameContext where the scene was stored
-* @property frame {LS.RenderFrameContext} 
+* @property frame {ONE.RenderFrameContext} 
 */
 Object.defineProperty( Camera.prototype, "frame", {
 	set: function(v) {
@@ -507,7 +507,7 @@ Object.defineProperty( Camera.prototype, "frame", {
 	get: function() {
 		return this._frame;
 	},
-	enumerable: false
+	enumerable: true //its ok, serialize is manual
 });
 
 /**
@@ -523,7 +523,7 @@ Object.defineProperty( Camera.prototype, "frame_color_texture", {
 			return null;
 		return this._frame.getColorTexture();
 	},
-	enumerable: false
+	enumerable: true //its ok, serialize is manual
 });
 
 /**
@@ -539,7 +539,7 @@ Object.defineProperty( Camera.prototype, "frame_depth_texture", {
 			return null;
 		return this._frame.getDepthTexture();
 	},
-	enumerable: false
+	enumerable: true //its ok, serialize is manual
 });
 
 
@@ -574,18 +574,18 @@ Camera.prototype.onRemovedFromNode = function(node)
 
 Camera.prototype.onAddedToScene = function(scene)
 {
-	if(!LS.Camera.main)
-		LS.Camera.main = this;
+	if(!ONE.Camera.main)
+		ONE.Camera.main = this;
 	LEvent.bind( scene, "collectCameras", this.onCollectCameras, this ); //here because we store them in node
 }
 
 Camera.prototype.onRemovedFromScene = function(scene)
 {
-	if(LS.Camera.main == this)
+	if(ONE.Camera.main == this)
 	{
 		var cams = scene.root.findComponents("Camera");
 		if(cams && cams.length)
-			LS.Camera.main = cams[0];
+			ONE.Camera.main = cams[0];
 	}
 
 	LEvent.unbind( scene, "collectCameras", this.onCollectCameras, this );
@@ -660,7 +660,7 @@ Camera.prototype.lookAt = function( eye, center, up )
 			up = this._root._parentNode.transform.globalVectorToLocal( up, vec3.create() );
 		}
 		this._root.transform.lookAt(eye,center,up);
-		this._eye.set(LS.ZEROS);
+		this._eye.set(ONE.ZEROS);
 		this._up.set([0,1,0]);
 		this.focalLength = vec3.distance( eye, center ); //changes the center
 	}
@@ -690,7 +690,7 @@ Camera.prototype.lookAtFromMatrix = function( matrix, is_model )
 			matrix = mat4.invert(m, matrix);
 		}
 		this._root.transform.matrix = matrix;
-		this._eye.set(LS.ZEROS);
+		this._eye.set(ONE.ZEROS);
 		this._up.set([0,1,0]);
 		this._must_update_view_matrix = true;
 		this.focalLength = 1; //changes center
@@ -703,9 +703,9 @@ Camera.prototype.lookAtFromMatrix = function( matrix, is_model )
 		var model = is_model ? matrix : inv;
 
 		this._view_matrix.set( view );
-		vec3.transformMat4( this._eye, LS.ZEROS, model );
-		vec3.transformMat4( this._center, LS.FRONT, model );
-		mat4.rotateVec3( this._up, model, LS.TOP );
+		vec3.transformMat4( this._eye, ONE.ZEROS, model );
+		vec3.transformMat4( this._center, ONE.FRONT, model );
+		mat4.rotateVec3( this._up, model, ONE.TOP );
 	}
 }
 
@@ -1186,9 +1186,9 @@ Camera.prototype.panning = (function(x,y) {
 	return function( x,y, factor )
 	{
 		factor = factor || 1;
-		this.getLocalVector( LS.TOP, tmp_top );
-		this.getLocalVector( LS.RIGHT, tmp_right );
-		vec3.scaleAndAdd( tmp, LS.ZEROS, tmp_top, y * factor );
+		this.getLocalVector( ONE.TOP, tmp_top );
+		this.getLocalVector( ONE.RIGHT, tmp_right );
+		vec3.scaleAndAdd( tmp, ONE.ZEROS, tmp_top, y * factor );
 		vec3.scaleAndAdd( tmp, tmp, tmp_right, x * factor );
 		this.move( tmp );
 	};
@@ -1285,9 +1285,9 @@ Camera.prototype.fromViewMatrix = function(mat)
 	}
 
 	var M = mat4.invert( mat4.create(), mat );
-	this.eye = vec3.transformMat4( vec3.create(), LS.ZEROS, M );
-	this.center = vec3.transformMat4( vec3.create(), LS.FRONT, M );
-	this.up = mat4.rotateVec3( vec3.create(), M, LS.TOP );
+	this.eye = vec3.transformMat4( vec3.create(), ONE.ZEROS, M );
+	this.center = vec3.transformMat4( vec3.create(), ONE.FRONT, M );
+	this.up = mat4.rotateVec3( vec3.create(), M, ONE.TOP );
 	this._must_update_view_matrix = true;
 }
 
@@ -1370,7 +1370,7 @@ Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 */
 Camera.prototype.projectNodeCenter = function( node, viewport, result, skip_reverse )
 {
-	var center = node.transform ? node.transform.getGlobalPosition() : LS.ZEROS;
+	var center = node.transform ? node.transform.getGlobalPosition() : ONE.ZEROS;
 	return this.project( center, viewport, result, skip_reverse );
 }
 
@@ -1441,8 +1441,8 @@ Camera.prototype.mouseToViewport = function(pos, out)
 * @param {number} y in canvas coordinates (bottom-left is 0,0)
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used using the camera viewport)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @param {LS.Ray} result [optional] to reuse ray
-* @return {LS.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
+* @param {ONE.Ray} result [optional] to reuse ray
+* @return {ONE.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
 */
 Camera.prototype.getRay = (function(){
 	var tmp_pos = vec3.create();
@@ -1477,7 +1477,7 @@ Camera.prototype.getRay = (function(){
 		var dir = vec3.subtract( pos, pos, eye );
 		vec3.normalize(dir, dir);
 
-		result = result || new LS.Ray();
+		result = result || new ONE.Ray();
 		result.origin.set(eye);
 		result.direction.set(dir);
 		return result;
@@ -1658,7 +1658,7 @@ Camera.prototype.disableRenderFrameContext = function()
 		return;
 	this._frame.disable();
 	if(this.show_frame)
-		LS.Renderer.showRenderFrameContext( this._frame, this );
+		ONE.Renderer.showRenderFrameContext( this._frame, this );
 }
 
 Camera.prototype.prepare = function()
@@ -1673,7 +1673,7 @@ Camera.prototype.fillShaderUniforms = function()
 	var uniforms = this._uniforms;
 	uniforms.u_camera_planes[0] = this.near;
 	uniforms.u_camera_planes[1] = this.far;
-	if(this.type == LS.Camera.PERSPECTIVE)
+	if(this.type == ONE.Camera.PERSPECTIVE)
 		uniforms.u_camera_perspective.set( [ this.fov * DEG2RAD, 512 / Math.tan( this.fov * DEG2RAD ) ] );
 	else
 		uniforms.u_camera_perspective.set( [ this._frustum_size, 512 / this._frustum_size ] );
@@ -1685,5 +1685,5 @@ Camera.prototype.fillShaderUniforms = function()
 	return uniforms;
 },
 
-LS.registerComponent( Camera );
-LS.Camera = Camera;
+ONE.registerComponent( Camera );
+ONE.Camera = Camera;

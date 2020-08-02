@@ -499,9 +499,9 @@ SkeletalAnimation.prototype.toData = function()
 //so it can be used from LiteScene or Rendeer
 if(typeof(LS) != "undefined")
 {
-	LS.Skeleton = Skeleton;
-	LS.Classes["SkeletalAnimation"] = LS.SkeletalAnimation = SkeletalAnimation;
-	LS.registerResourceClass( SkeletalAnimation );
+	ONE.Skeleton = Skeleton;
+	ONE.Classes["SkeletalAnimation"] = ONE.SkeletalAnimation = SkeletalAnimation;
+	ONE.registerResourceClass( SkeletalAnimation );
 }
 
 

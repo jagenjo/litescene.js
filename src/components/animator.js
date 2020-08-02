@@ -63,4 +63,4 @@ Rotator.prototype.onUpdate = function(e,dt)
 		scene.requestFrame();
 }
 
-LS.registerComponent( Rotator );
+ONE.registerComponent( Rotator );

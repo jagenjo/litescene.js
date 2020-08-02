@@ -377,8 +377,8 @@ RenderState.prototype.init = function()
 //helper, allows to set the blend mode from a string
 RenderState.prototype.setBlendMode = function( mode )
 {
-	var functions = LS.BlendFunctions[ mode ];
-	if(!mode || mode == LS.Blend.NORMAL )
+	var functions = ONE.BlendFunctions[ mode ];
+	if(!mode || mode == ONE.Blend.NORMAL )
 	{
 		this.blend = false;
 		return;
@@ -403,7 +403,7 @@ RenderState.enable = function( state, prev, render_settings )
 	if(!prev)
 	{
 		//faces
-		if(LS.Renderer._reverse_faces)
+		if(ONE.Renderer._reverse_faces)
 			gl.frontFace( state.front_face == GL.CCW ? GL.CW : GL.CCW );
 		else
 			gl.frontFace( state.front_face );
@@ -457,7 +457,7 @@ RenderState.enable = function( state, prev, render_settings )
 	//***********************************************
 
 	//faces
-	if(LS.Renderer._reverse_faces)
+	if(ONE.Renderer._reverse_faces)
 		gl.frontFace( state.front_face == GL.CCW ? GL.CW : GL.CCW );
 	else
 	{
@@ -541,14 +541,14 @@ RenderState.reset = function()
 
 RenderState.prototype.serialize = function()
 {
-	return LS.cloneObject(this);
+	return ONE.cloneObject(this);
 }
 
 RenderState.prototype.toJSON = RenderState.prototype.serialize;
 
 RenderState.prototype.configure = function(o)
 {
-	LS.cloneObject(o,this);
+	ONE.cloneObject(o,this);
 }
 
 RenderState.prototype.copyFrom = function( rs )
@@ -557,4 +557,4 @@ RenderState.prototype.copyFrom = function( rs )
 }
 
 
-LS.RenderState = RenderState;
+ONE.RenderState = RenderState;

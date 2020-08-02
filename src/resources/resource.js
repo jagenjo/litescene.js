@@ -36,7 +36,7 @@ Object.defineProperty( Resource.prototype, "data", {
 */
 Resource.prototype.register = function()
 {
-	LS.ResourcesManager.registerResource( this.fullpath || this.filename, this );
+	ONE.ResourcesManager.registerResource( this.fullpath || this.filename, this );
 }
 
 /** Renames the resource and ensures the resources manager is updated accordingly
@@ -45,7 +45,7 @@ Resource.prototype.register = function()
 */
 Resource.prototype.rename = function( new_filename )
 {
-	LS.ResourcesManager.renameResource( this.fullpath || this.filename, new_filename );
+	ONE.ResourcesManager.renameResource( this.fullpath || this.filename, new_filename );
 }
 
 Object.defineProperty( Resource.prototype, "uid", { 
@@ -168,11 +168,11 @@ Resource.prototype.getDataToStore = function()
 
 /** Clone the resource
 * @method clone
-* @return {LS.Resource} the clone of the resource
+* @return {ONE.Resource} the clone of the resource
 */
 Resource.prototype.clone = function()
 {
-	var r = new LS.Resource();
+	var r = new ONE.Resource();
 	r._data = this._data;
 	return r;
 }
@@ -183,7 +183,7 @@ Resource.prototype.clone = function()
 Resource.prototype.getCategory = function()
 {
 	var filename = this.fullpath || this.filename;
-	var ext = LS.ResourcesManager.getExtension( filename );
+	var ext = ONE.ResourcesManager.getExtension( filename );
 	if(ext == "js")
 		return "Script";
 	return "Data";
@@ -202,7 +202,7 @@ Resource.prototype.assignToNode = function(node)
 
 	if( category == "Script" )
 	{
-		var script_component = new LS.Components.ScriptFromFile({ filename: filename });
+		var script_component = new ONE.Components.ScriptFromFile({ filename: filename });
 		node.addComponent( script_component );
 	}
 
@@ -244,5 +244,5 @@ Resource.prototype.hasEditableText = function()
 
 Resource.hasPreview = false; //should this resource use a preview image?
 
-LS.Resource = Resource;
-LS.registerResourceClass( Resource );
+ONE.Resource = Resource;
+ONE.registerResourceClass( Resource );

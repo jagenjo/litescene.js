@@ -7,7 +7,7 @@
 * The WEBGL mode renders the canvas using WebGL calls, it is faster but the quality is worse and some features are not available (but you can render other textures as images)
 * To fill the canvas you must have a Script in the same node, that contains a method called OnRenderCanvas
 * @class Canvas3D
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -20,7 +20,7 @@ function Canvas3D(o)
 	this.height = 512;
 	this.texture_name = ":canvas3D";
 	this.visible = true;
-	this.input_active = true; //used for LS.GUI methods
+	this.input_active = true; //used for ONE.GUI methods
 	this.use_node_material = false;
 	this.generate_mipmaps = false;
 	this.max_interactive_distance = 100; //distance beyong which the mouse is no longer projected
@@ -76,14 +76,14 @@ Object.defineProperty( Canvas3D.prototype, "texture", {
 
 Canvas3D.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(scene, LS.EVENT.READY_TO_RENDER, this.onRender,this);
-	LEvent.bind(scene, LS.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
+	LEvent.bind(scene, ONE.EVENT.READY_TO_RENDER, this.onRender,this);
+	LEvent.bind(scene, ONE.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
 }
 
 Canvas3D.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind(scene, LS.EVENT.READY_TO_RENDER, this.onRender,this);
-	LEvent.unbind(scene, LS.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
+	LEvent.unbind(scene, ONE.EVENT.READY_TO_RENDER, this.onRender,this);
+	LEvent.unbind(scene, ONE.EVENT.AFTER_RENDER_INSTANCES, this.onRender,this);
 }
 
 Canvas3D.prototype.onAddedToNode = function( node )
@@ -91,23 +91,23 @@ Canvas3D.prototype.onAddedToNode = function( node )
 	if(!this.texture_name)
 		this.texture_name = ":canvas3D";
 
-	LEvent.bind( node, LS.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
+	LEvent.bind( node, ONE.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
 }
 
 Canvas3D.prototype.onRemovedFromNode = function( node )
 {
-	LEvent.unbind( node, LS.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
+	LEvent.unbind( node, ONE.EVENT.COLLECT_RENDER_INSTANCES, this.onCollectInstances, this );
 }
 
 //called before rendering scene
 Canvas3D.prototype.onRender = function(e)
 {
-	var camera = LS.Renderer._current_camera;
+	var camera = ONE.Renderer._current_camera;
 	if(!this.enabled || !camera || !camera.checkLayersVisibility( this._root.layers ) )
 		return;
 
-	if(	(e == LS.EVENT.READY_TO_RENDER && ( this.mode == Canvas3D.MODE_CANVAS2D || this.mode == Canvas3D.MODE_WEBGL)) || 
-		(e == LS.EVENT.AFTER_RENDER_INSTANCES && this.mode == Canvas3D.MODE_IMMEDIATE)
+	if(	(e == ONE.EVENT.READY_TO_RENDER && ( this.mode == Canvas3D.MODE_CANVAS2D || this.mode == Canvas3D.MODE_WEBGL)) || 
+		(e == ONE.EVENT.AFTER_RENDER_INSTANCES && this.mode == Canvas3D.MODE_IMMEDIATE)
 	)
 	{
 		this.drawCanvas();
@@ -148,9 +148,9 @@ Canvas3D.prototype.drawCanvas = function()
 		var ctx = this._canvas.getContext("2d");
 		if(this._clear_buffer)
 			ctx.clearRect(0,0,this._canvas.width,this._canvas.height); //clear
-		LS.GUI._ctx = ctx;
+		ONE.GUI._ctx = ctx;
 		this._root.processActionInComponents("onRenderCanvas",[ctx,this._canvas,this._mouse,this]);
-		LS.GUI._ctx = gl;
+		ONE.GUI._ctx = gl;
 		this._texture.uploadImage( this._canvas );
 	}
 	else if ( this.mode == Canvas3D.MODE_WEBGL )
@@ -166,7 +166,7 @@ Canvas3D.prototype.drawCanvas = function()
 			gl.clearColor(0,0,0,0);
 			gl.clear(GL.COLOR_BUFFER_BIT);
 		}
-		LS.GUI._ctx = gl;
+		ONE.GUI._ctx = gl;
 		this._root.processActionInComponents("onRenderCanvas",[ctx,this._texture,this._mouse,this]);
 		gl.finish2D();
 		this._fbo.unbind();
@@ -175,7 +175,7 @@ Canvas3D.prototype.drawCanvas = function()
 	{
 		var ctx = gl;
 		gl.start2D();
-		LS.GUI._ctx = gl;
+		ONE.GUI._ctx = gl;
 
 		//pass MVP matrix
 		var mvp = this._mvp;
@@ -186,7 +186,7 @@ Canvas3D.prototype.drawCanvas = function()
 			mat4.multiply(mvp,mvp, this._root.transform.getGlobalMatrixRef() );
 		mat4.scale(mvp,mvp,[1/this.width,-1/this.height,1]);
 		mat4.translate(mvp,mvp,[this.width*-0.5,this.height*-0.5,0]);
-		var camera = LS.Renderer._current_camera;
+		var camera = ONE.Renderer._current_camera;
 		mat4.multiply( mvp, camera._viewprojection_matrix, mvp );
 		//mat4.multiply( mvp, mvp, camera._viewprojection_matrix );
 		//mat4.identity(mvp);
@@ -219,18 +219,18 @@ Canvas3D.prototype.drawCanvas = function()
 		}
 		else
 			this._texture.setParameter( GL.TEXTURE_MIN_FILTER, GL.LINEAR );
-		LS.RM.registerResource( this.texture_name || ":canvas3D", this._texture );
+		ONE.RM.registerResource( this.texture_name || ":canvas3D", this._texture );
 	}
 
 	//restore stuff
 	if( this._prev_mouse )
 	{
-		 LS.Input.Mouse = this._prev_mouse;
+		 ONE.Input.Mouse = this._prev_mouse;
 		 this._prev_mouse = null;
 	}
-	if( LS.Input.current_click && this._prev_click_mouse )
+	if( ONE.Input.current_click && this._prev_click_mouse )
 	{
-		LS.Input.current_click = this._prev_click_mouse;
+		ONE.Input.current_click = this._prev_click_mouse;
 		this._prev_click_mouse = null;
 	}
 }
@@ -241,7 +241,7 @@ Canvas3D.prototype.onCollectInstances = function(e,instances)
 		return;
 
 	if(!this._RI)
-		this._RI = new LS.RenderInstance();
+		this._RI = new ONE.RenderInstance();
 	var RI = this._RI;
 	var material = null;
 	if(this.use_node_material)
@@ -249,12 +249,12 @@ Canvas3D.prototype.onCollectInstances = function(e,instances)
 	if(!material)
 		material = this._standard_material;
 	if(!material)
-		material = this._standard_material = new LS.MaterialClasses.StandardMaterial({ flags: { ignore_lights: true, cast_shadows: false }, blend_mode: LS.Blend.ALPHA });
+		material = this._standard_material = new ONE.MaterialClasses.StandardMaterial({ flags: { ignore_lights: true, cast_shadows: false }, blend_mode: ONE.Blend.ALPHA });
 
 	if(!this.use_node_material)
 	{
 		material.opacity = this.opacity;
-		material.blend_mode = material.opacity < 1 ? LS.Blend.ALPHA : LS.Blend.NORMAL;
+		material.blend_mode = material.opacity < 1 ? ONE.Blend.ALPHA : ONE.Blend.NORMAL;
 	}
 
 	material.setTexture("color", this.texture_name || ":canvas3D" );
@@ -290,15 +290,15 @@ Canvas3D.prototype.clear = function( redraw )
 
 Canvas3D.prototype.projectMouse = function()
 {
-	var camera = LS.Renderer._main_camera;
+	var camera = ONE.Renderer._main_camera;
 	if(!camera)
 		return;
 
 	//Canvas Plane
 	if(!this.root.transform)
 	{
-		this._mouse[0] = LS.Input.Mouse.canvasx;
-		this._mouse[1] = LS.Input.Mouse.canvasy;
+		this._mouse[0] = ONE.Input.Mouse.canvasx;
+		this._mouse[1] = ONE.Input.Mouse.canvasy;
 		this._mouse[2] = 0;
 		this._is_mouse_inside = true;
 		return;
@@ -310,8 +310,8 @@ Canvas3D.prototype.projectMouse = function()
 
 	this._is_mouse_inside = false;
 
-	var x = LS.Input.Mouse.canvasx;
-	var y = LS.Input.Mouse.canvasy;
+	var x = ONE.Input.Mouse.canvasx;
+	var y = ONE.Input.Mouse.canvasy;
 	var w = this.width|0;
 	var h = this.height|0;
 
@@ -334,14 +334,14 @@ Canvas3D.prototype.projectMouse = function()
 			return;
 
 		var temp = vec3.create();
-		var plane_normal = this.root.transform.localVectorToGlobal( LS.FRONT, temp );
+		var plane_normal = this.root.transform.localVectorToGlobal( ONE.FRONT, temp );
 
 		if( !this._skip_backside || vec3.dot( ray.direction, plane_normal ) > 0.0 )
 		{
 			var local_origin = this.root.transform.globalToLocal( ray.origin, temp );
 			var local_direction = this.root.transform.globalVectorToLocal( ray.direction );
 
-			if( geo.testRayPlane( local_origin, local_direction, LS.ZEROS, LS.FRONT, this._mouse ) )
+			if( geo.testRayPlane( local_origin, local_direction, ONE.ZEROS, ONE.FRONT, this._mouse ) )
 			{
 				this._mouse[0] = (this._mouse[0] + 0.5) * w;
 				this._mouse[1] = (this._mouse[1] + 0.5) * h;
@@ -356,19 +356,19 @@ Canvas3D.prototype.projectMouse = function()
 		this._mouse[1] >= 0 && this._mouse[1] < h )
 		this._is_mouse_inside = true;
 
-	//hacks to work with the LS.GUI...
+	//hacks to work with the ONE.GUI...
 	//*
 	this._local_mouse.mousex = this._local_mouse.x = this._mouse[0];
 	this._local_mouse.mousey = this._local_mouse.y = this._mouse[1];
-	this._prev_mouse = LS.Input.Mouse;
-	LS.Input.Mouse = this._local_mouse;
+	this._prev_mouse = ONE.Input.Mouse;
+	ONE.Input.Mouse = this._local_mouse;
 
-	if( LS.Input.current_click )
+	if( ONE.Input.current_click )
 	{
 		this._local_mouse_click.mousex = this._local_mouse.x = this._mouse[0];
 		this._local_mouse_click.mousey = this._local_mouse.y = this._mouse[1];
-		this._prev_click_mouse = LS.Input.current_click;
-		LS.Input.current_click = this._local_mouse_click;
+		this._prev_click_mouse = ONE.Input.current_click;
+		ONE.Input.current_click = this._local_mouse_click;
 	}
 	//*/
 }
@@ -377,7 +377,7 @@ Canvas3D.prototype.projectMouse = function()
 Canvas3D.prototype.getResources = function(res)
 {
 	if( this.material && this.material.constructor === String )
-		res[this.material] = LS.Material;
+		res[this.material] = ONE.Material;
 	return res;
 }
 
@@ -388,4 +388,4 @@ Canvas3D.prototype.onResourceRenamed = function (old_name, new_name, resource)
 }
 */
 
-LS.registerComponent( Canvas3D );
+ONE.registerComponent( Canvas3D );

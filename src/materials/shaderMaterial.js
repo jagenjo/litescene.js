@@ -43,7 +43,7 @@ Object.defineProperty( ShaderMaterial.prototype, "shader", {
 	},
 	set: function(v) {
 		if(v)
-			v = LS.ResourcesManager.cleanFullpath(v);
+			v = ONE.ResourcesManager.cleanFullpath(v);
 		if(this._shader == v)
 			return;
 		this._shader_code = null;
@@ -202,9 +202,9 @@ ShaderMaterial.prototype.processShaderCode = function()
 	var shader_code = this._shader_code;
 	
 	if( !shader_code && this._shader )
-		shader_code = LS.ResourcesManager.getResource( this.shader );
+		shader_code = ONE.ResourcesManager.getResource( this.shader );
 
-	if( !shader_code || shader_code.constructor !== LS.ShaderCode )
+	if( !shader_code || shader_code.constructor !== ONE.ShaderCode )
 		return false;
 
 	var old_properties = this._properties_by_name;
@@ -225,7 +225,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 	this._primitive = -1;
 
 	//reset material properties
-	this._queue = LS.RenderQueue.GEOMETRY;
+	this._queue = ONE.RenderQueue.GEOMETRY;
 	this._render_state.init();
 
 	//clear old functions
@@ -242,7 +242,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 	//apply init 
 	if( shader_code._functions.init )
 	{
-		if(!LS.catch_exceptions)
+		if(!ONE.catch_exceptions)
 			shader_code._functions.init.call( this );
 		else
 		{
@@ -252,7 +252,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 			}
 			catch (err)
 			{
-				LS.dispatchCodeError(err);
+				ONE.dispatchCodeError(err);
 			}
 		}
 	}
@@ -325,15 +325,15 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 ShaderMaterial.nolights_vec4 = new Float32Array([0,0,0,1]);
 ShaderMaterial.missing_color = new Float32Array([1,0,1,1]);
 
-//called from LS.Renderer when rendering an instance
+//called from ONE.Renderer when rendering an instance
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings, pass )
 {
 	//get shader code
 	var shader_code = this.getShaderCode( instance, render_settings, pass );
-	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
+	if(!shader_code || shader_code.constructor !== ONE.ShaderCode )
 	{
 		//return true; //skip rendering
-		shader_code = LS.ShaderCode.getDefaultCode( instance, render_settings, pass  ); //use default shader
+		shader_code = ONE.ShaderCode.getDefaultCode( instance, render_settings, pass  ); //use default shader
 		if( pass.id == COLOR_PASS.id) //to assign some random color
 			this._uniforms.u_material_color = ShaderMaterial.missing_color;
 	}
@@ -343,11 +343,11 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		this.processShaderCode();
 
 	//some globals
-	var renderer = LS.Renderer;
-	var camera = LS.Renderer._current_camera;
-	var scene = LS.Renderer._current_scene;
+	var renderer = ONE.Renderer;
+	var camera = ONE.Renderer._current_camera;
+	var scene = ONE.Renderer._current_scene;
 	var model = instance.matrix;
-	var renderer_uniforms = LS.Renderer._uniforms;
+	var renderer_uniforms = ONE.Renderer._uniforms;
 
 	//maybe this two should be somewhere else
 	renderer_uniforms.u_model = model; 
@@ -355,20 +355,20 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 	//compute flags: checks the ShaderBlocks attached to this instance and resolves the flags
 	var block_flags = instance.computeShaderBlockFlags();
-	var global_flags = LS.Renderer._global_shader_blocks_flags;
+	var global_flags = ONE.Renderer._global_shader_blocks_flags;
 
 	//find environment texture
 	if( pass == COLOR_PASS ) //allow reflections only in color pass
 	{
-		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
+		global_flags |= ONE.ShaderMaterial.reflection_block.flag_mask;
 
 		var environment_sampler = this.textures["environment"];
 		var environment_texture = environment_sampler && environment_sampler.texture ? environment_sampler.texture : null;
 
 		if( !environment_texture ) //use global
 		{
-			if( LS.Renderer._global_textures.environment )
-				environment_texture = LS.Renderer._global_textures.environment;
+			if( ONE.Renderer._global_textures.environment )
+				environment_texture = ONE.Renderer._global_textures.environment;
 			if( instance._nearest_reflection_probe )
 			{
 				if( instance._nearest_reflection_probe._texture )
@@ -378,7 +378,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		if( environment_texture )
 		{
-			var tex = environment_texture.constructor === String ? LS.ResourcesManager.textures[ environment_texture ] : environment_texture;
+			var tex = environment_texture.constructor === String ? ONE.ResourcesManager.textures[ environment_texture ] : environment_texture;
 			if( tex && tex.texture_type == GL.TEXTURE_2D )
 			{
 				if( tex._is_planar )
@@ -390,25 +390,25 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 				global_flags |= environment_cubemap_block.flag_mask;
 		}
 
-		this._samplers[ LS.Renderer.ENVIRONMENT_TEXTURE_SLOT ] = environment_texture;
+		this._samplers[ ONE.Renderer.ENVIRONMENT_TEXTURE_SLOT ] = environment_texture;
 	}
 	else
 	{
-		this._samplers[ LS.Renderer.ENVIRONMENT_TEXTURE_SLOT ] = null;
+		this._samplers[ ONE.Renderer.ENVIRONMENT_TEXTURE_SLOT ] = null;
 	}
 
 	//global stuff
 	this._render_state.enable( render_settings );
-	LS.Renderer.bindSamplers( this._samplers ); //material samplers
-	LS.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
+	ONE.Renderer.bindSamplers( this._samplers ); //material samplers
+	ONE.Renderer.bindSamplers( instance.samplers ); //RI samplers (like morph targets encoded in textures)
 
 	//blocks for extra streams and instancing
 	if( instance.vertex_buffers["colors"] )
-		block_flags |= LS.Shaders.vertex_color_block.flag_mask;
+		block_flags |= ONE.Shaders.vertex_color_block.flag_mask;
 	if( instance.vertex_buffers["coords1"] )
-		block_flags |= LS.Shaders.coord1_block.flag_mask;
+		block_flags |= ONE.Shaders.coord1_block.flag_mask;
 	if( instance.instanced_models && instance.instanced_models.length && gl.extensions.ANGLE_instanced_arrays ) //use instancing if supported
-		block_flags |= LS.Shaders.instancing_block.flag_mask;
+		block_flags |= ONE.Shaders.instancing_block.flag_mask;
 
 	//for those cases
 	if(this.onRenderInstance)
@@ -417,8 +417,8 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if( pass == SHADOW_PASS )
 	{
 		//global flags (like environment maps, irradiance, etc)
-		block_flags |= LS.Shaders.firstpass_block.flag_mask;
-		block_flags |= LS.Shaders.lastpass_block.flag_mask;
+		block_flags |= ONE.Shaders.firstpass_block.flag_mask;
+		block_flags |= ONE.Shaders.lastpass_block.flag_mask;
 		//extract shader compiled
 		var shader = shader_code.getShader( pass.name, block_flags ); //pass.name
 		if(!shader)
@@ -442,10 +442,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	var ignore_lights = pass != COLOR_PASS || render_settings.lights_disabled || this._light_mode === Material.NO_LIGHTS;
 
 	if( !ignore_lights )
-		lights = LS.Renderer.getNearLights( instance );
+		lights = ONE.Renderer.getNearLights( instance );
 
-	if(LS.Renderer._use_normalbuffer)
-		block_flags |= LS.Shaders.normalbuffer_block.flag_mask;
+	if(ONE.Renderer._use_normalbuffer)
+		block_flags |= ONE.Shaders.normalbuffer_block.flag_mask;
 
 	//if no lights are set or the render mode is flat
 	if( !lights || lights.length == 0 || ignore_lights )
@@ -453,8 +453,8 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		//global flags (like environment maps, irradiance, etc)
 		if( !ignore_lights )
 			block_flags |= global_flags;
-		block_flags |= LS.Shaders.firstpass_block.flag_mask;
-		block_flags |= LS.Shaders.lastpass_block.flag_mask;
+		block_flags |= ONE.Shaders.firstpass_block.flag_mask;
+		block_flags |= ONE.Shaders.lastpass_block.flag_mask;
 
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags ); //pass.name
@@ -469,7 +469,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		shader.setUniform( "u_light_info", ShaderMaterial.nolights_vec4 );
 		if( ignore_lights )
-			shader.setUniform( "u_ambient_light", LS.ONES );
+			shader.setUniform( "u_ambient_light", ONE.ONES );
 
 		//render
 		instance.render( shader, this._primitive != -1 ? this._primitive : undefined );
@@ -494,9 +494,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		//shaders require to know in which pass they are (ambient is applied in the first, reflections in the last)
 		if(i == 0)
-			block_flags |= LS.Shaders.firstpass_block.flag_mask;
+			block_flags |= ONE.Shaders.firstpass_block.flag_mask;
 		if(i == l - 1)
-			block_flags |= LS.Shaders.lastpass_block.flag_mask;
+			block_flags |= ONE.Shaders.lastpass_block.flag_mask;
 
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
@@ -507,7 +507,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		}
 
 		//light texture like shadowmap and cookie
-		LS.Renderer.bindSamplers( light._samplers );
+		ONE.Renderer.bindSamplers( light._samplers );
 
 		//light parameters (like index of pass or num passes)
 		light._uniforms.u_light_info[2] = i; //num pass
@@ -546,17 +546,17 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 {
 	//get shader code
 	var shader_code = this.getShaderCode( instance, render_settings, pass );
-	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
-		shader_code = LS.ShaderCode.getDefaultCode( instance, render_settings, pass  ); //use default shader
+	if(!shader_code || shader_code.constructor !== ONE.ShaderCode )
+		shader_code = ONE.ShaderCode.getDefaultCode( instance, render_settings, pass  ); //use default shader
 
 
 	//some globals
-	var renderer = LS.Renderer;
-	var camera = LS.Renderer._current_camera;
-	var scene = LS.Renderer._current_scene;
+	var renderer = ONE.Renderer;
+	var camera = ONE.Renderer._current_camera;
+	var scene = ONE.Renderer._current_scene;
 	var model = instance.matrix;
 	var node = instance.node;
-	var renderer_uniforms = LS.Renderer._uniforms;
+	var renderer_uniforms = ONE.Renderer._uniforms;
 
 	//maybe this two should be somewhere else
 	renderer_uniforms.u_model = model; 
@@ -568,14 +568,14 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	//global stuff
 	this._render_state.enable( render_settings );
 	gl.disable( gl.BLEND ); //picking shouldnt use blending or colors will be wrong
-	LS.Renderer.bindSamplers( this._samplers );
-	LS.Renderer.bindSamplers( instance.samplers );
+	ONE.Renderer.bindSamplers( this._samplers );
+	ONE.Renderer.bindSamplers( instance.samplers );
 
 	//extract shader compiled
 	var shader = shader_code.getShader( pass.name, block_flags );
 	if(!shader)
 	{
-		shader_code = LS.ShaderMaterial.getDefaultPickingShaderCode();
+		shader_code = ONE.ShaderMaterial.getDefaultPickingShaderCode();
 		shader = shader_code.getShader( pass.name, block_flags );
 		if(!shader)
 			return false; //??!
@@ -585,7 +585,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	shader.uniformsArray( [ camera._uniforms, renderer_uniforms, this._uniforms, instance.uniforms ] );
 
 	//set color
-	var pick_color = LS.Picking.getNextPickingColor( instance.picking_node || node );
+	var pick_color = ONE.Picking.getNextPickingColor( instance.picking_node || node );
 	shader.setUniform("u_material_color", pick_color );
 
 	//render
@@ -624,7 +624,11 @@ ShaderMaterial.prototype.getTextureChannels = function()
 ShaderMaterial.prototype.getResources = function ( res )
 {
 	if(this.shader)
-		res[ this.shader ] = LS.ShaderCode;
+		res[ this.shader ] = ONE.ShaderCode;
+
+	var shadercode = ONE.ResourcesManager.getResource( this._shader );
+	if(shadercode)
+		shadercode.getResources( res );
 
 	for(var i in this._properties)
 	{
@@ -657,29 +661,66 @@ ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
 
 	var varname = path[0];
 
+	var prop = this._properties_by_name[ varname ];
+	if(!prop)
+		return null;
+
+	var type = prop.type;
+	if(type == "float" || type == "int")
+		type = "number";
+
+	return {
+		node: this._root,
+		target: this,
+		name: prop.name,
+		value: prop.value,
+		type: type
+	};
+
+	/*
 	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.name != varname)
 			continue;
 
+		var type = prop.type;
+		if(type == "float" || type == "int")
+			type = "number";
+
 		return {
 			node: this._root,
 			target: this,
 			name: prop.name,
 			value: prop.value,
-			type: prop.type
+			type: type
 		};
 	}
-
 	return;
+	*/
+}
+
+ShaderMaterial.prototype.setPropertyValue = function( name, value )
+{
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return;
+
+	var prop = this._properties_by_name[ name ];
+	if(!prop)
+		return null;
+
+	if(prop.value && prop.value.set)
+		prop.value.set( value );
+	else
+		prop.value = value;
 }
 
 //get shader code
 ShaderMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	var shader_code = this._shader_code || LS.ResourcesManager.getResource( this._shader );
-	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
+	var shader_code = this._shader_code || ONE.ResourcesManager.getResource( this._shader );
+	if(!shader_code || shader_code.constructor !== ONE.ShaderCode )
 		return null;
 
 	//this is in case the shader has been modified in the editor (reapplies the shadercode to the material)
@@ -717,11 +758,11 @@ ShaderMaterial.prototype.applyToTexture = function( input_texture, output_textur
 
 	//global vars
 	this.fillUniforms();
-	this._uniforms.u_time = LS.GlobalScene._time;
+	this._uniforms.u_time = ONE.GlobalScene._time;
 	this._uniforms.u_viewport = gl.viewport_data;
 
 	//bind samplers
-	LS.Renderer.bindSamplers( this._samplers );
+	ONE.Renderer.bindSamplers( this._samplers );
 
 	gl.disable( gl.DEPTH_TEST );
 	gl.disable( gl.CULL_FACE );
@@ -740,7 +781,7 @@ ShaderMaterial.prototype.applyToTexture = function( input_texture, output_textur
 * @method createUniform
 * @param {String} name the property name as it should be shown
 * @param {String} uniform the uniform name in the shader
-* @param {String} type the var type in case we want to edit it (use LS.TYPES)
+* @param {String} type the var type in case we want to edit it (use ONE.TYPES)
 * @param {*} value
 * @param {Object} options an object containing all the possible options (used mostly for widgets)
 */
@@ -862,7 +903,7 @@ ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_option
 * @method createProperty
 * @param {String} name the property name as it should be shown
 * @param {*} value the default value
-* @param {String} type the data type (use LS.TYPES)
+* @param {String} type the data type (use ONE.TYPES)
 * @param {Object} options an object containing all the possible options (used mostly for widgets)
 */
 ShaderMaterial.prototype.createProperty = function( name, value, type, options )
@@ -954,8 +995,8 @@ ShaderMaterial.getDefaultPickingShaderCode = function()
 {
 	if( ShaderMaterial.default_picking_shader_code )
 		return ShaderMaterial.default_picking_shader_code;
-	var sc = new LS.ShaderCode();
-	sc.code = LS.ShaderCode.flat_code;
+	var sc = new ONE.ShaderCode();
+	sc.code = ONE.ShaderCode.flat_code;
 	ShaderMaterial.default_picking_shader_code = sc;
 	return sc;
 }
@@ -963,10 +1004,10 @@ ShaderMaterial.getDefaultPickingShaderCode = function()
 //creates a material with flat color, used for debug stuff, shadowmaps, picking, etc
 ShaderMaterial.createFlatMaterial = function()
 {
-	var material = new LS.ShaderMaterial();
-	material.shader_code = LS.ShaderCode.getDefaultCode();
+	var material = new ONE.ShaderMaterial();
+	material.shader_code = ONE.ShaderCode.getDefaultCode();
 	return material;
 }
 
-LS.registerMaterialClass( ShaderMaterial );
-LS.ShaderMaterial = ShaderMaterial;
+ONE.registerMaterialClass( ShaderMaterial );
+ONE.ShaderMaterial = ShaderMaterial;

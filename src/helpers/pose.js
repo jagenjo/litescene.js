@@ -14,7 +14,7 @@ Pose.prototype.addProperty = function( locator, value )
 
 Pose.properties.applyPose = function( scene )
 {
-	scene = scene || LS.GlobalScene;
+	scene = scene || ONE.GlobalScene;
 
 	for(var i in this.properties)
 	{
@@ -30,4 +30,4 @@ function PoseProperty( locator, value )
 }
 
 Pose.Property = PoseProperty;
-LS.Pose = Pose;
+ONE.Pose = Pose;

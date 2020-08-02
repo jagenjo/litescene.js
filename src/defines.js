@@ -13,60 +13,60 @@ var Blend = {
 	CUSTOM: 7
 }
 
-LS.Blend = Blend;
+ONE.Blend = Blend;
 
-LS.BlendFunctions = {};
+ONE.BlendFunctions = {};
 
-LS.BlendFunctions[ Blend.AUTOMATIC ] = [GL.ONE, GL.ZERO];
-LS.BlendFunctions[ Blend.NORMAL ] = [GL.ONE, GL.ZERO];
-LS.BlendFunctions[ Blend.ALPHA ] = [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
-LS.BlendFunctions[ Blend.ADD ] = [GL.SRC_ALPHA, GL.ONE];
-LS.BlendFunctions[ Blend.MULTIPLY ] = [GL.DST_COLOR, GL.ONE_MINUS_SRC_ALPHA];
-LS.BlendFunctions[ Blend.SCREEN ] =	[GL.SRC_ALPHA, GL.ONE];
-LS.BlendFunctions[ Blend.CUSTOM ] =	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
+ONE.BlendFunctions[ Blend.AUTOMATIC ] = [GL.ONE, GL.ZERO];
+ONE.BlendFunctions[ Blend.NORMAL ] = [GL.ONE, GL.ZERO];
+ONE.BlendFunctions[ Blend.ALPHA ] = [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
+ONE.BlendFunctions[ Blend.ADD ] = [GL.SRC_ALPHA, GL.ONE];
+ONE.BlendFunctions[ Blend.MULTIPLY ] = [GL.DST_COLOR, GL.ONE_MINUS_SRC_ALPHA];
+ONE.BlendFunctions[ Blend.SCREEN ] =	[GL.SRC_ALPHA, GL.ONE];
+ONE.BlendFunctions[ Blend.CUSTOM ] =	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
 
 //Used for interpolation and splines
-LS.NONE = 0;
-LS.LINEAR = 1;
-LS.TRIGONOMETRIC = 2;
-LS.CUBIC = 3;
-LS.SPLINE = 4;
-LS.BEZIER = 5;
-LS.HERMITE = 6;
+ONE.NONE = 0;
+ONE.LINEAR = 1;
+ONE.TRIGONOMETRIC = 2;
+ONE.CUBIC = 3;
+ONE.SPLINE = 4;
+ONE.BEZIER = 5;
+ONE.HERMITE = 6;
 
 //used to know the state of the application
-LS.STOPPED = 0;
-LS.PLAYING = 1; 
-LS.PAUSED = 2;
-LS.LOADING = 3;
+ONE.STOPPED = 0;
+ONE.PLAYING = 1; 
+ONE.PAUSED = 2;
+ONE.LOADING = 3;
 
-LS.RUNNING = 1; //LEGACY
+ONE.RUNNING = 1; //LEGACY
 
 //helpful consts
-LS.ZEROS = vec3.create();
-LS.ZEROS4 = vec4.create();
-LS.ONES = vec3.fromValues(1,1,1);
-LS.ONES4 = vec4.fromValues(1,1,1,1);
-LS.TOP = vec3.fromValues(0,1,0);
-LS.BOTTOM = vec3.fromValues(0,-1,0);
-LS.RIGHT = vec3.fromValues(1,0,0);
-LS.LEFT = vec3.fromValues(-1,0,0);
-LS.FRONT = vec3.fromValues(0,0,-1);
-LS.BACK = vec3.fromValues(0,0,1);
-LS.IDENTITY = mat4.create();
-LS.QUAT_IDENTITY = quat.create();
-LS.WHITE = LS.ONES;
-LS.BLACK = LS.ZEROS;
+ONE.ZEROS = vec3.create();
+ONE.ZEROS4 = vec4.create();
+ONE.ONES = vec3.fromValues(1,1,1);
+ONE.ONES4 = vec4.fromValues(1,1,1,1);
+ONE.TOP = vec3.fromValues(0,1,0);
+ONE.BOTTOM = vec3.fromValues(0,-1,0);
+ONE.RIGHT = vec3.fromValues(1,0,0);
+ONE.LEFT = vec3.fromValues(-1,0,0);
+ONE.FRONT = vec3.fromValues(0,0,-1);
+ONE.BACK = vec3.fromValues(0,0,1);
+ONE.IDENTITY = mat4.create();
+ONE.QUAT_IDENTITY = quat.create();
+ONE.WHITE = ONE.ONES;
+ONE.BLACK = ONE.ZEROS;
 
-LS.POSX = 1;
-LS.POSY = 2;
-LS.POSZ = 3;
-LS.NEGX = 4;
-LS.NEGY = 5;
-LS.NEGZ = 6;
+ONE.POSX = 1;
+ONE.POSY = 2;
+ONE.POSZ = 3;
+ONE.NEGX = 4;
+ONE.NEGY = 5;
+ONE.NEGZ = 6;
 
 //types
-LS.TYPES = {
+ONE.TYPES = {
 	BOOLEAN: "boolean",
 	NUMBER : "number",
 	STRING : "string",
@@ -94,25 +94,25 @@ LS.TYPES = {
 	POSITION : "position"
 };
 
-LS.TYPES_INDEX = {};
+ONE.TYPES_INDEX = {};
 var index = 0;
-for(var i in LS.TYPES)
+for(var i in ONE.TYPES)
 {
-	LS.TYPES_INDEX[ LS.TYPES[i] ] = index;
-	LS.TYPES_INDEX[ LS.TYPES[i].toUpperCase() ] = index;
+	ONE.TYPES_INDEX[ ONE.TYPES[i] ] = index;
+	ONE.TYPES_INDEX[ ONE.TYPES[i].toUpperCase() ] = index;
 	index++
 }
 
-LS.RESOURCE_TYPES = {};
-LS.RESOURCE_TYPES[ LS.TYPES.RESOURCE ] = true;
-LS.RESOURCE_TYPES[ LS.TYPES.TEXTURE ] = true;
-LS.RESOURCE_TYPES[ LS.TYPES.MESH ] = true;
-LS.RESOURCE_TYPES[ LS.TYPES.ANIMATION ] = true;
+ONE.RESOURCE_TYPES = {};
+ONE.RESOURCE_TYPES[ ONE.TYPES.RESOURCE ] = true;
+ONE.RESOURCE_TYPES[ ONE.TYPES.TEXTURE ] = true;
+ONE.RESOURCE_TYPES[ ONE.TYPES.MESH ] = true;
+ONE.RESOURCE_TYPES[ ONE.TYPES.ANIMATION ] = true;
 //audio and video?
 
 
 //Events
-var EVENT = LS.EVENT = {};
+var EVENT = ONE.EVENT = {};
 //events are defined in the file that triggers them:
 //- renderer.js: render related events (RENDER_INSTANCES,etc)
 //- scene.js: scene related (INIT,START,UPDATE)
@@ -127,4 +127,4 @@ var EVENT = LS.EVENT = {};
 * @param {vec3} origin
 * @param {vec3} direction
 */
-LS.Ray = GL.Ray;
+ONE.Ray = GL.Ray;

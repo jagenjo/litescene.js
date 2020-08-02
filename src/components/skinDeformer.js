@@ -6,7 +6,7 @@
 * It also allow to limit the bone search to specific nodes.
 *
 * @class SkinDeformer
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 */
 function SkinDeformer( o )
@@ -37,7 +37,7 @@ function SkinDeformer( o )
 	if(o)
 		this.configure(o);
 
-	//this._deformer = new LS.Deformer();
+	//this._deformer = new ONE.Deformer();
 }
 
 SkinDeformer.icon = "mini-icon-stickman.png";
@@ -48,7 +48,7 @@ SkinDeformer.gpu_skinning_supported = true;
 SkinDeformer.icon = "mini-icon-stickman.png";
 SkinDeformer.apply_to_normals_by_software = false;
 
-SkinDeformer["@skeleton_root_node"] = { type: LS.TYPES.SCENENODE };
+SkinDeformer["@skeleton_root_node"] = { type: ONE.TYPES.SCENENODE };
 
 SkinDeformer.prototype.onAddedToNode = function(node)
 {
@@ -247,9 +247,9 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
-			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
+			RI.samplers[ ONE.Renderer.BONES_TEXTURE_SLOT ] = null;
 
-			RI.addShaderBlock( LS.SkinDeformer.skinning_uniforms_block, { u_bones: u_bones } );
+			RI.addShaderBlock( ONE.SkinDeformer.skinning_uniforms_block, { u_bones: u_bones } );
 		}
 		else if( SkinDeformer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
 		{
@@ -264,16 +264,16 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			texture._data.set( u_bones );
 
 			texture.uploadData( texture._data, { no_flip: true } );
-			LS.RM.textures[":bones_" + this.uid ] = texture; //debug
-			RI.uniforms["u_bones"] = LS.Renderer.BONES_TEXTURE_SLOT;
-			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = texture; //{ texture: texture, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE };
+			ONE.RM.textures[":bones_" + this.uid ] = texture; //debug
+			RI.uniforms["u_bones"] = ONE.Renderer.BONES_TEXTURE_SLOT;
+			RI.samplers[ ONE.Renderer.BONES_TEXTURE_SLOT ] = texture; //{ texture: texture, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE };
 
-			RI.addShaderBlock( LS.SkinDeformer.skinning_texture_block, { u_bones: LS.Renderer.BONES_TEXTURE_SLOT } );
+			RI.addShaderBlock( ONE.SkinDeformer.skinning_texture_block, { u_bones: ONE.Renderer.BONES_TEXTURE_SLOT } );
 		}
 		else
 			console.error("impossible to get here");
 
-		RI.addShaderBlock( LS.SkinDeformer.skinning_block );
+		RI.addShaderBlock( ONE.SkinDeformer.skinning_block );
 	}
 	else //cpu skinning (mega slow)
 	{
@@ -314,7 +314,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 
 	if(bones && bones.length) //extract at least one position from the bones, we need for probes and sorting
 	{
-		RI.center.set( LS.ZEROS );
+		RI.center.set( ONE.ZEROS );
 		for(var i = 0; i < bones.length; ++i)
 		{
 			RI.center[0] += bones[i][3];
@@ -344,9 +344,9 @@ SkinDeformer.prototype.disableSkinning = function( RI )
 	if( RI.samplers["u_bones"] )
 		delete RI.samplers["u_bones"];
 
-	RI.removeShaderBlock( LS.SkinDeformer.skinning_block );
-	RI.removeShaderBlock( LS.SkinDeformer.skinning_uniforms_block );
-	RI.removeShaderBlock( LS.SkinDeformer.skinning_texture_block );
+	RI.removeShaderBlock( ONE.SkinDeformer.skinning_block );
+	RI.removeShaderBlock( ONE.SkinDeformer.skinning_uniforms_block );
+	RI.removeShaderBlock( ONE.SkinDeformer.skinning_texture_block );
 }
 
 SkinDeformer.prototype.getMesh = function()
@@ -497,8 +497,8 @@ SkinDeformer.prototype.getBones = function()
 	return bones;
 }
 
-LS.registerComponent( SkinDeformer );
-LS.SkinDeformer = SkinDeformer;
+ONE.registerComponent( SkinDeformer );
+ONE.SkinDeformer = SkinDeformer;
 
 SkinDeformer.skinning_shader_code = "\n\
 	//Skinning ******************* \n\
@@ -557,18 +557,18 @@ SkinDeformer.skinning_enabled_shader_code = "\n#pragma shaderblock skinning_mode
 SkinDeformer.skinning_disabled_shader_code = "\nvoid applySkinning( inout vec4 position, inout vec3 normal) {}\n";
 
 // ShaderBlocks used to inject to shader in runtime
-var skinning_block = new LS.ShaderBlock("skinning");
+var skinning_block = new ONE.ShaderBlock("skinning");
 skinning_block.addCode( GL.VERTEX_SHADER, SkinDeformer.skinning_enabled_shader_code, SkinDeformer.skinning_disabled_shader_code );
 skinning_block.register();
 SkinDeformer.skinning_block = skinning_block;
 
-var skinning_uniforms_block = new LS.ShaderBlock("skinning_uniforms");
+var skinning_uniforms_block = new ONE.ShaderBlock("skinning_uniforms");
 skinning_uniforms_block.defineContextMacros( { "skinning_mode": "skinning_uniforms"} );
 skinning_uniforms_block.addCode( GL.VERTEX_SHADER, SkinDeformer.skinning_shader_code, SkinDeformer.skinning_disabled_shader_code );
 skinning_uniforms_block.register();
 SkinDeformer.skinning_uniforms_block = skinning_uniforms_block;
 
-var skinning_texture_block = new LS.ShaderBlock("skinning_texture");
+var skinning_texture_block = new ONE.ShaderBlock("skinning_texture");
 skinning_texture_block.defineContextMacros( { "skinning_mode": "skinning_texture"} );
 skinning_texture_block.addCode( GL.VERTEX_SHADER, "\n#define USE_SKINNING_TEXTURE\n" + SkinDeformer.skinning_shader_code, SkinDeformer.skinning_disabled_shader_code );
 skinning_texture_block.register();

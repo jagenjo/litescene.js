@@ -29,9 +29,9 @@ var parserJSMesh = {
 		}
 
 		if(!mesh.bounding)
-			mesh.bounding = LS.Formats.computeMeshBounding(mesh.vertices);
+			mesh.bounding = ONE.Formats.computeMeshBounding(mesh.vertices);
 		return mesh;
 	}
 };
 
-LS.Formats.addSupportedFormat( "jsmesh", parserJSMesh );
+ONE.Formats.addSupportedFormat( "jsmesh", parserJSMesh );

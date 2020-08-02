@@ -1,7 +1,7 @@
 /**
 * GeometricPrimitive renders a primitive like a Cube, Sphere, Plane, etc
 * @class GeometricPrimitive
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -26,9 +26,9 @@ function GeometricPrimitive( o )
 
 
 /**
-* The shape to render, valid values are: LS.Components.GeometricPrimitive.CUBE,PLANE,CYLINDER,SPHERE,CIRCLE,HEMISPHERE,ICOSAHEDRON,CONE,QUAD
+* The shape to render, valid values are: ONE.Components.GeometricPrimitive.CUBE,PLANE,CYLINDER,SPHERE,CIRCLE,HEMISPHERE,ICOSAHEDRON,CONE,QUAD
 * @property geometry {enum}
-* @default LS.Components.GeometricPrimitive.CUBE
+* @default ONE.Components.GeometricPrimitive.CUBE
 */
 Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
 	get: function() { return this._geometry; },
@@ -145,7 +145,7 @@ GeometricPrimitive.prototype.onRemovedFromNode = function( node )
 
 GeometricPrimitive.prototype.serialize = function()
 {
-	var r = LS.BaseComponent.prototype.serialize.call(this);
+	var r = ONE.BaseComponent.prototype.serialize.call(this);
 	if(this._geometry == GeometricPrimitive.CUSTOM && this._custom_mesh)
 		r.custom_mesh = this._custom_mesh.toJSON();
 
@@ -154,7 +154,7 @@ GeometricPrimitive.prototype.serialize = function()
 
 GeometricPrimitive.prototype.configure = function(o)
 {
-	LS.BaseComponent.prototype.configure.call(this,o);
+	ONE.BaseComponent.prototype.configure.call(this,o);
 
 	//legacy
 	if(this._geometry == GeometricPrimitive.PLANE && o.align_z === false )
@@ -235,7 +235,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+		this._render_instance = RI = new ONE.RenderInstance(this._root, this);
 
 	if(!this._mesh || this._version != this._mesh_version )
 		this.updateMesh();
@@ -260,4 +260,4 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	instances.push(RI);
 }
 
-LS.registerComponent( GeometricPrimitive );
+ONE.registerComponent( GeometricPrimitive );

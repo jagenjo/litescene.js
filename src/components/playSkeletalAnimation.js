@@ -1,8 +1,8 @@
 ///@INFO: ANIMATION
 /**
-* Reads animation from a LS.SkeletalAnimation resource and applies the properties to the SkinDeformer in this node
+* Reads animation from a ONE.SkeletalAnimation resource and applies the properties to the SkinDeformer in this node
 * @class PlaySkeletalAnimation
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -12,7 +12,7 @@ function PlaySkeletalAnimation(o)
 	this.animation = "";
 	this.playback_speed = 1.0;
 
-	this._skeleton = new LS.Skeleton();
+	this._skeleton = new ONE.Skeleton();
 
 	/**
 	* how to play the animation, options are:
@@ -41,7 +41,7 @@ PlaySkeletalAnimation.MODES = {"loop":PlaySkeletalAnimation.LOOP, "pingpong":Pla
 
 PlaySkeletalAnimation["@animation"] = { widget: "resource", resource_classname:"SkeletalAnimation" };
 PlaySkeletalAnimation["@mode"] = { type:"enum", values: PlaySkeletalAnimation.MODES };
-PlaySkeletalAnimation["@current_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
+PlaySkeletalAnimation["@current_time"] = { type: ONE.TYPES.NUMBER, min: 0, units:"s" };
 
 PlaySkeletalAnimation.prototype.configure = function(o)
 {
@@ -92,7 +92,7 @@ PlaySkeletalAnimation.prototype.onUpdate = function(e, dt)
 PlaySkeletalAnimation.prototype.onUpdateAnimation = function(dt)
 {
 	var animation = this.getAnimation();
-	if( !animation || animation.constructor != LS.SkeletalAnimation ) 
+	if( !animation || animation.constructor != ONE.SkeletalAnimation ) 
 		return;
 
 	var time = this.current_time;
@@ -147,13 +147,13 @@ PlaySkeletalAnimation.prototype.onUpdateAnimation = function(dt)
 * returns the current animation or an animation with a given name
 * @method getAnimation
 * @param {String} name [optional] the name of the animation, if omited then uses the animation set in the component
-* @return {LS.Animation} the animation container
+* @return {ONE.Animation} the animation container
 */
 PlaySkeletalAnimation.prototype.getAnimation = function( name )
 {
 	name = name === undefined ? this.animation : name;
-	var anim = LS.ResourcesManager.getResource( name );
-	if( anim && anim.constructor === LS.SkeletalAnimation )
+	var anim = ONE.ResourcesManager.getResource( name );
+	if( anim && anim.constructor === ONE.SkeletalAnimation )
 		return anim;
 	return null;
 }
@@ -241,7 +241,7 @@ PlaySkeletalAnimation.prototype.applyAnimation = function( time )
 	animation.assignTime(time, true, this.interpolate );
 	this._skeleton.copyFrom( animation.skeleton );
 
-	var deformer = this._root.getComponent( LS.Components.SkinDeformer );
+	var deformer = this._root.getComponent( ONE.Components.SkinDeformer );
 	if(deformer)
 		deformer._skeleton = this._skeleton;
 }
@@ -249,7 +249,7 @@ PlaySkeletalAnimation.prototype.applyAnimation = function( time )
 PlaySkeletalAnimation.prototype.getResources = function(res)
 {
 	if(this.animation)
-		res[ this.animation ] = LS.SkeletalAnimation;
+		res[ this.animation ] = ONE.SkeletalAnimation;
 }
 
 PlaySkeletalAnimation.prototype.onResourceRenamed = function (old_name, new_name, resource)
@@ -287,4 +287,4 @@ PlaySkeletalAnimation.prototype.getPropertiesInfo = function()
 	return properties;
 }
 
-LS.registerComponent( PlaySkeletalAnimation );
+ONE.registerComponent( PlaySkeletalAnimation );

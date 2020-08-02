@@ -2,7 +2,7 @@
 /**
 * Transitions between different poses
 * @class Poser
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -232,7 +232,7 @@ Poser.prototype.updatePose = function( name )
 		//if they are below threshold, do not store deltas
 		if( vec3.length(delta_pos) > 0.00001 )
 			pose_info.delta_pos = toArray( delta_pos );
-		if( vec4.dist(delta_rot,LS.QUAT_IDENTITY) > 0.0001 )
+		if( vec4.dist(delta_rot,ONE.QUAT_IDENTITY) > 0.0001 )
 			pose_info.delta_rot = toArray( delta_rot );
 		if( Math.abs(vec3.length(delta_scale) - 1.0) > 0.00001 )
 			pose_info.delta_scale = toArray( delta_scale );
@@ -339,9 +339,9 @@ Poser.prototype.applyPoseFromWeights = function()
 
 	for(var i = 0; i < num_nodes; ++i)
 	{
-		positions.set(LS.ZEROS,i*3);
-		rotations.set(LS.QUAT_IDENTITY, i*4);
-		scalings.set(LS.ONES, i*3);
+		positions.set(ONE.ZEROS,i*3);
+		rotations.set(ONE.QUAT_IDENTITY, i*4);
+		scalings.set(ONE.ONES, i*3);
 	}
 
 	for(var j = 0; j < this.poses.length; ++j )
@@ -363,7 +363,7 @@ Poser.prototype.applyPoseFromWeights = function()
 			if( pose_node_info.delta_rot )
 			{
 				var rot = rotations.subarray(i*4,i*4+4);
-				quat.slerp( temp_quat, LS.QUAT_IDENTITY, pose_node_info.delta_rot, pose.weight );
+				quat.slerp( temp_quat, ONE.QUAT_IDENTITY, pose_node_info.delta_rot, pose.weight );
 				//quat.scale( temp_quat, pose_node_info.delta_rot, pose.weight );
 				quat.mul( rot, rot, temp_quat );
 			}
@@ -536,10 +536,10 @@ Poser.prototype.getPropertiesInfo = function()
 
 Poser.prototype.configure = function(o)
 {
-	LS.BaseComponent.prototype.configure.call(this,o);
+	ONE.BaseComponent.prototype.configure.call(this,o);
 
 	for(var i = 0;i < this.poses.length; ++i)
 		this._poses_by_name[ this.poses[i].name ] = this.poses[i];
 }
 
-LS.registerComponent( Poser );
+ONE.registerComponent( Poser );

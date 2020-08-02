@@ -2,7 +2,7 @@
 /**
 * Allows to include a secondary scene inside this scene (with some limitations)
 * @class SceneInclude
-* @namespace LS.Components
+* @namespace ONE.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -21,9 +21,9 @@ function SceneInclude( o )
 	this._scene_path = null;
 	this._scene_is_ready = false;
 
-	if( LS.Scene ) //this is because in some cases (debug mode) this component will be registered before the Scene exists
+	if( ONE.Scene ) //this is because in some cases (debug mode) this component will be registered before the Scene exists
 	{
-		this._scene = new LS.Scene();
+		this._scene = new ONE.Scene();
 		this._scene.root.removeAllComponents();
 		LEvent.bind( this._scene, "requestFrame", function(){ 
 			if(this._root.scene)
@@ -66,7 +66,7 @@ Object.defineProperty( SceneInclude.prototype, "frame_fx", {
 });
 
 
-SceneInclude["@scene_path"] = { type: LS.TYPES.SCENE, widget: "resource" };
+SceneInclude["@scene_path"] = { type: ONE.TYPES.SCENE, widget: "resource" };
 
 SceneInclude.icon = "mini-icon-teapot.png";
 
@@ -220,7 +220,7 @@ SceneInclude.prototype.reloadScene = function()
 {
 	var that = this;
 	this._scene_is_ready = false;
-	var scene = LS.GlobalScene;
+	var scene = ONE.GlobalScene;
 	var inner_scene = this._scene;
 
 	SceneInclude.recursive_level += 1;
@@ -232,19 +232,19 @@ SceneInclude.prototype.reloadScene = function()
 	{
 		console.log("SceneInclude: scene loaded");
 		this._scene_is_ready = true;
-		if(this._root.scene._state == LS.PLAYING )
+		if(this._root.scene._state == ONE.PLAYING )
 			this._scene.start();
 	}
 
 	function inner_resloaded()
 	{
-		LS.Renderer.regenerateShadowmaps();
+		ONE.Renderer.regenerateShadowmaps();
 		for(var i = 0; i < inner_scene._reflection_probes.length; ++i)
 		{
 			if(scene._reflection_probes.indexOf(inner_scene._reflection_probes[i]) == -1)
 				scene._reflection_probes.push( inner_scene._reflection_probes[i] );
 		}
-		LS.Components.ReflectionProbe.updateAll()
+		ONE.Components.ReflectionProbe.updateAll()
 	}
 }
 
@@ -299,7 +299,7 @@ SceneInclude.prototype.getActions = function()
 SceneInclude.prototype.getResources = function(res)
 {
 	if(this._scene_path)
-		res[ this._scene_path ] = LS.Scene;
+		res[ this._scene_path ] = ONE.Scene;
 	return res;
 }
 
@@ -309,4 +309,4 @@ SceneInclude.prototype.onResourceRenamed = function( old_name, new_name, resourc
 		this._scene_path = new_name;
 }
 
-LS.registerComponent( SceneInclude );
+ONE.registerComponent( SceneInclude );

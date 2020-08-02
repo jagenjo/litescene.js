@@ -4,7 +4,7 @@ function SurfaceMaterial( o )
 
 	this.shader_name = "surface";
 
-	this.blend_mode = LS.Blend.NORMAL;
+	this.blend_mode = ONE.Blend.NORMAL;
 	this._light_mode = 1;
 
 	this.flags = {
@@ -105,11 +105,11 @@ SurfaceMaterial.prototype.computeCode = function()
 		fs_out: this.surf_code
 	};
 
-	var final_code = LS.ShaderCode.replaceCode( LS.SurfaceMaterial.code_template, context );
-	//var final_code = LS.SurfaceMaterial.code_template.replace( /{{}}/gi, this.surf_code );
+	var final_code = ONE.ShaderCode.replaceCode( ONE.SurfaceMaterial.code_template, context );
+	//var final_code = ONE.SurfaceMaterial.code_template.replace( /{{}}/gi, this.surf_code );
 
 	if(!this._shadercode)
-		this._shadercode = new LS.ShaderCode();
+		this._shadercode = new ONE.ShaderCode();
 	this._shadercode.code = final_code;
 	this._mustUpdate = false;
 }
@@ -150,9 +150,9 @@ SurfaceMaterial.prototype.configure = function(o) {
 	if(o.flags !== undefined && o.flags.constructor === Number)
 		delete o["flags"]; //LEGACY
 	Material.prototype.configure.call( this, o ); //it will call setProperty
-	//LS.cloneObject( o, this );
+	//ONE.cloneObject( o, this );
 	if(o.properties)
-		this.properties = LS.cloneObject( o.properties );
+		this.properties = ONE.cloneObject( o.properties );
 	this.computeCode();
 }
 
@@ -164,11 +164,11 @@ SurfaceMaterial.prototype.configure = function(o) {
 SurfaceMaterial.prototype.getPropertiesInfo = function()
 {
 	var o = {
-		color: LS.TYPES.VEC3,
-		opacity: LS.TYPES.NUMBER,
-		shader_name: LS.TYPES.STRING,
-		blend_mode: LS.TYPES.NUMBER,
-		code: LS.TYPES.STRING
+		color: ONE.TYPES.VEC3,
+		opacity: ONE.TYPES.NUMBER,
+		shader_name: ONE.TYPES.STRING,
+		blend_mode: ONE.TYPES.NUMBER,
+		code: ONE.TYPES.STRING
 	};
 
 	//from this material
@@ -355,7 +355,7 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 
 	//preload texture
 	if(texture && texture.constructor == String && texture[0] != ":")
-		LS.ResourcesManager.load( texture );
+		ONE.ResourcesManager.load( texture );
 
 	return sampler;
 }
@@ -384,8 +384,8 @@ SurfaceMaterial.prototype.getResources = function (res)
 	return res;
 }
 
-LS.registerMaterialClass( SurfaceMaterial );
-LS.SurfaceMaterial = SurfaceMaterial;
+ONE.registerMaterialClass( SurfaceMaterial );
+ONE.SurfaceMaterial = SurfaceMaterial;
 
 SurfaceMaterial.code_template = "\n\
 \n\

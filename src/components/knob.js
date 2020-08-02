@@ -67,7 +67,7 @@ Knob.prototype.onMouse = function(e, mouse_event)
 
 		var instance = this._root._instances[0];
 
-		var cam = LS.Renderer.getCameraAtPosition( mouse_event.canvasx, mouse_event.canvasy );
+		var cam = ONE.Renderer.getCameraAtPosition( mouse_event.canvasx, mouse_event.canvasy );
 		if(!cam)
 			return;
 		var ray = cam.getRay( mouse_event.canvasx, mouse_event.canvasy );
@@ -102,6 +102,6 @@ Knob.prototype.onMouse = function(e, mouse_event)
 	}
 };
 
-LS.registerComponent( Knob );
+ONE.registerComponent( Knob );
 
 })();

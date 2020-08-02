@@ -19,7 +19,7 @@ function LGraphFXStack()
 	this.addOutput("Final","Texture");
 	this.properties = { intensity: 1, preserve_aspect: true };
 
-	this._fx_stack = new LS.FXStack();
+	this._fx_stack = new ONE.FXStack();
 	this._fx_options = {};
 }
 
@@ -501,9 +501,9 @@ LGraphVolumetricLight.prototype.onExecute = function()
 
 	switch( light.type )
 	{
-		case LS.Light.SPOT: shader = LGraphVolumetricLight._shader_spot; break;
-		case LS.Light.DIRECTIONAL: shader = LGraphVolumetricLight._shader_directional; break;
-		case LS.Light.OMNI: //shader = LGraphVolumetricLight._shader_omni;
+		case ONE.Light.SPOT: shader = LGraphVolumetricLight._shader_spot; break;
+		case ONE.Light.DIRECTIONAL: shader = LGraphVolumetricLight._shader_directional; break;
+		case ONE.Light.OMNI: //shader = LGraphVolumetricLight._shader_omni;
 			//not supported yet
 			console.warn("volumetric light not supported for omni lights");
 			this.properties.enabled = false;
@@ -528,7 +528,7 @@ LGraphVolumetricLight.prototype.onExecute = function()
 	var light_uniforms = light._uniforms;
 
 	if(!tex)
-		tex = LS.Renderer._black_texture;
+		tex = ONE.Renderer._black_texture;
 	var noise_texture = LGraphTexture.getNoiseTexture();
 
 	this._tex.drawTo(function() {
@@ -667,7 +667,7 @@ if( LiteGraph.Nodes.LGraphTextureCanvas2D )
 			this._func = null;
 			if(!value)
 				return;
-			LS.ResourcesManager.load( value, function(script_resource){
+			ONE.ResourcesManager.load( value, function(script_resource){
 				that.compileCode(script_resource.data);
 				that._code_version = script_resource._version || 0;
 			});
@@ -679,7 +679,7 @@ if( LiteGraph.Nodes.LGraphTextureCanvas2D )
 		if (!this.isOutputConnected(0))
 			return;
 
-		var script_resource = LS.ResourcesManager.getResource( this.properties.filename );
+		var script_resource = ONE.ResourcesManager.getResource( this.properties.filename );
 		if( script_resource && script_resource._version != this._code_version )
 		{
 			this.compileCode( script_resource.data );
@@ -712,7 +712,7 @@ function LGraphReprojectDepth()
 	this.addInput("color","Texture");
 	this.addInput("depth","Texture");
 	this.addInput("camera","Camera,Component");
-	this.properties = { enabled: true, pointSize: 1, offset: 0, triangles: false, depth_is_linear: false, skip_center: false, layers:0xFF };
+	this.properties = { enabled: true, pointSize: 1, offset: 0, factor: 1, triangles: false, depth_is_linear: false, skip_center: false, layers:0xFF };
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
@@ -726,6 +726,7 @@ function LGraphReprojectDepth()
 		u_near_far: vec2.create(),
 		u_color_texture:0,
 		u_depth_texture:1,
+		u_factor: this.properties.factor,
 		u_vp: this._viewprojection_matrix
 	};
 }
@@ -737,13 +738,23 @@ LGraphReprojectDepth.widgets_info = {
 LGraphReprojectDepth.title = "Reproj.Depth";
 LGraphReprojectDepth.desc = "Reproject Depth";
 
+LGraphReprojectDepth.prototype.onGetInputs = function()
+{
+	return [["enabled","boolean"],["factor","number"]];
+}
+
+
 LGraphReprojectDepth.prototype.onExecute = function()
 {
 	var color = this.getInputData(0);
 	var depth = this.getInputData(1);
 	var camera = this.getInputData(2);
 
-	if( !depth || !camera || camera.constructor !== LS.Camera )
+	if( !depth || !camera || camera.constructor !== ONE.Camera )
+		return;
+
+	var enabled = this.getInputOrProperty("enabled");
+	if(!enabled)
 		return;
 
 	var no_color = false;
@@ -760,11 +771,10 @@ LGraphReprojectDepth.prototype.onExecute = function()
 	}
 
 	LiteGraph.LGraphRender.onRequestCameraMatrices( this._view_matrix, this._projection_matrix,this._viewprojection_matrix );
-	//var current_camera = LS.Renderer.getCurrentCamera();
-	if(!(LS.Renderer._current_layers_filter & this.properties.layers ))
+	//var current_camera = ONE.Renderer.getCurrentCamera();
+	if(!(ONE.Renderer._current_layers_filter & this.properties.layers ))
 		return;
 
-	var enabled = this.properties.enabled;
 	var mesh = this._mesh;
 	if(!mesh)
 		mesh = this._mesh = GL.Mesh.plane({detailX: depth.width, detailY: depth.height});
@@ -778,6 +788,8 @@ LGraphReprojectDepth.prototype.onExecute = function()
 	uniforms.u_is_linear = this.properties.depth_is_linear ? 1 : 0;
 	uniforms.u_use_depth_as_color = no_color ? 1 : 0;
 	uniforms.u_near_far.set(depth.near_far_planes ? depth.near_far_planes : [0,1]);
+	uniforms.u_factor = this.getInputOrProperty("factor");
+
 	if(this.properties.skip_center)
 		uniforms.u_ires.set([0,0]);
 	else
@@ -805,6 +817,7 @@ LGraphReprojectDepth.vertex_shader = "\n\
 	uniform vec2 u_ires;\n\
 	uniform float u_depth_offset;\n\
 	uniform float u_point_size;\n\
+	uniform float u_factor;\n\
 	uniform vec2 u_near_far;\n\
 	uniform int u_is_linear;\n\
 	uniform int u_use_depth_as_color;\n\
@@ -812,7 +825,7 @@ LGraphReprojectDepth.vertex_shader = "\n\
 	\n\
 	void main() {\n\
 		vec2 uv = a_coord + u_ires * 0.5;\n\
-		float depth = texture2D( u_depth_texture, uv ).x;\n\
+		float depth = texture2D( u_depth_texture, uv ).x * u_factor;\n\
 		if(u_is_linear == 1)\n\
 		{\n\
 			//must delinearize, doesnt work...\n\

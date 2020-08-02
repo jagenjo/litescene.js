@@ -40,12 +40,12 @@ Target["@up"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "
 Target.prototype.onAddedToScene = function( scene )
 {
 	//it must be done before collect, otherwise elements wont have the right orientation
-	LEvent.bind( scene, LS.EVENT.BEFORE_RENDER, this.onBeforeRender, this);
+	LEvent.bind( scene, ONE.EVENT.BEFORE_RENDER, this.onBeforeRender, this);
 }
 
 Target.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( scene, LS.EVENT.BEFORE_RENDER, this.onBeforeRender, this);
+	LEvent.unbind( scene, ONE.EVENT.BEFORE_RENDER, this.onBeforeRender, this);
 }
 
 Target.prototype.onBeforeRender = function(e)
@@ -95,7 +95,7 @@ Target.prototype.updateOrientation = function()
 	}
 	else if( this.face_camera )
 	{
-		var camera = LS.Renderer._current_camera ||  LS.Renderer._main_camera;
+		var camera = ONE.Renderer._current_camera ||  ONE.Renderer._main_camera;
 		if(!camera)
 			return;
 		target_position = camera.getEye();
@@ -135,4 +135,4 @@ Target.prototype.updateOrientation = function()
 }
 //*/
 
-LS.registerComponent( Target );
+ONE.registerComponent( Target );

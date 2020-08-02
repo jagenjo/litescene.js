@@ -24,4 +24,4 @@ var parserDDS = {
 	}
 };
 
-LS.Formats.addSupportedFormat( "dds", parserDDS );
+ONE.Formats.addSupportedFormat( "dds", parserDDS );

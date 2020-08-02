@@ -72,7 +72,7 @@ ThreeJS["@code"] = { widget: "code", allow_inline: false };
 
 ThreeJS.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( LS.Renderer, "renderInstances", this.onEvent, this );
+	LEvent.bind( ONE.Renderer, "renderInstances", this.onEvent, this );
 	LEvent.bind( scene, "start", this.onEvent, this );
 	LEvent.bind( scene, "update", this.onEvent, this );
 	LEvent.bind( scene, "finish", this.onEvent, this );
@@ -98,7 +98,7 @@ ThreeJS.prototype.clearScene = function()
 
 ThreeJS.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( LS.Renderer, "renderInstances", this.onEvent, this );
+	LEvent.unbind( ONE.Renderer, "renderInstances", this.onEvent, this );
 	LEvent.unbindAll( scene, this );
 
 	//clear scene
@@ -125,7 +125,7 @@ ThreeJS.prototype.onEvent = function( e, param )
 	else if(e == "renderInstances")
 	{
 		//copy camera info so both cameras matches
-		var current_camera = LS.Renderer._current_camera;
+		var current_camera = ONE.Renderer._current_camera;
 		engine.camera.fov = current_camera.fov;
 		engine.camera.aspect = current_camera._final_aspect;
 		engine.camera.near = current_camera.near;
@@ -182,7 +182,7 @@ ThreeJS.prototype.setCode = function( code, skip_events )
 ThreeJS.copyTransform = function( a, b )
 {
 	//litescene to threejs
-	if( a.constructor === LS.SceneNode )
+	if( a.constructor === ONE.SceneNode )
 	{
 		var global_position = vec3.create();
 		if(a.transform)
@@ -201,7 +201,7 @@ ThreeJS.copyTransform = function( a, b )
 			a.transform.getGlobalScale( global_scale );
 		b.scale.set( global_scale[0], global_scale[1], global_scale[2] );
 	}
-	if( a.constructor === LS.Transform )
+	if( a.constructor === ONE.Transform )
 	{
 		var global_position = vec3.create();
 		a.getGlobalPosition( global_position );
@@ -219,9 +219,9 @@ ThreeJS.copyTransform = function( a, b )
 	}
 	else //threejs to litescene
 	{
-		if( b.constructor == LS.Transform )
+		if( b.constructor == ONE.Transform )
 			b.fromMatrix( a.matrixWorld );
-		else if( b.constructor == LS.SceneNode && b.transform )
+		else if( b.constructor == ONE.SceneNode && b.transform )
 			b.transform.fromMatrix( a.matrixWorld );
 	}
 }
@@ -251,7 +251,7 @@ ThreeJS.prototype.loadLibrary = function( on_complete )
 	this._loading = true;
 	var that = this;
 
-	LS.Network.requestScript( ThreeJS.library_url, function(){
+	ONE.Network.requestScript( ThreeJS.library_url, function(){
 		console.log("ThreeJS library loaded");
 		that._loading = false;
 		that._loaded = true;
@@ -281,7 +281,7 @@ ThreeJS.prototype.processCode = function( skip_events )
 	if(!this._engine)
 		this.setupContext();
 
-	if(this._root && !LS.Script.block_execution )
+	if(this._root && !ONE.Script.block_execution )
 	{
 		//compiles and executes the context
 		return this._script.compile( this._engine, true );
@@ -290,4 +290,4 @@ ThreeJS.prototype.processCode = function( skip_events )
 }
 
 
-LS.registerComponent( ThreeJS );
+ONE.registerComponent( ThreeJS );

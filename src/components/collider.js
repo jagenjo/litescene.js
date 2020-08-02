@@ -13,10 +13,10 @@ function Collider(o)
 
 Collider.icon = "mini-icon-collider.png";
 
-Collider.PLANE = LS.PhysicsInstance.PLANE;
-Collider.BOX = LS.PhysicsInstance.BOX;
-Collider.SPHERE = LS.PhysicsInstance.SPHERE;
-Collider.MESH = LS.PhysicsInstance.MESH;
+Collider.PLANE = ONE.PhysicsInstance.PLANE;
+Collider.BOX = ONE.PhysicsInstance.BOX;
+Collider.SPHERE = ONE.PhysicsInstance.SPHERE;
+Collider.MESH = ONE.PhysicsInstance.MESH;
 
 //vars
 Collider["@size"] = { type: "vec3", step: 0.01 };
@@ -38,7 +38,7 @@ Collider.prototype.onRemovedFromScene = function(scene)
 
 Collider.prototype.getMesh = function() {
 	if(typeof(this.mesh) === "string")
-		return LS.ResourcesManager.meshes[this.mesh];
+		return ONE.ResourcesManager.meshes[this.mesh];
 	return this.mesh;
 }
 
@@ -84,7 +84,7 @@ Collider.prototype.onGetColliders = function(e, colliders)
 
 	var PI = this._PI;
 	if(!PI)
-		this._PI = PI = new LS.PhysicsInstance(this._root, this);
+		this._PI = PI = new ONE.PhysicsInstance(this._root, this);
 
 	if(this._root.transform)
 		PI.matrix.set( this._root.transform._global_matrix );
@@ -94,25 +94,25 @@ Collider.prototype.onGetColliders = function(e, colliders)
 
 	//get mesh
 	var mesh = null;
-	if(PI.type === LS.PhysicsInstance.MESH || this.use_mesh_bounding)
+	if(PI.type === ONE.PhysicsInstance.MESH || this.use_mesh_bounding)
 		mesh = this.getMesh();
 
 	//spherical collider
-	if(PI.type === LS.PhysicsInstance.SPHERE)
+	if(PI.type === ONE.PhysicsInstance.SPHERE)
 	{
 		if(mesh)
 			BBox.copy( PI.oobb, mesh.bounding );
 		else
 			BBox.setCenterHalfsize( PI.oobb, this.center, [this.size[0],this.size[0],this.size[0]]);
 	}
-	else if(PI.type === LS.PhysicsInstance.BOX)
+	else if(PI.type === ONE.PhysicsInstance.BOX)
 	{
 		if(mesh)
 			BBox.copy( PI.oobb, mesh.bounding );
 		else
 			BBox.setCenterHalfsize( PI.oobb, this.center, this.size);
 	}
-	else if(PI.type === LS.PhysicsInstance.PLANE)
+	else if(PI.type === ONE.PhysicsInstance.PLANE)
 	{
 		this.size[1] = 0.0001; //flatten
 		BBox.setCenterHalfsize( PI.oobb, this.center, this.size );
@@ -126,7 +126,7 @@ Collider.prototype.onGetColliders = function(e, colliders)
 	//convert center from local to world space
 	vec3.transformMat4( PI.center, PI.center, PI.matrix );
 
-	if(PI.type === LS.PhysicsInstance.MESH)
+	if(PI.type === ONE.PhysicsInstance.MESH)
 	{
 		if(!mesh)
 			return;
@@ -136,6 +136,6 @@ Collider.prototype.onGetColliders = function(e, colliders)
 	colliders.push(PI);
 }
 
-//rendered from LS.DebugRender.prototype.renderColliders
+//rendered from ONE.DebugRender.prototype.renderColliders
 
-LS.registerComponent( Collider );
+ONE.registerComponent( Collider );

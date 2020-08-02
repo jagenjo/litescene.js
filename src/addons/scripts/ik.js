@@ -76,25 +76,25 @@ IKChain.prototype.onRenderHelper = function() {
 	for(var i = 0; i < this._init_joints.length; i++)
 		pointsInit.push( this._init_joints[i].position );
 
-	LS.Draw.setColor(1,1,1,1);
-	LS.Draw.renderLines( points, IKChain.axis_colors, true);
-	LS.Draw.renderLines( pointsInit, null, true);
-	LS.Draw.setColor(0,1,1,1);
-	LS.Draw.renderLines( this.prev_pos, null, true);
+	ONE.Draw.setColor(1,1,1,1);
+	ONE.Draw.renderLines( points, IKChain.axis_colors, true);
+	ONE.Draw.renderLines( pointsInit, null, true);
+	ONE.Draw.setColor(0,1,1,1);
+	ONE.Draw.renderLines( this.prev_pos, null, true);
 
 	//Test right and front vectors 
 	if(this.swap)
-		LS.Draw.setColor(0,0,1,1);
+		ONE.Draw.setColor(0,0,1,1);
 	else
-		LS.Draw.setColor(1,0,0,1);
-	LS.Draw.renderLines( this.up0 );
-	LS.Draw.renderLines( this.up1 );
+		ONE.Draw.setColor(1,0,0,1);
+	ONE.Draw.renderLines( this.up0 );
+	ONE.Draw.renderLines( this.up1 );
 	if(this.swap)
-		LS.Draw.setColor(1,0,0,1);
+		ONE.Draw.setColor(1,0,0,1);
 	else
-		LS.Draw.setColor(0,0,1,1);
-	LS.Draw.renderLines( this.front0 );
-	LS.Draw.renderLines( this.front1 );
+		ONE.Draw.setColor(0,0,1,1);
+	ONE.Draw.renderLines( this.front0 );
+	ONE.Draw.renderLines( this.front1 );
 }
 
 /* Add a new joint to the chain */
@@ -155,14 +155,14 @@ IKChain.prototype.setJoints = function()
 	//If the nodes are saved, get them by their id (we can't serialize it as SceneNode, we have to save its uid)
 	if(this.nodes_uids.length == 2 && !this._originNode && !this._endEffector)
 	{
-		this._originNode = LS.GlobalScene.getNode(this.nodes_uids[0] );
-		this._endEffector = LS.GlobalScene.getNode(this.nodes_uids[1] );
+		this._originNode = ONE.GlobalScene.getNode(this.nodes_uids[0] );
+		this._endEffector = ONE.GlobalScene.getNode(this.nodes_uids[1] );
 	}
 	//Set default nodes
 	if(!this._originNode || !this._endEffector)
 	{
-		this._originNode = LS.GlobalScene.getNode("mixamorig_LeftUpLeg")
-		this._endEffector = LS.GlobalScene.getNode("mixamorig_LeftFoot")    
+		this._originNode = ONE.GlobalScene.getNode("mixamorig_LeftUpLeg")
+		this._endEffector = ONE.GlobalScene.getNode("mixamorig_LeftFoot")    
 	}
 
 	this._joints = [];
@@ -203,7 +203,7 @@ IKChain.prototype.onUpdate = function(e,dt)
 
 	if(!this._target && this.target_uid)
 	{
-		var target = LS.GlobalScene.getNode( this.target_uid );
+		var target = ONE.GlobalScene.getNode( this.target_uid );
 		if(target)
 		this._target = target;
 	}
@@ -361,11 +361,11 @@ IKChain.prototype.forward = function(chain)
 		case IKChain.HINGE_JOINT:
 			if(this.swap)
 			{
-				var xaxis = LS.RIGHT.clone();
+				var xaxis = ONE.RIGHT.clone();
 			}
 			else
 			{
-				var xaxis = LS.RIGHT.clone();
+				var xaxis = ONE.RIGHT.clone();
 				vec3.negate(xaxis,xaxis);
 			}
 					//Get global position of parent node	
@@ -442,8 +442,8 @@ IKChain.prototype.apply = function ()
 {
 	for(var i = 0; i < this._num_of_joints-1;i++) //- 1; i++)
 	{
-		var zaxis = LS.FRONT.clone();
-		var xaxis = LS.RIGHT.clone();
+		var zaxis = ONE.FRONT.clone();
+		var xaxis = ONE.RIGHT.clone();
 
 		var parentRot = this._joints[i].parentNode.transform.getGlobalMatrix().clone();
 			
@@ -468,7 +468,7 @@ IKChain.prototype.apply = function ()
 		right_pos[0] = right_pos[0]-20;    */
 
 		/*if(this._joints[i].constraint.type=="HINGE")
-			vec3.negate(right_pos , LS.RIGHT);*/ 
+			vec3.negate(right_pos , ONE.RIGHT);*/ 
 
 		//-------------TEST----------------
 		if(i==0)  
@@ -496,9 +496,9 @@ IKChain.prototype.apply = function ()
 
 		var quaternion = quat.create();
 		if(this.swap)
-			vec3.orientTo( quaternion, zaxis,yaxis,xaxis,LS.TOP);
+			vec3.orientTo( quaternion, zaxis,yaxis,xaxis,ONE.TOP);
 		else
-			vec3.orientTo( quaternion, xaxis,yaxis,zaxis,LS.TOP);
+			vec3.orientTo( quaternion, xaxis,yaxis,zaxis,ONE.TOP);
 		//guardar rotacio inicial i passarli juntament amb la final
 		quat.slerp( quaternion, rot, quaternion, 1 );
 		this._joints[i].transform._rotation.set( quaternion );
@@ -585,7 +585,7 @@ IKChain["@inspector"] = function( component, inspector )
 	var target = null;
 	if(component.target_uid)
 	{
-		target = LS.GlobalScene.getNode(component.target_uid);
+		target = ONE.GlobalScene.getNode(component.target_uid);
 		if(target)
 			component._target = target;
 	}
@@ -614,11 +614,11 @@ IKChain["@inspector"] = function( component, inspector )
 			this.name = "";
 		}
 		inspector.refresh();
-		LS.GlobalScene.requestFrame();
+		ONE.GlobalScene.requestFrame();
 	});
 
 	inspector.addSeparator();
-	inspector.addCheckbox("Debug render", IKChain.debug, function(v){ IKChain.debug = v; LS.GlobalScene.requestFrame(); });
+	inspector.addCheckbox("Debug render", IKChain.debug, function(v){ IKChain.debug = v; ONE.GlobalScene.requestFrame(); });
 }
 
 IKChain.showPoseNodesDialog = function( component, event )
@@ -648,8 +648,8 @@ IKChain.showPoseNodesDialog = function( component, event )
 		var childrenNodes = [];
 		if(component.nodes_uids.length==2)
 		{
-			component._originNode = LS.GlobalScene.getNode(component.nodes_uids[0] );
-			component._endEffector = LS.GlobalScene.getNode(component.nodes_uids[1] );
+			component._originNode = ONE.GlobalScene.getNode(component.nodes_uids[0] );
+			component._endEffector = ONE.GlobalScene.getNode(component.nodes_uids[1] );
 		}
 		if(component._endEffector)
 			nodeEnd = component._endEffector;
@@ -731,4 +731,4 @@ IKChain.showPoseNodesDialog = function( component, event )
 	return dialog;
 }
 
-LS.registerComponent( IKChain );
+ONE.registerComponent( IKChain );
