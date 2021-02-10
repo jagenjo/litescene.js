@@ -9,19 +9,19 @@ LiteScene comes with its own tweening system.
 To tween just call the LS.Tween.easyProperty passing the object containing the property, the property name in string format, the target value, and the time the transition should last.
 
 ```js
-LS.Tween.easeProperty( object, property_name, time, easing_function_name, on_complete, on_progress );
+LS.Tween.easeProperty( object, property_name, target_value, time, easing_function_name, on_complete, on_progress );
 ```
 
 Here is an example of usage:
 
 ```js
-LS.Tween.easeProperty( node.transform, "x", 2.5 );
+LS.Tween.easeProperty( node.transform, "x", 10, 2.5 );
 ```
 
 By default it will use EASE_IN_OUT_QUAD interpolation function (quadratic interpolation for in and out), but you can choose any of the supported functions:
 
 ```javascript
-LS.Tween.easeProperty( node.transform, "x", 2.5, LS.Tween.EASE_IN_CUBIC );
+LS.Tween.easeProperty( node.transform, "x", 10, 2.5, LS.Tween.EASE_IN_CUBIC );
 ```
 Here is a list of the common easing functions, [check on google](https://www.google.es/search?q=tween+functions&source=lnms&tbm=isch) to see the shape of them:
 
@@ -53,7 +53,7 @@ Here is a list of the common easing functions, [check on google](https://www.goo
 In case you want to call a callback once per update or once it finishes you can pass the callbacks in order:
 
 ```javascript
-LS.Tween.easeProperty( node.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
+LS.Tween.easeProperty( node.transform, "x", target, 2.5, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
 ```
 
 ## Info returned
