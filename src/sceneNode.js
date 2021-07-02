@@ -679,7 +679,13 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 		{
 			case "matrix": target = this.transform; break;
 			case "position":
+            	target = this.transform; 
+				varname = path[offset];
+				break;
 			case "rotation":
+				target = this.transform; 
+				varname = path[offset];
+				break;
 			case "x":
 			case "y":
 			case "z":
