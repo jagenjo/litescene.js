@@ -679,7 +679,13 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 		{
 			case "matrix": target = this.transform; break;
 			case "position":
+            	target = this.transform; 
+				varname = path[offset];
+				break;
 			case "rotation":
+				target = this.transform; 
+				varname = path[offset];
+				break;
 			case "x":
 			case "y":
 			case "z":
@@ -1254,8 +1260,9 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 	//skinning
 	if(mesh && mesh.bones)
 	{
-		compo = new ONE.Components.SkinDeformer({ search_bones_in_parent: false }); //search_bones_in_parent is false because usually DAEs come that way
-		this.addComponent( compo );
+        var options = { search_bones_in_parent: mesh.search_bones_in_parent || false }; //search_bones_in_parent is false because usually DAEs come that way (but not for glTF)
+		compo = new ONE.Components.SkinDeformer(options); 	
+        this.addComponent( compo );
 	}
 
 	//morph targets
